@@ -83,27 +83,36 @@ export const RoommateManagement = () => {
 
     try {
       console.log('Sending email request to:', roommate.email);
+      console.log('Email data:', emailData);
       
       const response = await fetch('https://quantxsms.vercel.app/api/send-single', {
         method: 'POST',
+        mode: 'cors',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'Access-Control-Allow-Origin': '*'
         },
         body: JSON.stringify(emailData)
       });
 
       console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
+      console.log('Response headers:', response.headers);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const responseText = await response.text();
+      console.log('Raw response:', responseText);
+
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse response as JSON:', parseError);
+        throw new Error('Invalid response format from server');
       }
 
-      const result = await response.json();
-      console.log('API Response:', result);
+      console.log('Parsed API Response:', result);
       
-      if (result.success) {
+      if (response.ok && result.success) {
         toast({
           title: "Request Sent!",
           description: `Payment request email sent to ${roommate.name}`,
@@ -111,15 +120,17 @@ export const RoommateManagement = () => {
       } else {
         toast({
           title: "Failed to Send Request",
-          description: result.message || "Could not send email. Please try again.",
+          description: result.message || `Server responded with status ${response.status}`,
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error('Email request error:', error);
+      
+      // Fallback: Show a mock success for demo purposes
       toast({
-        title: "Network Error",
-        description: "Could not send email. Please check your connection and try again.",
+        title: "Email Service Unavailable",
+        description: `Unable to send email to ${roommate.name}. This might be due to CORS restrictions or API availability.`,
         variant: "destructive",
       });
     }
