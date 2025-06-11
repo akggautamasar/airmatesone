@@ -1,23 +1,126 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { IndianRupee, Clock } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { IndianRupee, Clock, Check, Users } from "lucide-react";
+
+interface Settlement {
+  id: string;
+  name: string;
+  amount: number;
+  type: "owes" | "owed";
+  upiId: string;
+  email: string;
+  status: "pending" | "settled";
+  settledDate?: string;
+}
 
 const SettlementHistory = () => {
+  // Mock data for demonstration - in a real app this would come from props or context
+  const mockSettlements: Settlement[] = [
+    {
+      id: "1",
+      name: "You",
+      amount: 120,
+      type: "owes",
+      upiId: "ayushvaibhav31@ybl",
+      email: "ayushvaibhav31@gmail.com",
+      status: "pending"
+    },
+    {
+      id: "2", 
+      name: "Kshitij Gupta",
+      amount: 120,
+      type: "owes",
+      upiId: "ayushvaibhav31@ybl", 
+      email: "kshitij.gupta.5680@gmail.com",
+      status: "settled",
+      settledDate: "2024-01-10"
+    }
+  ];
+
+  const pendingSettlements = mockSettlements.filter(s => s.status === "pending");
+  const settledSettlements = mockSettlements.filter(s => s.status === "settled");
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Settlement History</CardTitle>
         <CardDescription>
-          Your past settlement transactions
+          Track all pending and completed settlement transactions
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="text-center py-8 text-muted-foreground">
-          <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p>No settlement history yet</p>
-          <p className="text-sm">Your completed settlements will appear here</p>
-        </div>
+        <Tabs defaultValue="pending" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="pending">Pending ({pendingSettlements.length})</TabsTrigger>
+            <TabsTrigger value="settled">Settled ({settledSettlements.length})</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="pending" className="space-y-4 mt-4">
+            {pendingSettlements.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No pending settlements</p>
+                <p className="text-sm">All settlements are up to date</p>
+              </div>
+            ) : (
+              pendingSettlements.map((settlement) => (
+                <div key={settlement.id} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-orange-500 rounded-full p-2">
+                      <Clock className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-medium">
+                        {settlement.name === "You" ? "You owe" : `${settlement.name} owes`}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Pending payment
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-orange-600">₹{settlement.amount}</p>
+                    <p className="text-xs text-orange-500">Pending</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </TabsContent>
+          
+          <TabsContent value="settled" className="space-y-4 mt-4">
+            {settledSettlements.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Check className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No settled transactions yet</p>
+                <p className="text-sm">Completed settlements will appear here</p>
+              </div>
+            ) : (
+              settledSettlements.map((settlement) => (
+                <div key={settlement.id} className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-green-500 rounded-full p-2">
+                      <Check className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-medium">
+                        {settlement.name === "You" ? "You paid" : `${settlement.name} paid`}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Settled on {settlement.settledDate}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-green-600">₹{settlement.amount}</p>
+                    <p className="text-xs text-green-500">Settled</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );

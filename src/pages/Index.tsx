@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -129,19 +128,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="settlements" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Pending Settlements</CardTitle>
-                <CardDescription>
-                  Amounts you owe or are owed by roommates
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  Settlement tracking coming soon!
-                </div>
-              </CardContent>
-            </Card>
+            <SettlementHistory />
           </TabsContent>
 
           <TabsContent value="roommates" className="space-y-6">
@@ -149,7 +136,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="history" className="space-y-6">
-            <SettlementHistory expenses={expenses} />
+            <SettlementHistory />
           </TabsContent>
         </Tabs>
       </main>

@@ -1,8 +1,9 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { IndianRupee, TrendingUp, TrendingDown, Users, Trash2, Mail } from "lucide-react";
+import { IndianRupee, TrendingUp, TrendingDown, Users, Trash2, Mail, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Expense {
@@ -15,11 +16,14 @@ interface Expense {
 }
 
 interface Settlement {
+  id: string;
   name: string;
   amount: number;
   type: "owes" | "owed";
   upiId: string;
   email: string;
+  status: "pending" | "settled";
+  settledDate?: string;
 }
 
 interface ExpenseOverviewProps {
@@ -33,6 +37,7 @@ interface ExpenseOverviewProps {
 export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settlements, onSettlementUpdate }: ExpenseOverviewProps) => {
   const { toast } = useToast();
   const [isRequestLoading, setIsRequestLoading] = useState<string | null>(null);
+  const [settledSettlements, setSettledSettlements] = useState<Settlement[]>([]);
 
   // Roommate data with UPI and email info
   const roommateData = [
@@ -47,49 +52,53 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
     if (expenses.length === 0) return [];
 
     const totalRoommates = roommateData.length + 1; // +1 for "You"
-    const balances: { [key: string]: number } = {};
-    
-    // Initialize balances
-    balances["You"] = 0;
-    roommateData.forEach(roommate => {
-      balances[roommate.name] = 0;
-    });
+    const calculatedSettlements: Settlement[] = [];
 
-    // Calculate balances based on expenses
     expenses.forEach(expense => {
       const sharePerPerson = expense.amount / totalRoommates;
       
-      // The person who paid gets credited
-      balances[expense.paidBy] += expense.amount - sharePerPerson;
-      
-      // Everyone else owes their share
-      Object.keys(balances).forEach(person => {
-        if (person !== expense.paidBy) {
-          balances[person] -= sharePerPerson;
-        }
-      });
-    });
-
-    // Convert balances to settlements - only show people who owe money
-    const calculatedSettlements: Settlement[] = [];
-    
-    Object.keys(balances).forEach(person => {
-      const balance = balances[person];
-      if (balance < -0.01) { // Only show people who owe money (negative balance)
-        // Find who they owe money to (person with positive balance)
-        const creditorName = Object.keys(balances).find(name => balances[name] > 0.01);
-        const creditor = creditorName === "You" ? 
-          { upiId: "your.upi@example.com", email: "your.email@example.com" } :
-          roommateData.find(r => r.name === creditorName) || roommateData[0];
-
+      // Everyone except the payer owes money to the payer
+      if (expense.paidBy !== "You") {
+        // You owe money to the person who paid
         calculatedSettlements.push({
-          name: person,
-          amount: Math.abs(balance),
+          id: `you-to-${expense.paidBy}-${expense.id}`,
+          name: "You",
+          amount: sharePerPerson,
           type: "owes",
-          upiId: creditor.upiId,
-          email: creditor.email
+          upiId: roommateData.find(r => r.name === expense.paidBy)?.upiId || "",
+          email: roommateData.find(r => r.name === expense.paidBy)?.email || "",
+          status: "pending"
         });
       }
+
+      // All other roommates owe money to the person who paid
+      roommateData.forEach(roommate => {
+        if (roommate.name !== expense.paidBy) {
+          if (expense.paidBy === "You") {
+            // Roommate owes money to you
+            calculatedSettlements.push({
+              id: `${roommate.name}-to-you-${expense.id}`,
+              name: roommate.name,
+              amount: sharePerPerson,
+              type: "owes",
+              upiId: "your.upi@example.com",
+              email: "your.email@example.com",
+              status: "pending"
+            });
+          } else {
+            // Roommate owes money to another roommate
+            calculatedSettlements.push({
+              id: `${roommate.name}-to-${expense.paidBy}-${expense.id}`,
+              name: roommate.name,
+              amount: sharePerPerson,
+              type: "owes",
+              upiId: roommateData.find(r => r.name === expense.paidBy)?.upiId || "",
+              email: roommateData.find(r => r.name === expense.paidBy)?.email || "",
+              status: "pending"
+            });
+          }
+        }
+      });
     });
 
     return calculatedSettlements;
@@ -100,6 +109,21 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
   const handleUPIPayment = (upiId: string, amount: number) => {
     const paymentUrl = `https://quantxpay.vercel.app/${upiId}/${amount}`;
     window.open(paymentUrl, '_blank');
+  };
+
+  const markAsPaid = (settlement: Settlement) => {
+    const settledSettlement = {
+      ...settlement,
+      status: "settled" as const,
+      settledDate: new Date().toLocaleDateString()
+    };
+    
+    setSettledSettlements(prev => [...prev, settledSettlement]);
+    
+    toast({
+      title: "Payment Marked as Settled",
+      description: `₹${settlement.amount} payment from ${settlement.name} has been marked as settled`,
+    });
   };
 
   const sendEmailRequest = async (settlement: Settlement) => {
@@ -145,10 +169,15 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
     });
   };
 
+  // Filter out settled settlements from current settlements
+  const pendingSettlements = currentSettlements.filter(settlement => 
+    !settledSettlements.some(settled => settled.id === settlement.id)
+  );
+
   // Calculate totals
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const totalOwed = 0; // Since we only show people who owe money now
-  const totalOwes = currentSettlements.reduce((sum, s) => sum + s.amount, 0);
+  const totalOwed = 0;
+  const totalOwes = pendingSettlements.filter(s => s.name === "You").reduce((sum, s) => sum + s.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -249,14 +278,14 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
             <CardDescription>Who owes money and to whom</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {currentSettlements.length === 0 ? (
+            {pendingSettlements.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No settlements needed</p>
                 <p className="text-sm">Add expenses to see settlement calculations</p>
               </div>
             ) : (
-              currentSettlements.map((settlement, index) => (
+              pendingSettlements.map((settlement, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-full p-2">
@@ -287,25 +316,35 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
                       </Button>
                     )}
                     {settlement.name !== "You" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => sendEmailRequest(settlement)}
-                        disabled={isRequestLoading === settlement.email}
-                        className="min-w-[80px]"
-                      >
-                        {isRequestLoading === settlement.email ? (
-                          <div className="flex items-center space-x-1">
-                            <div className="w-3 h-3 border border-gray-400 border-t-blue-600 rounded-full animate-spin"></div>
-                            <span className="text-xs">Sending...</span>
-                          </div>
-                        ) : (
-                          <>
-                            <Mail className="h-3 w-3 mr-1" />
-                            Request
-                          </>
-                        )}
-                      </Button>
+                      <div className="flex space-x-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => sendEmailRequest(settlement)}
+                          disabled={isRequestLoading === settlement.email}
+                          className="min-w-[70px]"
+                        >
+                          {isRequestLoading === settlement.email ? (
+                            <div className="flex items-center space-x-1">
+                              <div className="w-3 h-3 border border-gray-400 border-t-blue-600 rounded-full animate-spin"></div>
+                            </div>
+                          ) : (
+                            <>
+                              <Mail className="h-3 w-3 mr-1" />
+                              Request
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => markAsPaid(settlement)}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <Check className="h-3 w-3 mr-1" />
+                          Mark Paid
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -327,4 +366,10 @@ export const getRoommates = () => {
     { name: "Jitendra Kumar Lodhi", upiId: "lodhikumar07@okhdfcbank", email: "lodhijk7@gmail.com" },
   ];
   return ['You', ...roommateData.map(roommate => roommate.name)];
+};
+
+// Export settled settlements for SettlementHistory component
+export const getSettledSettlements = () => {
+  // This would ideally come from a global state or context
+  return [];
 };
