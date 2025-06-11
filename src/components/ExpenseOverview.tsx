@@ -71,8 +71,24 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
       });
     });
 
-    // Convert balances to settlements (excluding "You")
+    // Convert balances to settlements (including "You")
     const calculatedSettlements: Settlement[] = [];
+    
+    // Add settlement for "You" if you owe or are owed money
+    const yourBalance = balances["You"];
+    if (Math.abs(yourBalance) > 0.01) {
+      // Find who you're settling with (for UPI purposes, we'll use a default or the person you owe most to)
+      const targetRoommate = roommateData.find(r => balances[r.name] > 0) || roommateData[0];
+      calculatedSettlements.push({
+        name: "You",
+        amount: Math.abs(yourBalance),
+        type: yourBalance < 0 ? "owes" : "owed",
+        upiId: targetRoommate.upiId, // UPI of person you're paying to
+        email: "your.email@example.com" // Placeholder for your email
+      });
+    }
+
+    // Add settlements for other roommates
     roommateData.forEach(roommate => {
       const balance = balances[roommate.name];
       if (Math.abs(balance) > 0.01) { // Only show if significant amount
@@ -166,7 +182,7 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-900">₹{totalOwed.toFixed(2)}</div>
-            <p className="text-xs text-green-600">From {currentSettlements.filter(s => s.type === "owed").length} roommate(s)</p>
+            <p className="text-xs text-green-600">From {currentSettlements.filter(s => s.type === "owed" && s.name !== "You").length} roommate(s)</p>
           </CardContent>
         </Card>
 
@@ -177,7 +193,7 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-900">₹{totalOwes.toFixed(2)}</div>
-            <p className="text-xs text-orange-600">To {currentSettlements.filter(s => s.type === "owes").length} roommate(s)</p>
+            <p className="text-xs text-orange-600">To {currentSettlements.filter(s => s.type === "owes" && s.name !== "You").length} roommate(s)</p>
           </CardContent>
         </Card>
       </div>
@@ -257,8 +273,12 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
                       <Users className="h-4 w-4 text-white" />
                     </div>
                     <div>
-                      <p className="font-medium">{settlement.name}</p>
-                      <p className="text-xs text-muted-foreground">{settlement.upiId}</p>
+                      <p className="font-medium">
+                        {settlement.name === "You" ? "You" : settlement.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {settlement.name === "You" ? "Your balance" : settlement.upiId}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -267,7 +287,7 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
                         {settlement.type === 'owes' ? '-' : '+'}₹{settlement.amount.toFixed(2)}
                       </p>
                     </div>
-                    {settlement.type === 'owes' && (
+                    {settlement.name === "You" && settlement.type === 'owes' && (
                       <Button
                         size="sm"
                         onClick={() => handleUPIPayment(settlement.upiId, settlement.amount)}
@@ -276,7 +296,16 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
                         Pay
                       </Button>
                     )}
-                    {settlement.type === 'owed' && (
+                    {settlement.name !== "You" && settlement.type === 'owes' && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleUPIPayment(settlement.upiId, settlement.amount)}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        Pay
+                      </Button>
+                    )}
+                    {settlement.type === 'owed' && settlement.name !== "You" && (
                       <Button
                         size="sm"
                         variant="outline"
