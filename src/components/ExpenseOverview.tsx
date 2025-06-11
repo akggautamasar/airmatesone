@@ -15,6 +15,14 @@ interface Expense {
   category: string;
 }
 
+interface Settlement {
+  name: string;
+  amount: number;
+  type: "owes" | "owed";
+  upiId: string;
+  email: string;
+}
+
 export const ExpenseOverview = () => {
   const { toast } = useToast();
   
@@ -24,15 +32,54 @@ export const ExpenseOverview = () => {
     { id: 3, description: "Internet Bill", amount: 800, paidBy: "Priya", date: "2 days ago", category: "Utilities" },
   ]);
 
-  const settlements = [
-    { name: "Rahul", amount: 150, type: "owes", upiId: "rahul@paytm" },
-    { name: "Priya", amount: 200, type: "owed", upiId: "priya@phonepe" },
-    { name: "Arjun", amount: 100, type: "owes", upiId: "arjun@gpay" },
+  const settlements: Settlement[] = [
+    { name: "Rahul", amount: 150, type: "owes", upiId: "rahul@paytm", email: "rahul@example.com" },
+    { name: "Priya", amount: 200, type: "owed", upiId: "priya@phonepe", email: "priya@example.com" },
+    { name: "Arjun", amount: 100, type: "owes", upiId: "arjun@gpay", email: "arjun@example.com" },
   ];
 
   const handleUPIPayment = (upiId: string, amount: number) => {
     const paymentUrl = `https://quantxpay.vercel.app/${upiId}/${amount}`;
     window.open(paymentUrl, '_blank');
+  };
+
+  const sendEmailRequest = async (settlement: Settlement) => {
+    const emailData = {
+      to: settlement.email,
+      subject: "Payment Request from Airmates",
+      message: `Hi ${settlement.name},\n\nYou have a pending payment request on Airmates.\n\nAmount: ₹${settlement.amount}\n\nPlease settle this amount at your earliest convenience.\n\nBest regards,\nAirmates Team`
+    };
+
+    try {
+      const response = await fetch('https://quantxsms.vercel.app/api/send-single', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(emailData)
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: "Request Sent!",
+          description: `Payment request email sent to ${settlement.name}`,
+        });
+      } else {
+        toast({
+          title: "Failed to Send Request",
+          description: "Could not send email. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Network Error",
+        description: "Could not send email. Please check your connection.",
+        variant: "destructive",
+      });
+    }
   };
 
   const deleteExpense = (expenseId: number) => {
@@ -159,13 +206,20 @@ export const ExpenseOverview = () => {
                       {settlement.type === 'owes' ? '-' : '+'}₹{settlement.amount}
                     </p>
                   </div>
+                  <Button
+                    size="sm"
+                    onClick={() => handleUPIPayment(settlement.upiId, settlement.amount)}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    Pay
+                  </Button>
                   {settlement.type === 'owes' && (
                     <Button
                       size="sm"
-                      onClick={() => handleUPIPayment(settlement.upiId, settlement.amount)}
-                      className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
+                      variant="outline"
+                      onClick={() => sendEmailRequest(settlement)}
                     >
-                      Pay
+                      Request
                     </Button>
                   )}
                 </div>

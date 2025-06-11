@@ -5,38 +5,40 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Users, Plus, IndianRupee, Phone, Trash2 } from "lucide-react";
+import { Users, Plus, IndianRupee, Phone, Trash2, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Roommate {
   id: number;
   name: string;
   upiId: string;
+  email: string;
   phone?: string;
   balance: number;
 }
 
 export const RoommateManagement = () => {
   const [roommates, setRoommates] = useState<Roommate[]>([
-    { id: 1, name: "Rahul", upiId: "rahul@paytm", phone: "+91 98765 43210", balance: -150 },
-    { id: 2, name: "Priya", upiId: "priya@phonepe", phone: "+91 87654 32109", balance: 200 },
-    { id: 3, name: "Arjun", upiId: "arjun@gpay", phone: "+91 76543 21098", balance: -100 },
-    { id: 4, name: "Sneha", upiId: "sneha@paytm", phone: "+91 65432 10987", balance: 50 },
+    { id: 1, name: "Rahul", upiId: "rahul@paytm", email: "rahul@example.com", phone: "+91 98765 43210", balance: -150 },
+    { id: 2, name: "Priya", upiId: "priya@phonepe", email: "priya@example.com", phone: "+91 87654 32109", balance: 200 },
+    { id: 3, name: "Arjun", upiId: "arjun@gpay", email: "arjun@example.com", phone: "+91 76543 21098", balance: -100 },
+    { id: 4, name: "Sneha", upiId: "sneha@paytm", email: "sneha@example.com", phone: "+91 65432 10987", balance: 50 },
   ]);
 
   const [newRoommate, setNewRoommate] = useState({
     name: '',
     upiId: '',
+    email: '',
     phone: ''
   });
 
   const { toast } = useToast();
 
   const addRoommate = () => {
-    if (!newRoommate.name || !newRoommate.upiId) {
+    if (!newRoommate.name || !newRoommate.upiId || !newRoommate.email) {
       toast({
         title: "Missing Information",
-        description: "Name and UPI ID are required.",
+        description: "Name, UPI ID, and Email are required.",
         variant: "destructive",
       });
       return;
@@ -49,7 +51,7 @@ export const RoommateManagement = () => {
       balance: 0
     }]);
 
-    setNewRoommate({ name: '', upiId: '', phone: '' });
+    setNewRoommate({ name: '', upiId: '', email: '', phone: '' });
     
     toast({
       title: "Roommate Added!",
@@ -72,6 +74,45 @@ export const RoommateManagement = () => {
     window.open(paymentUrl, '_blank');
   };
 
+  const sendEmailRequest = async (roommate: Roommate) => {
+    const emailData = {
+      to: roommate.email,
+      subject: "Payment Request from Airmates",
+      message: `Hi ${roommate.name},\n\nYou have a pending payment request on Airmates.\n\nAmount: ₹${Math.abs(roommate.balance)}\n\nPlease settle this amount at your earliest convenience.\n\nBest regards,\nAirmates Team`
+    };
+
+    try {
+      const response = await fetch('https://quantxsms.vercel.app/api/send-single', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(emailData)
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: "Request Sent!",
+          description: `Payment request email sent to ${roommate.name}`,
+        });
+      } else {
+        toast({
+          title: "Failed to Send Request",
+          description: "Could not send email. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Network Error",
+        description: "Could not send email. Please check your connection.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Add Roommate */}
@@ -86,7 +127,7 @@ export const RoommateManagement = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
               <Input
@@ -103,6 +144,16 @@ export const RoommateManagement = () => {
                 placeholder="name@paytm"
                 value={newRoommate.upiId}
                 onChange={(e) => setNewRoommate({...newRoommate, upiId: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="email@example.com"
+                value={newRoommate.email}
+                onChange={(e) => setNewRoommate({...newRoommate, email: e.target.value})}
               />
             </div>
             <div className="space-y-2">
@@ -156,6 +207,10 @@ export const RoommateManagement = () => {
                       <IndianRupee className="h-3 w-3" />
                       <span>{roommate.upiId}</span>
                     </div>
+                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                      <Mail className="h-3 w-3" />
+                      <span>{roommate.email}</span>
+                    </div>
                     {roommate.phone && (
                       <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                         <Phone className="h-3 w-3" />
@@ -177,16 +232,24 @@ export const RoommateManagement = () => {
                   
                   <div className="flex space-x-2">
                     {roommate.balance !== 0 && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleUPIPayment(roommate.upiId, roommate.balance)}
-                        className={roommate.balance < 0 
-                          ? "bg-green-600 hover:bg-green-700" 
-                          : "bg-blue-600 hover:bg-blue-700"
-                        }
-                      >
-                        {roommate.balance < 0 ? 'Request' : 'Pay'}
-                      </Button>
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => handleUPIPayment(roommate.upiId, roommate.balance)}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          Pay
+                        </Button>
+                        {roommate.balance < 0 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => sendEmailRequest(roommate)}
+                          >
+                            Request
+                          </Button>
+                        )}
+                      </>
                     )}
                     
                     <AlertDialog>
