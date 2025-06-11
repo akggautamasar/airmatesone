@@ -27,18 +27,69 @@ interface ExpenseOverviewProps {
   onAddExpense?: (expense: Omit<Expense, 'id'>) => void;
   expenses: Expense[];
   onExpenseUpdate: (expenses: Expense[]) => void;
+  settlements: Settlement[];
+  onSettlementUpdate: (settlements: Settlement[]) => void;
 }
 
-export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate }: ExpenseOverviewProps) => {
+export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settlements, onSettlementUpdate }: ExpenseOverviewProps) => {
   const { toast } = useToast();
   const [isRequestLoading, setIsRequestLoading] = useState<string | null>(null);
 
-  const settlements: Settlement[] = [
-    { name: "Kshitij Gupta", amount: 150, type: "owes", upiId: "kshitij.gupta.5680-1@okhdfcbank", email: "kshitij.gupta.5680@gmail.com" },
-    { name: "Ayush Vaibhav", amount: 200, type: "owed", upiId: "ayushvaibhav31@ybl", email: "ayushvaibhav31@gmail.com" },
-    { name: "Abhishek Athiya", amount: 100, type: "owes", upiId: "9302596396@ybl", email: "abhiathiya786@gmail.com" },
-    { name: "Jitendra Kumar Lodhi", amount: 75, type: "owes", upiId: "lodhikumar07@okhdfcbank", email: "lodhijk7@gmail.com" },
+  // Roommate data with UPI and email info
+  const roommateData = [
+    { name: "Kshitij Gupta", upiId: "kshitij.gupta.5680-1@okhdfcbank", email: "kshitij.gupta.5680@gmail.com" },
+    { name: "Ayush Vaibhav", upiId: "ayushvaibhav31@ybl", email: "ayushvaibhav31@gmail.com" },
+    { name: "Abhishek Athiya", upiId: "9302596396@ybl", email: "abhiathiya786@gmail.com" },
+    { name: "Jitendra Kumar Lodhi", upiId: "lodhikumar07@okhdfcbank", email: "lodhijk7@gmail.com" },
   ];
+
+  // Calculate settlements based on actual expenses
+  const calculateSettlements = (): Settlement[] => {
+    if (expenses.length === 0) return [];
+
+    const totalRoommates = roommateData.length + 1; // +1 for "You"
+    const balances: { [key: string]: number } = {};
+    
+    // Initialize balances
+    balances["You"] = 0;
+    roommateData.forEach(roommate => {
+      balances[roommate.name] = 0;
+    });
+
+    // Calculate balances based on expenses
+    expenses.forEach(expense => {
+      const sharePerPerson = expense.amount / totalRoommates;
+      
+      // The person who paid gets credited
+      balances[expense.paidBy] += expense.amount - sharePerPerson;
+      
+      // Everyone else owes their share
+      Object.keys(balances).forEach(person => {
+        if (person !== expense.paidBy) {
+          balances[person] -= sharePerPerson;
+        }
+      });
+    });
+
+    // Convert balances to settlements (excluding "You")
+    const calculatedSettlements: Settlement[] = [];
+    roommateData.forEach(roommate => {
+      const balance = balances[roommate.name];
+      if (Math.abs(balance) > 0.01) { // Only show if significant amount
+        calculatedSettlements.push({
+          name: roommate.name,
+          amount: Math.abs(balance),
+          type: balance < 0 ? "owes" : "owed",
+          upiId: roommate.upiId,
+          email: roommate.email
+        });
+      }
+    });
+
+    return calculatedSettlements;
+  };
+
+  const currentSettlements = calculateSettlements();
 
   const handleUPIPayment = (upiId: string, amount: number) => {
     const paymentUrl = `https://quantxpay.vercel.app/${upiId}/${amount}`;
@@ -88,8 +139,10 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate }: Exp
     });
   };
 
-  // Calculate total expenses
+  // Calculate totals
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const totalOwed = currentSettlements.filter(s => s.type === "owed").reduce((sum, s) => sum + s.amount, 0);
+  const totalOwes = currentSettlements.filter(s => s.type === "owes").reduce((sum, s) => sum + s.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -112,8 +165,8 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate }: Exp
             <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-900">₹200</div>
-            <p className="text-xs text-green-600">From 1 roommate</p>
+            <div className="text-2xl font-bold text-green-900">₹{totalOwed.toFixed(2)}</div>
+            <p className="text-xs text-green-600">From {currentSettlements.filter(s => s.type === "owed").length} roommate(s)</p>
           </CardContent>
         </Card>
 
@@ -123,8 +176,8 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate }: Exp
             <TrendingDown className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-900">₹325</div>
-            <p className="text-xs text-orange-600">To 3 roommates</p>
+            <div className="text-2xl font-bold text-orange-900">₹{totalOwes.toFixed(2)}</div>
+            <p className="text-xs text-orange-600">To {currentSettlements.filter(s => s.type === "owes").length} roommate(s)</p>
           </CardContent>
         </Card>
       </div>
@@ -190,54 +243,64 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate }: Exp
             <CardDescription>Settle up with your roommates</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {settlements.map((settlement, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-gradient-to-r from-blue-600 to-green-600 rounded-full p-2">
-                    <Users className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-medium">{settlement.name}</p>
-                    <p className="text-xs text-muted-foreground">{settlement.upiId}</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="text-right">
-                    <p className={`font-semibold ${settlement.type === 'owes' ? 'text-orange-600' : 'text-green-600'}`}>
-                      {settlement.type === 'owes' ? '-' : '+'}₹{settlement.amount}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => handleUPIPayment(settlement.upiId, settlement.amount)}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    Pay
-                  </Button>
-                  {settlement.type === 'owes' && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => sendEmailRequest(settlement)}
-                      disabled={isRequestLoading === settlement.email}
-                      className="min-w-[80px]"
-                    >
-                      {isRequestLoading === settlement.email ? (
-                        <div className="flex items-center space-x-1">
-                          <div className="w-3 h-3 border border-gray-400 border-t-blue-600 rounded-full animate-spin"></div>
-                          <span className="text-xs">Sending...</span>
-                        </div>
-                      ) : (
-                        <>
-                          <Mail className="h-3 w-3 mr-1" />
-                          Request
-                        </>
-                      )}
-                    </Button>
-                  )}
-                </div>
+            {currentSettlements.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No settlements needed</p>
+                <p className="text-sm">Add expenses to see settlement calculations</p>
               </div>
-            ))}
+            ) : (
+              currentSettlements.map((settlement, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-gradient-to-r from-blue-600 to-green-600 rounded-full p-2">
+                      <Users className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-medium">{settlement.name}</p>
+                      <p className="text-xs text-muted-foreground">{settlement.upiId}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="text-right">
+                      <p className={`font-semibold ${settlement.type === 'owes' ? 'text-orange-600' : 'text-green-600'}`}>
+                        {settlement.type === 'owes' ? '-' : '+'}₹{settlement.amount.toFixed(2)}
+                      </p>
+                    </div>
+                    {settlement.type === 'owes' && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleUPIPayment(settlement.upiId, settlement.amount)}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        Pay
+                      </Button>
+                    )}
+                    {settlement.type === 'owed' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => sendEmailRequest(settlement)}
+                        disabled={isRequestLoading === settlement.email}
+                        className="min-w-[80px]"
+                      >
+                        {isRequestLoading === settlement.email ? (
+                          <div className="flex items-center space-x-1">
+                            <div className="w-3 h-3 border border-gray-400 border-t-blue-600 rounded-full animate-spin"></div>
+                            <span className="text-xs">Sending...</span>
+                          </div>
+                        ) : (
+                          <>
+                            <Mail className="h-3 w-3 mr-1" />
+                            Request
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
@@ -247,11 +310,11 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate }: Exp
 
 // Export roommates data for use in other components
 export const getRoommates = () => {
-  const settlements = [
-    { name: "Kshitij Gupta", amount: 150, type: "owes", upiId: "kshitij.gupta.5680-1@okhdfcbank", email: "kshitij.gupta.5680@gmail.com" },
-    { name: "Ayush Vaibhav", amount: 200, type: "owed", upiId: "ayushvaibhav31@ybl", email: "ayushvaibhav31@gmail.com" },
-    { name: "Abhishek Athiya", amount: 100, type: "owes", upiId: "9302596396@ybl", email: "abhiathiya786@gmail.com" },
-    { name: "Jitendra Kumar Lodhi", amount: 75, type: "owes", upiId: "lodhikumar07@okhdfcbank", email: "lodhijk7@gmail.com" },
+  const roommateData = [
+    { name: "Kshitij Gupta", upiId: "kshitij.gupta.5680-1@okhdfcbank", email: "kshitij.gupta.5680@gmail.com" },
+    { name: "Ayush Vaibhav", upiId: "ayushvaibhav31@ybl", email: "ayushvaibhav31@gmail.com" },
+    { name: "Abhishek Athiya", upiId: "9302596396@ybl", email: "abhiathiya786@gmail.com" },
+    { name: "Jitendra Kumar Lodhi", upiId: "lodhikumar07@okhdfcbank", email: "lodhijk7@gmail.com" },
   ];
-  return ['You', ...settlements.map(settlement => settlement.name)];
+  return ['You', ...roommateData.map(roommate => roommate.name)];
 };

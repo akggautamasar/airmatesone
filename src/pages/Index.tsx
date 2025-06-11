@@ -20,10 +20,19 @@ interface Expense {
   category: string;
 }
 
+interface Settlement {
+  name: string;
+  amount: number;
+  type: "owes" | "owed";
+  upiId: string;
+  email: string;
+}
+
 const Index = () => {
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showMarketNotification, setShowMarketNotification] = useState(false);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
 
   const roommates = getRoommates();
 
@@ -38,6 +47,10 @@ const Index = () => {
 
   const handleExpenseUpdate = (updatedExpenses: Expense[]) => {
     setExpenses(updatedExpenses);
+  };
+
+  const handleSettlementUpdate = (updatedSettlements: Settlement[]) => {
+    setSettlements(updatedSettlements);
   };
 
   return (
@@ -106,6 +119,8 @@ const Index = () => {
               onAddExpense={handleAddExpense} 
               expenses={expenses}
               onExpenseUpdate={handleExpenseUpdate}
+              settlements={settlements}
+              onSettlementUpdate={handleSettlementUpdate}
             />
           </TabsContent>
 
@@ -134,7 +149,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="history" className="space-y-6">
-            <SettlementHistory />
+            <SettlementHistory expenses={expenses} />
           </TabsContent>
         </Tabs>
       </main>
