@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,13 +25,13 @@ interface Settlement {
 
 interface ExpenseOverviewProps {
   onAddExpense?: (expense: Omit<Expense, 'id'>) => void;
+  expenses: Expense[];
+  onExpenseUpdate: (expenses: Expense[]) => void;
 }
 
-export const ExpenseOverview = ({ onAddExpense }: ExpenseOverviewProps = {}) => {
+export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate }: ExpenseOverviewProps) => {
   const { toast } = useToast();
   const [isRequestLoading, setIsRequestLoading] = useState<string | null>(null);
-  
-  const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
 
   const settlements: Settlement[] = [
     { name: "Kshitij Gupta", amount: 150, type: "owes", upiId: "kshitij.gupta.5680-1@okhdfcbank", email: "kshitij.gupta.5680@gmail.com" },
@@ -38,22 +39,6 @@ export const ExpenseOverview = ({ onAddExpense }: ExpenseOverviewProps = {}) => 
     { name: "Abhishek Athiya", amount: 100, type: "owes", upiId: "9302596396@ybl", email: "abhiathiya786@gmail.com" },
     { name: "Jitendra Kumar Lodhi", amount: 75, type: "owes", upiId: "lodhikumar07@okhdfcbank", email: "lodhijk7@gmail.com" },
   ];
-
-  // Extract roommate names from settlements for consistency
-  const roommates = ['You', ...settlements.map(settlement => settlement.name)];
-
-  const handleAddExpense = (expenseData: Omit<Expense, 'id'>) => {
-    const newExpense: Expense = {
-      ...expenseData,
-      id: Date.now(), // Simple ID generation
-    };
-    
-    setRecentExpenses(prev => [newExpense, ...prev]);
-    
-    if (onAddExpense) {
-      onAddExpense(expenseData);
-    }
-  };
 
   const handleUPIPayment = (upiId: string, amount: number) => {
     const paymentUrl = `https://quantxpay.vercel.app/${upiId}/${amount}`;
@@ -66,9 +51,7 @@ export const ExpenseOverview = ({ onAddExpense }: ExpenseOverviewProps = {}) => 
     try {
       console.log('Attempting to send email request to:', settlement.email);
       
-      // For demo purposes, we'll simulate the email request
-      // In a real app, this should be handled by a backend service
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
       console.log('Email request simulated successfully');
       
@@ -77,7 +60,6 @@ export const ExpenseOverview = ({ onAddExpense }: ExpenseOverviewProps = {}) => 
         description: `Payment request sent to ${settlement.name}`,
       });
       
-      // Simulate a follow-up notification
       setTimeout(() => {
         toast({
           title: "Notification Delivered",
@@ -98,7 +80,8 @@ export const ExpenseOverview = ({ onAddExpense }: ExpenseOverviewProps = {}) => 
   };
 
   const deleteExpense = (expenseId: number) => {
-    setRecentExpenses(recentExpenses.filter(expense => expense.id !== expenseId));
+    const updatedExpenses = expenses.filter(expense => expense.id !== expenseId);
+    onExpenseUpdate(updatedExpenses);
     toast({
       title: "Expense Deleted",
       description: "The expense has been removed successfully.",
@@ -106,7 +89,7 @@ export const ExpenseOverview = ({ onAddExpense }: ExpenseOverviewProps = {}) => 
   };
 
   // Calculate total expenses
-  const totalExpenses = recentExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -154,14 +137,14 @@ export const ExpenseOverview = ({ onAddExpense }: ExpenseOverviewProps = {}) => 
             <CardDescription>Latest shared expenses in your group</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {recentExpenses.length === 0 ? (
+            {expenses.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <IndianRupee className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No expenses yet</p>
                 <p className="text-sm">Add your first expense to get started</p>
               </div>
             ) : (
-              recentExpenses.map((expense) => (
+              expenses.map((expense) => (
                 <div key={expense.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex-1">
                     <p className="font-medium">{expense.description}</p>

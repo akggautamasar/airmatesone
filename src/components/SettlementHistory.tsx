@@ -16,46 +16,8 @@ interface Settlement {
 }
 
 export const SettlementHistory = () => {
-  const settlements: Settlement[] = [
-    {
-      id: 1,
-      from: "You",
-      to: "Rahul",
-      amount: 250,
-      description: "Electricity bill settlement",
-      status: "completed",
-      date: "2024-01-15",
-      upiTransactionId: "UPI123456789"
-    },
-    {
-      id: 2,
-      from: "Priya",
-      to: "You",
-      amount: 150,
-      description: "Grocery expenses",
-      status: "pending",
-      date: "2024-01-14"
-    },
-    {
-      id: 3,
-      from: "You",
-      to: "Arjun",
-      amount: 300,
-      description: "Internet bill split",
-      status: "completed",
-      date: "2024-01-12",
-      upiTransactionId: "UPI987654321"
-    },
-    {
-      id: 4,
-      from: "Sneha",
-      to: "You",
-      amount: 100,
-      description: "Cleaning supplies",
-      status: "failed",
-      date: "2024-01-10"
-    }
-  ];
+  // Start with empty settlements array instead of dummy data
+  const settlements: Settlement[] = [];
 
   const getStatusIcon = (status: string) => {
     switch (status) {

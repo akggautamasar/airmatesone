@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,15 +11,33 @@ import { RoommateManagement } from "@/components/RoommateManagement";
 import { SettlementHistory } from "@/components/SettlementHistory";
 import { MarketNotification } from "@/components/MarketNotification";
 
+interface Expense {
+  id: number;
+  description: string;
+  amount: number;
+  paidBy: string;
+  date: string;
+  category: string;
+}
+
 const Index = () => {
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showMarketNotification, setShowMarketNotification] = useState(false);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
 
   const roommates = getRoommates();
 
-  const handleAddExpense = (expense: any) => {
-    console.log('New expense added:', expense);
-    // This will be handled by the ExpenseOverview component
+  const handleAddExpense = (expenseData: Omit<Expense, 'id'>) => {
+    console.log('New expense added:', expenseData);
+    const newExpense: Expense = {
+      ...expenseData,
+      id: Date.now(),
+    };
+    setExpenses(prev => [newExpense, ...prev]);
+  };
+
+  const handleExpenseUpdate = (updatedExpenses: Expense[]) => {
+    setExpenses(updatedExpenses);
   };
 
   return (
@@ -83,7 +102,11 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
-            <ExpenseOverview onAddExpense={handleAddExpense} />
+            <ExpenseOverview 
+              onAddExpense={handleAddExpense} 
+              expenses={expenses}
+              onExpenseUpdate={handleExpenseUpdate}
+            />
           </TabsContent>
 
           <TabsContent value="grocery" className="space-y-6">
