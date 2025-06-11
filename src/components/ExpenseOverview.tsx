@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -37,7 +37,6 @@ interface ExpenseOverviewProps {
 export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settlements, onSettlementUpdate }: ExpenseOverviewProps) => {
   const { toast } = useToast();
   const [isRequestLoading, setIsRequestLoading] = useState<string | null>(null);
-  const [settledSettlements, setSettledSettlements] = useState<Settlement[]>([]);
 
   // Roommate data with UPI and email info
   const roommateData = [
@@ -104,7 +103,13 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
     return calculatedSettlements;
   };
 
-  const currentSettlements = calculateSettlements();
+  // Update settlements whenever expenses change
+  useEffect(() => {
+    const newCalculatedSettlements = calculateSettlements();
+    const existingSettledSettlements = settlements.filter(s => s.status === "settled");
+    const allSettlements = [...newCalculatedSettlements, ...existingSettledSettlements];
+    onSettlementUpdate(allSettlements);
+  }, [expenses]);
 
   const handleUPIPayment = (upiId: string, amount: number) => {
     const paymentUrl = `https://quantxpay.vercel.app/${upiId}/${amount}`;
@@ -112,17 +117,17 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
   };
 
   const markAsPaid = (settlement: Settlement) => {
-    const settledSettlement = {
-      ...settlement,
-      status: "settled" as const,
-      settledDate: new Date().toLocaleDateString()
-    };
+    const updatedSettlements = settlements.map(s => 
+      s.id === settlement.id 
+        ? { ...s, status: "settled" as const, settledDate: new Date().toLocaleDateString() }
+        : s
+    );
     
-    setSettledSettlements(prev => [...prev, settledSettlement]);
+    onSettlementUpdate(updatedSettlements);
     
     toast({
       title: "Payment Marked as Settled",
-      description: `₹${settlement.amount} payment from ${settlement.name} has been marked as settled`,
+      description: `₹${settlement.amount.toFixed(2)} payment from ${settlement.name} has been marked as settled`,
     });
   };
 
@@ -144,7 +149,7 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
       setTimeout(() => {
         toast({
           title: "Notification Delivered",
-          description: `${settlement.name} has been notified about the ₹${settlement.amount} payment request`,
+          description: `${settlement.name} has been notified about the ₹${settlement.amount.toFixed(2)} payment request`,
         });
       }, 2000);
       
@@ -169,10 +174,8 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
     });
   };
 
-  // Filter out settled settlements from current settlements
-  const pendingSettlements = currentSettlements.filter(settlement => 
-    !settledSettlements.some(settled => settled.id === settlement.id)
-  );
+  // Filter settlements to show only pending ones in the quick settlements section
+  const pendingSettlements = settlements.filter(s => s.status === "pending");
 
   // Calculate totals
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -366,10 +369,4 @@ export const getRoommates = () => {
     { name: "Jitendra Kumar Lodhi", upiId: "lodhikumar07@okhdfcbank", email: "lodhijk7@gmail.com" },
   ];
   return ['You', ...roommateData.map(roommate => roommate.name)];
-};
-
-// Export settled settlements for SettlementHistory component
-export const getSettledSettlements = () => {
-  // This would ideally come from a global state or context
-  return [];
 };

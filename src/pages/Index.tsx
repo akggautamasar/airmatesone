@@ -1,6 +1,6 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, ShoppingCart, Users, IndianRupee, Bell } from "lucide-react";
 import { ExpenseOverview, getRoommates } from "@/components/ExpenseOverview";
@@ -20,11 +20,14 @@ interface Expense {
 }
 
 interface Settlement {
+  id: string;
   name: string;
   amount: number;
   type: "owes" | "owed";
   upiId: string;
   email: string;
+  status: "pending" | "settled";
+  settledDate?: string;
 }
 
 const Index = () => {
@@ -128,7 +131,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="settlements" className="space-y-6">
-            <SettlementHistory />
+            <SettlementHistory settlements={settlements} />
           </TabsContent>
 
           <TabsContent value="roommates" className="space-y-6">
@@ -136,7 +139,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="history" className="space-y-6">
-            <SettlementHistory />
+            <SettlementHistory settlements={settlements} />
           </TabsContent>
         </Tabs>
       </main>

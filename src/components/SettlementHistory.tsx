@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { IndianRupee, Clock, Check, Users } from "lucide-react";
+import { Clock, Check, Users } from "lucide-react";
 
 interface Settlement {
   id: string;
@@ -15,32 +15,13 @@ interface Settlement {
   settledDate?: string;
 }
 
-const SettlementHistory = () => {
-  // Mock data for demonstration - in a real app this would come from props or context
-  const mockSettlements: Settlement[] = [
-    {
-      id: "1",
-      name: "You",
-      amount: 120,
-      type: "owes",
-      upiId: "ayushvaibhav31@ybl",
-      email: "ayushvaibhav31@gmail.com",
-      status: "pending"
-    },
-    {
-      id: "2", 
-      name: "Kshitij Gupta",
-      amount: 120,
-      type: "owes",
-      upiId: "ayushvaibhav31@ybl", 
-      email: "kshitij.gupta.5680@gmail.com",
-      status: "settled",
-      settledDate: "2024-01-10"
-    }
-  ];
+interface SettlementHistoryProps {
+  settlements: Settlement[];
+}
 
-  const pendingSettlements = mockSettlements.filter(s => s.status === "pending");
-  const settledSettlements = mockSettlements.filter(s => s.status === "settled");
+const SettlementHistory = ({ settlements }: SettlementHistoryProps) => {
+  const pendingSettlements = settlements.filter(s => s.status === "pending");
+  const settledSettlements = settlements.filter(s => s.status === "settled");
 
   return (
     <Card>
@@ -81,7 +62,7 @@ const SettlementHistory = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-orange-600">₹{settlement.amount}</p>
+                    <p className="font-semibold text-orange-600">₹{settlement.amount.toFixed(2)}</p>
                     <p className="text-xs text-orange-500">Pending</p>
                   </div>
                 </div>
@@ -113,7 +94,7 @@ const SettlementHistory = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-green-600">₹{settlement.amount}</p>
+                    <p className="font-semibold text-green-600">₹{settlement.amount.toFixed(2)}</p>
                     <p className="text-xs text-green-500">Settled</p>
                   </div>
                 </div>
