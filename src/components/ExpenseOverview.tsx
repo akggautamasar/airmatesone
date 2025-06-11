@@ -26,11 +26,7 @@ export const ExpenseOverview = () => {
   const { toast } = useToast();
   const [isRequestLoading, setIsRequestLoading] = useState<string | null>(null);
   
-  const [recentExpenses, setRecentExpenses] = useState<Expense[]>([
-    { id: 1, description: "Groceries - Vegetables", amount: 500, paidBy: "Piyush Ranjan", date: "Today", category: "Groceries" },
-    { id: 2, description: "Electricity Bill", amount: 2000, paidBy: "Kshitij Gupta", date: "Yesterday", category: "Utilities" },
-    { id: 3, description: "Internet Bill", amount: 800, paidBy: "Ayush Vaibhav", date: "2 days ago", category: "Utilities" },
-  ]);
+  const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
 
   const settlements: Settlement[] = [
     { name: "Kshitij Gupta", amount: 150, type: "owes", upiId: "kshitij.gupta.5680-1@okhdfcbank", email: "kshitij.gupta.5680@gmail.com" },
@@ -99,7 +95,7 @@ export const ExpenseOverview = () => {
             <IndianRupee className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-900">₹3,300</div>
+            <div className="text-2xl font-bold text-blue-900">₹0</div>
             <p className="text-xs text-blue-600">This month</p>
           </CardContent>
         </Card>
