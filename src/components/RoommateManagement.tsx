@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Users, Plus, IndianRupee, Phone } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Users, Plus, IndianRupee, Phone, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Roommate {
@@ -53,6 +54,16 @@ export const RoommateManagement = () => {
     toast({
       title: "Roommate Added!",
       description: `${newRoommate.name} has been added to your group.`,
+    });
+  };
+
+  const deleteRoommate = (roommateId: number) => {
+    const roommate = roommates.find(r => r.id === roommateId);
+    setRoommates(roommates.filter(r => r.id !== roommateId));
+    
+    toast({
+      title: "Roommate Removed",
+      description: `${roommate?.name} has been removed from your group.`,
     });
   };
 
@@ -126,52 +137,84 @@ export const RoommateManagement = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {roommates.map((roommate) => (
-            <div key={roommate.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center space-x-4">
-                <div className="bg-gradient-to-r from-blue-600 to-green-600 rounded-full p-3">
-                  <Users className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">{roommate.name}</h3>
-                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                    <IndianRupee className="h-3 w-3" />
-                    <span>{roommate.upiId}</span>
+          {roommates.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No roommates added yet</p>
+              <p className="text-sm">Add your first roommate to get started</p>
+            </div>
+          ) : (
+            roommates.map((roommate) => (
+              <div key={roommate.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-4">
+                  <div className="bg-gradient-to-r from-blue-600 to-green-600 rounded-full p-3">
+                    <Users className="h-5 w-5 text-white" />
                   </div>
-                  {roommate.phone && (
+                  <div>
+                    <h3 className="font-semibold">{roommate.name}</h3>
                     <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <Phone className="h-3 w-3" />
-                      <span>{roommate.phone}</span>
+                      <IndianRupee className="h-3 w-3" />
+                      <span>{roommate.upiId}</span>
                     </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-3">
-                <div className="text-right">
-                  <p className={`font-semibold ${roommate.balance < 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                    {roommate.balance < 0 ? '-' : '+'}₹{Math.abs(roommate.balance)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {roommate.balance < 0 ? 'owes you' : 'you owe'}
-                  </p>
+                    {roommate.phone && (
+                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <Phone className="h-3 w-3" />
+                        <span>{roommate.phone}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
-                {roommate.balance !== 0 && (
-                  <Button
-                    size="sm"
-                    onClick={() => handleUPIPayment(roommate.upiId, roommate.balance)}
-                    className={roommate.balance < 0 
-                      ? "bg-green-600 hover:bg-green-700" 
-                      : "bg-blue-600 hover:bg-blue-700"
-                    }
-                  >
-                    {roommate.balance < 0 ? 'Request' : 'Pay'}
-                  </Button>
-                )}
+                <div className="flex items-center space-x-3">
+                  <div className="text-right">
+                    <p className={`font-semibold ${roommate.balance < 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                      {roommate.balance < 0 ? '-' : '+'}₹{Math.abs(roommate.balance)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {roommate.balance < 0 ? 'owes you' : 'you owe'}
+                    </p>
+                  </div>
+                  
+                  <div className="flex space-x-2">
+                    {roommate.balance !== 0 && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleUPIPayment(roommate.upiId, roommate.balance)}
+                        className={roommate.balance < 0 
+                          ? "bg-green-600 hover:bg-green-700" 
+                          : "bg-blue-600 hover:bg-blue-700"
+                        }
+                      >
+                        {roommate.balance < 0 ? 'Request' : 'Pay'}
+                      </Button>
+                    )}
+                    
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remove Roommate</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to remove {roommate.name} from your group? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteRoommate(roommate.id)}>
+                            Remove
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
     </div>

@@ -1,15 +1,28 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { IndianRupee, TrendingUp, TrendingDown, Users } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { IndianRupee, TrendingUp, TrendingDown, Users, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+interface Expense {
+  id: number;
+  description: string;
+  amount: number;
+  paidBy: string;
+  date: string;
+  category: string;
+}
 
 export const ExpenseOverview = () => {
-  const recentExpenses = [
+  const { toast } = useToast();
+  
+  const [recentExpenses, setRecentExpenses] = useState<Expense[]>([
     { id: 1, description: "Groceries - Vegetables", amount: 500, paidBy: "You", date: "Today", category: "Groceries" },
     { id: 2, description: "Electricity Bill", amount: 2000, paidBy: "Rahul", date: "Yesterday", category: "Utilities" },
     { id: 3, description: "Internet Bill", amount: 800, paidBy: "Priya", date: "2 days ago", category: "Utilities" },
-  ];
+  ]);
 
   const settlements = [
     { name: "Rahul", amount: 150, type: "owes", upiId: "rahul@paytm" },
@@ -20,6 +33,14 @@ export const ExpenseOverview = () => {
   const handleUPIPayment = (upiId: string, amount: number) => {
     const paymentUrl = `https://quantxpay.vercel.app/${upiId}/${amount}`;
     window.open(paymentUrl, '_blank');
+  };
+
+  const deleteExpense = (expenseId: number) => {
+    setRecentExpenses(recentExpenses.filter(expense => expense.id !== expenseId));
+    toast({
+      title: "Expense Deleted",
+      description: "The expense has been removed successfully.",
+    });
   };
 
   return (
@@ -68,18 +89,49 @@ export const ExpenseOverview = () => {
             <CardDescription>Latest shared expenses in your group</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {recentExpenses.map((expense) => (
-              <div key={expense.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex-1">
-                  <p className="font-medium">{expense.description}</p>
-                  <p className="text-sm text-muted-foreground">Paid by {expense.paidBy} • {expense.date}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold">₹{expense.amount}</p>
-                  <p className="text-xs text-muted-foreground">{expense.category}</p>
-                </div>
+            {recentExpenses.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <IndianRupee className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No expenses yet</p>
+                <p className="text-sm">Add your first expense to get started</p>
               </div>
-            ))}
+            ) : (
+              recentExpenses.map((expense) => (
+                <div key={expense.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <p className="font-medium">{expense.description}</p>
+                    <p className="text-sm text-muted-foreground">Paid by {expense.paidBy} • {expense.date}</p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="text-right">
+                      <p className="font-semibold">₹{expense.amount}</p>
+                      <p className="text-xs text-muted-foreground">{expense.category}</p>
+                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Expense</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{expense.description}"? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteExpense(expense.id)}>
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
 
