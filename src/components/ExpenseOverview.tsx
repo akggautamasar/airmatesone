@@ -51,15 +51,26 @@ export const ExpenseOverview = () => {
     };
 
     try {
+      console.log('Sending email request to:', settlement.email);
+      
       const response = await fetch('https://quantxsms.vercel.app/api/send-single', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify(emailData)
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const result = await response.json();
+      console.log('API Response:', result);
       
       if (result.success) {
         toast({
@@ -69,14 +80,15 @@ export const ExpenseOverview = () => {
       } else {
         toast({
           title: "Failed to Send Request",
-          description: "Could not send email. Please try again.",
+          description: result.message || "Could not send email. Please try again.",
           variant: "destructive",
         });
       }
     } catch (error) {
+      console.error('Email request error:', error);
       toast({
         title: "Network Error",
-        description: "Could not send email. Please check your connection.",
+        description: "Could not send email. Please check your connection and try again.",
         variant: "destructive",
       });
     }
