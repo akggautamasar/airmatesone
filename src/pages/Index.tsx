@@ -1,161 +1,141 @@
 
-import React, { useState } from 'react';
-import { Button } from "@/components/ui/button";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { NavBar } from "@/components/NavBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ShoppingCart, Users, IndianRupee, Bell } from "lucide-react";
-import { ExpenseOverview, getRoommates } from "@/components/ExpenseOverview";
+import { ExpenseOverview } from "@/components/ExpenseOverview";
 import { AddExpense } from "@/components/AddExpense";
-import { GroceryList } from "@/components/GroceryList";
 import { RoommateManagement } from "@/components/RoommateManagement";
 import { SettlementHistory } from "@/components/SettlementHistory";
+import { GroceryList } from "@/components/GroceryList";
 import { MarketNotification } from "@/components/MarketNotification";
-
-interface Expense {
-  id: number;
-  description: string;
-  amount: number;
-  paidBy: string;
-  date: string;
-  category: string;
-}
-
-interface Settlement {
-  id: string;
-  name: string;
-  amount: number;
-  type: "owes" | "owed";
-  upiId: string;
-  email: string;
-  status: "pending" | "settled";
-  settledDate?: string;
-}
+import { useExpenses } from "@/hooks/useExpenses";
+import { useRoommates } from "@/hooks/useRoommates";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const Index = () => {
-  const [showAddExpense, setShowAddExpense] = useState(false);
-  const [showMarketNotification, setShowMarketNotification] = useState(false);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const { expenses, addExpense, deleteExpense } = useExpenses();
+  const { roommates } = useRoommates();
 
-  const roommates = getRoommates();
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/auth");
+    }
+  }, [user, loading, navigate]);
 
-  const handleAddExpense = (expenseData: Omit<Expense, 'id'>) => {
-    console.log('New expense added:', expenseData);
-    const newExpense: Expense = {
-      ...expenseData,
-      id: Date.now(),
-    };
-    setExpenses(prev => [newExpense, ...prev]);
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const handleExpenseUpdate = (updatedExpenses: Expense[]) => {
-    setExpenses(updatedExpenses);
-  };
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50">
+        <div className="text-center space-y-4">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
+            Welcome to AirMates
+          </h1>
+          <p className="text-gray-600 max-w-md">
+            Your smart roommate expense manager. Track shared expenses, manage settlements, and keep everyone happy.
+          </p>
+          <Button asChild className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700">
+            <Link to="/auth">Get Started</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
-  const handleSettlementUpdate = (updatedSettlements: Settlement[]) => {
-    setSettlements(updatedSettlements);
-  };
+  // Convert expenses format for compatibility
+  const formattedExpenses = expenses.map(expense => ({
+    id: parseInt(expense.id) || 1,
+    description: expense.description,
+    amount: expense.amount,
+    paidBy: expense.paid_by,
+    date: new Date(expense.date).toLocaleDateString(),
+    category: expense.category
+  }));
+
+  // Mock settlements for now - in a real app this would come from the database
+  const settlements = [
+    {
+      id: "1",
+      name: "Kshitij Gupta",
+      amount: 150,
+      type: "owes" as const,
+      upiId: "kshitij.gupta.5680-1@okhdfcbank",
+      email: "kshitij.gupta.5680@gmail.com",
+      status: "pending" as const
+    }
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
-      {/* Header */}
-      <header className="bg-white border-b shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
-              <div className="bg-gradient-to-r from-blue-600 to-green-600 rounded-lg p-2">
-                <Users className="h-6 w-6 text-white" />
-              </div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
-                Airmates
-              </h1>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowMarketNotification(true)}
-                className="hidden sm:flex"
-              >
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                Going to Market
-              </Button>
-              <Button
-                onClick={() => setShowAddExpense(true)}
-                className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Expense
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs defaultValue="dashboard" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 bg-white shadow-sm">
-            <TabsTrigger value="dashboard" className="flex items-center space-x-2">
-              <IndianRupee className="h-4 w-4" />
-              <span className="hidden sm:inline">Dashboard</span>
-            </TabsTrigger>
-            <TabsTrigger value="grocery" className="flex items-center space-x-2">
-              <ShoppingCart className="h-4 w-4" />
-              <span className="hidden sm:inline">Grocery</span>
-            </TabsTrigger>
-            <TabsTrigger value="settlements" className="flex items-center space-x-2">
-              <Bell className="h-4 w-4" />
-              <span className="hidden sm:inline">Settlements</span>
-            </TabsTrigger>
-            <TabsTrigger value="roommates" className="flex items-center space-x-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Roommates</span>
-            </TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center space-x-2">
-              <span className="hidden sm:inline">History</span>
-            </TabsTrigger>
+    <div className="min-h-screen bg-gray-50">
+      <NavBar />
+      <div className="container mx-auto px-4 py-8">
+        <Tabs defaultValue="overview" className="space-y-8">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="expenses">Add Expense</TabsTrigger>
+            <TabsTrigger value="roommates">Roommates</TabsTrigger>
+            <TabsTrigger value="settlements">Settlements</TabsTrigger>
+            <TabsTrigger value="grocery">Grocery</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="dashboard" className="space-y-6">
+          <TabsContent value="overview" className="space-y-6">
             <ExpenseOverview 
-              onAddExpense={handleAddExpense} 
-              expenses={expenses}
-              onExpenseUpdate={handleExpenseUpdate}
+              expenses={formattedExpenses}
+              onExpenseUpdate={() => {}}
               settlements={settlements}
-              onSettlementUpdate={handleSettlementUpdate}
+              onSettlementUpdate={() => {}}
             />
           </TabsContent>
 
-          <TabsContent value="grocery" className="space-y-6">
-            <GroceryList />
-          </TabsContent>
-
-          <TabsContent value="settlements" className="space-y-6">
-            <SettlementHistory settlements={settlements} />
+          <TabsContent value="expenses" className="space-y-6">
+            <AddExpense 
+              onAddExpense={(expense) => {
+                addExpense({
+                  description: expense.description,
+                  amount: expense.amount,
+                  paid_by: expense.paidBy,
+                  category: expense.category,
+                  date: new Date().toISOString()
+                });
+              }}
+              roommates={roommates.map(r => r.name)}
+            />
           </TabsContent>
 
           <TabsContent value="roommates" className="space-y-6">
             <RoommateManagement />
           </TabsContent>
 
-          <TabsContent value="history" className="space-y-6">
+          <TabsContent value="settlements" className="space-y-6">
             <SettlementHistory settlements={settlements} />
           </TabsContent>
+
+          <TabsContent value="grocery" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <GroceryList />
+              </div>
+              <div>
+                <MarketNotification />
+              </div>
+            </div>
+          </TabsContent>
         </Tabs>
-      </main>
-
-      {/* Modals */}
-      {showAddExpense && (
-        <AddExpense 
-          onClose={() => setShowAddExpense(false)} 
-          onAddExpense={handleAddExpense}
-          roommates={roommates}
-        />
-      )}
-
-      {showMarketNotification && (
-        <MarketNotification onClose={() => setShowMarketNotification(false)} />
-      )}
+      </div>
     </div>
   );
 };
