@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -127,7 +126,7 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
     
     toast({
       title: "Payment Marked as Settled",
-      description: `₹${settlement.amount.toFixed(2)} payment from ${settlement.name} has been marked as settled`,
+      description: `₹${settlement.amount.toFixed(2)} payment has been marked as settled`,
     });
   };
 
@@ -143,13 +142,13 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
       
       toast({
         title: "Request Sent!",
-        description: `Payment request sent to ${settlement.name}`,
+        description: `Payment request sent successfully`,
       });
       
       setTimeout(() => {
         toast({
           title: "Notification Delivered",
-          description: `${settlement.name} has been notified about the ₹${settlement.amount.toFixed(2)} payment request`,
+          description: `Payment request notification has been delivered for ₹${settlement.amount.toFixed(2)}`,
         });
       }, 2000);
       
@@ -157,7 +156,7 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
       console.error('Error sending email request:', error);
       toast({
         title: "Request Failed",
-        description: `Unable to send request to ${settlement.name}. Please try again later.`,
+        description: `Unable to send request. Please try again later.`,
         variant: "destructive",
       });
     } finally {
@@ -303,52 +302,48 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="text-right">
+                  <div className="flex items-center space-x-1">
+                    <div className="text-right mr-2">
                       <p className="font-semibold text-orange-600">
                         ₹{settlement.amount.toFixed(2)}
                       </p>
                     </div>
-                    {settlement.name === "You" && (
+                    <div className="flex space-x-1">
                       <Button
                         size="sm"
                         onClick={() => handleUPIPayment(settlement.upiId, settlement.amount)}
-                        className="bg-blue-600 hover:bg-blue-700"
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
                       >
                         Pay
                       </Button>
-                    )}
-                    {settlement.name !== "You" && (
-                      <div className="flex space-x-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => sendEmailRequest(settlement)}
-                          disabled={isRequestLoading === settlement.email}
-                          className="min-w-[70px]"
-                        >
-                          {isRequestLoading === settlement.email ? (
-                            <div className="flex items-center space-x-1">
-                              <div className="w-3 h-3 border border-gray-400 border-t-blue-600 rounded-full animate-spin"></div>
-                            </div>
-                          ) : (
-                            <>
-                              <Mail className="h-3 w-3 mr-1" />
-                              Request
-                            </>
-                          )}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => markAsPaid(settlement)}
-                          className="bg-green-600 hover:bg-green-700 text-white"
-                        >
-                          <Check className="h-3 w-3 mr-1" />
-                          Mark Paid
-                        </Button>
-                      </div>
-                    )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => sendEmailRequest(settlement)}
+                        disabled={isRequestLoading === settlement.email}
+                        className="min-w-[70px]"
+                      >
+                        {isRequestLoading === settlement.email ? (
+                          <div className="flex items-center space-x-1">
+                            <div className="w-3 h-3 border border-gray-400 border-t-blue-600 rounded-full animate-spin"></div>
+                          </div>
+                        ) : (
+                          <>
+                            <Mail className="h-3 w-3 mr-1" />
+                            Request
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => markAsPaid(settlement)}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        Mark Paid
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))
