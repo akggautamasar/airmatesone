@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,10 +20,11 @@ interface Roommate {
 
 export const RoommateManagement = () => {
   const [roommates, setRoommates] = useState<Roommate[]>([
-    { id: 1, name: "Rahul", upiId: "rahul@paytm", email: "worksbeyondworks@gmail.com", phone: "+91 98765 43210", balance: -150 },
-    { id: 2, name: "Priya", upiId: "priya@phonepe", email: "priya@example.com", phone: "+91 87654 32109", balance: 200 },
-    { id: 3, name: "Arjun", upiId: "arjun@gpay", email: "arjun@example.com", phone: "+91 76543 21098", balance: -100 },
-    { id: 4, name: "Sneha", upiId: "sneha@paytm", email: "sneha@example.com", phone: "+91 65432 10987", balance: 50 },
+    { id: 1, name: "Piyush Ranjan", upiId: "worksbeyondworks@oksbi", email: "worksbeyondworks@gmail.com", phone: "+91 98765 43210", balance: 0 },
+    { id: 2, name: "Kshitij Gupta", upiId: "kshitij.gupta.5680-1@okhdfcbank", email: "kshitij.gupta.5680@gmail.com", phone: "+91 87654 32109", balance: -150 },
+    { id: 3, name: "Ayush Vaibhav", upiId: "ayushvaibhav31@ybl", email: "ayushvaibhav31@gmail.com", phone: "+91 76543 21098", balance: 200 },
+    { id: 4, name: "Abhishek Athiya", upiId: "9302596396@ybl", email: "abhiathiya786@gmail.com", phone: "+91 65432 10987", balance: -100 },
+    { id: 5, name: "Jitendra Kumar Lodhi", upiId: "lodhikumar07@okhdfcbank", email: "lodhijk7@gmail.com", phone: "+91 54321 09876", balance: -75 },
   ]);
 
   const [newRoommate, setNewRoommate] = useState({
@@ -243,11 +245,11 @@ export const RoommateManagement = () => {
                 
                 <div className="flex items-center space-x-3">
                   <div className="text-right">
-                    <p className={`font-semibold ${roommate.balance < 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                      {roommate.balance < 0 ? '-' : '+'}₹{Math.abs(roommate.balance)}
+                    <p className={`font-semibold ${roommate.balance < 0 ? 'text-orange-600' : roommate.balance > 0 ? 'text-green-600' : 'text-gray-600'}`}>
+                      {roommate.balance === 0 ? '₹0' : (roommate.balance < 0 ? '-' : '+') + '₹' + Math.abs(roommate.balance)}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {roommate.balance < 0 ? 'owes you' : 'you owe'}
+                      {roommate.balance < 0 ? 'owes you' : roommate.balance > 0 ? 'you owe' : 'settled'}
                     </p>
                   </div>
                   
@@ -304,3 +306,4 @@ export const RoommateManagement = () => {
     </div>
   );
 };
+

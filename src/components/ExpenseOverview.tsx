@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,15 +28,16 @@ export const ExpenseOverview = () => {
   const { toast } = useToast();
   
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([
-    { id: 1, description: "Groceries - Vegetables", amount: 500, paidBy: "You", date: "Today", category: "Groceries" },
-    { id: 2, description: "Electricity Bill", amount: 2000, paidBy: "Rahul", date: "Yesterday", category: "Utilities" },
-    { id: 3, description: "Internet Bill", amount: 800, paidBy: "Priya", date: "2 days ago", category: "Utilities" },
+    { id: 1, description: "Groceries - Vegetables", amount: 500, paidBy: "Piyush Ranjan", date: "Today", category: "Groceries" },
+    { id: 2, description: "Electricity Bill", amount: 2000, paidBy: "Kshitij Gupta", date: "Yesterday", category: "Utilities" },
+    { id: 3, description: "Internet Bill", amount: 800, paidBy: "Ayush Vaibhav", date: "2 days ago", category: "Utilities" },
   ]);
 
   const settlements: Settlement[] = [
-    { name: "Rahul", amount: 150, type: "owes", upiId: "rahul@paytm", email: "worksbeyondworks@gmail.com" },
-    { name: "Priya", amount: 200, type: "owed", upiId: "priya@phonepe", email: "priya@example.com" },
-    { name: "Arjun", amount: 100, type: "owes", upiId: "arjun@gpay", email: "arjun@example.com" },
+    { name: "Kshitij Gupta", amount: 150, type: "owes", upiId: "kshitij.gupta.5680-1@okhdfcbank", email: "kshitij.gupta.5680@gmail.com" },
+    { name: "Ayush Vaibhav", amount: 200, type: "owed", upiId: "ayushvaibhav31@ybl", email: "ayushvaibhav31@gmail.com" },
+    { name: "Abhishek Athiya", amount: 100, type: "owes", upiId: "9302596396@ybl", email: "abhiathiya786@gmail.com" },
+    { name: "Jitendra Kumar Lodhi", amount: 75, type: "owes", upiId: "lodhikumar07@okhdfcbank", email: "lodhijk7@gmail.com" },
   ];
 
   const handleUPIPayment = (upiId: string, amount: number) => {
@@ -143,8 +145,8 @@ export const ExpenseOverview = () => {
             <TrendingDown className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-900">₹250</div>
-            <p className="text-xs text-orange-600">To 2 roommates</p>
+            <div className="text-2xl font-bold text-orange-900">₹325</div>
+            <p className="text-xs text-orange-600">To 3 roommates</p>
           </CardContent>
         </Card>
       </div>
@@ -252,3 +254,4 @@ export const ExpenseOverview = () => {
     </div>
   );
 };
+
