@@ -22,7 +22,11 @@ interface Settlement {
   email: string;
 }
 
-export const ExpenseOverview = () => {
+interface ExpenseOverviewProps {
+  onAddExpense?: (expense: Omit<Expense, 'id'>) => void;
+}
+
+export const ExpenseOverview = ({ onAddExpense }: ExpenseOverviewProps = {}) => {
   const { toast } = useToast();
   const [isRequestLoading, setIsRequestLoading] = useState<string | null>(null);
   
@@ -34,6 +38,22 @@ export const ExpenseOverview = () => {
     { name: "Abhishek Athiya", amount: 100, type: "owes", upiId: "9302596396@ybl", email: "abhiathiya786@gmail.com" },
     { name: "Jitendra Kumar Lodhi", amount: 75, type: "owes", upiId: "lodhikumar07@okhdfcbank", email: "lodhijk7@gmail.com" },
   ];
+
+  // Extract roommate names from settlements for consistency
+  const roommates = ['You', ...settlements.map(settlement => settlement.name)];
+
+  const handleAddExpense = (expenseData: Omit<Expense, 'id'>) => {
+    const newExpense: Expense = {
+      ...expenseData,
+      id: Date.now(), // Simple ID generation
+    };
+    
+    setRecentExpenses(prev => [newExpense, ...prev]);
+    
+    if (onAddExpense) {
+      onAddExpense(expenseData);
+    }
+  };
 
   const handleUPIPayment = (upiId: string, amount: number) => {
     const paymentUrl = `https://quantxpay.vercel.app/${upiId}/${amount}`;
@@ -85,6 +105,9 @@ export const ExpenseOverview = () => {
     });
   };
 
+  // Calculate total expenses
+  const totalExpenses = recentExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
@@ -95,7 +118,7 @@ export const ExpenseOverview = () => {
             <IndianRupee className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-900">₹0</div>
+            <div className="text-2xl font-bold text-blue-900">₹{totalExpenses}</div>
             <p className="text-xs text-blue-600">This month</p>
           </CardContent>
         </Card>
@@ -237,4 +260,15 @@ export const ExpenseOverview = () => {
       </div>
     </div>
   );
+};
+
+// Export roommates data for use in other components
+export const getRoommates = () => {
+  const settlements = [
+    { name: "Kshitij Gupta", amount: 150, type: "owes", upiId: "kshitij.gupta.5680-1@okhdfcbank", email: "kshitij.gupta.5680@gmail.com" },
+    { name: "Ayush Vaibhav", amount: 200, type: "owed", upiId: "ayushvaibhav31@ybl", email: "ayushvaibhav31@gmail.com" },
+    { name: "Abhishek Athiya", amount: 100, type: "owes", upiId: "9302596396@ybl", email: "abhiathiya786@gmail.com" },
+    { name: "Jitendra Kumar Lodhi", amount: 75, type: "owes", upiId: "lodhikumar07@okhdfcbank", email: "lodhijk7@gmail.com" },
+  ];
+  return ['You', ...settlements.map(settlement => settlement.name)];
 };

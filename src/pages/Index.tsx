@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, ShoppingCart, Users, IndianRupee, Bell } from "lucide-react";
-import { ExpenseOverview } from "@/components/ExpenseOverview";
+import { ExpenseOverview, getRoommates } from "@/components/ExpenseOverview";
 import { AddExpense } from "@/components/AddExpense";
 import { GroceryList } from "@/components/GroceryList";
 import { RoommateManagement } from "@/components/RoommateManagement";
@@ -14,6 +13,13 @@ import { MarketNotification } from "@/components/MarketNotification";
 const Index = () => {
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showMarketNotification, setShowMarketNotification] = useState(false);
+
+  const roommates = getRoommates();
+
+  const handleAddExpense = (expense: any) => {
+    console.log('New expense added:', expense);
+    // This will be handled by the ExpenseOverview component
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
@@ -77,7 +83,7 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
-            <ExpenseOverview />
+            <ExpenseOverview onAddExpense={handleAddExpense} />
           </TabsContent>
 
           <TabsContent value="grocery" className="space-y-6">
@@ -112,7 +118,11 @@ const Index = () => {
 
       {/* Modals */}
       {showAddExpense && (
-        <AddExpense onClose={() => setShowAddExpense(false)} />
+        <AddExpense 
+          onClose={() => setShowAddExpense(false)} 
+          onAddExpense={handleAddExpense}
+          roommates={roommates}
+        />
       )}
 
       {showMarketNotification && (

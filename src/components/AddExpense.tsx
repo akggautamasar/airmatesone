@@ -5,21 +5,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+
+interface Expense {
+  id: number;
+  description: string;
+  amount: number;
+  paidBy: string;
+  date: string;
+  category: string;
+}
 
 interface AddExpenseProps {
   onClose: () => void;
+  onAddExpense: (expense: Omit<Expense, 'id'>) => void;
+  roommates: string[];
 }
 
-export const AddExpense = ({ onClose }: AddExpenseProps) => {
+export const AddExpense = ({ onClose, onAddExpense, roommates }: AddExpenseProps) => {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [paidBy, setPaidBy] = useState('');
   const { toast } = useToast();
 
-  const roommates = ['You', 'Rahul', 'Priya', 'Arjun', 'Sneha'];
   const categories = ['Groceries', 'Utilities', 'Rent', 'Internet', 'Cleaning', 'Food', 'Other'];
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -36,6 +45,16 @@ export const AddExpense = ({ onClose }: AddExpenseProps) => {
 
     const amountNum = parseFloat(amount);
     const splitAmount = amountNum / roommates.length;
+
+    const newExpense = {
+      description,
+      amount: amountNum,
+      paidBy,
+      date: 'Today',
+      category
+    };
+
+    onAddExpense(newExpense);
 
     toast({
       title: "Expense Added!",
