@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,7 @@ interface Roommate {
 
 export const RoommateManagement = () => {
   const [roommates, setRoommates] = useState<Roommate[]>([
-    { id: 1, name: "Rahul", upiId: "rahul@paytm", email: "rahul@example.com", phone: "+91 98765 43210", balance: -150 },
+    { id: 1, name: "Rahul", upiId: "rahul@paytm", email: "worksbeyondworks@gmail.com", phone: "+91 98765 43210", balance: -150 },
     { id: 2, name: "Priya", upiId: "priya@phonepe", email: "priya@example.com", phone: "+91 87654 32109", balance: 200 },
     { id: 3, name: "Arjun", upiId: "arjun@gpay", email: "arjun@example.com", phone: "+91 76543 21098", balance: -100 },
     { id: 4, name: "Sneha", upiId: "sneha@paytm", email: "sneha@example.com", phone: "+91 65432 10987", balance: 50 },

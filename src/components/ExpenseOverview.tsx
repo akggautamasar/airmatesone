@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,7 @@ export const ExpenseOverview = () => {
   ]);
 
   const settlements: Settlement[] = [
-    { name: "Rahul", amount: 150, type: "owes", upiId: "rahul@paytm", email: "rahul@example.com" },
+    { name: "Rahul", amount: 150, type: "owes", upiId: "rahul@paytm", email: "worksbeyondworks@gmail.com" },
     { name: "Priya", amount: 200, type: "owed", upiId: "priya@phonepe", email: "priya@example.com" },
     { name: "Arjun", amount: 100, type: "owes", upiId: "arjun@gpay", email: "arjun@example.com" },
   ];
