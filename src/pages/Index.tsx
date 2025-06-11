@@ -9,7 +9,6 @@ import { AddExpense } from "@/components/AddExpense";
 import { RoommateManagement } from "@/components/RoommateManagement";
 import { SettlementHistory } from "@/components/SettlementHistory";
 import { GroceryList } from "@/components/GroceryList";
-import { MarketNotification } from "@/components/MarketNotification";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useRoommates } from "@/hooks/useRoommates";
 import { Button } from "@/components/ui/button";
@@ -84,12 +83,11 @@ const Index = () => {
       <NavBar />
       <div className="container mx-auto px-4 py-8">
         <Tabs defaultValue="overview" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="expenses">Add Expense</TabsTrigger>
             <TabsTrigger value="roommates">Roommates</TabsTrigger>
             <TabsTrigger value="settlements">Settlements</TabsTrigger>
-            <TabsTrigger value="grocery">Grocery</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -113,6 +111,7 @@ const Index = () => {
                 });
               }}
               roommates={roommates.map(r => r.name)}
+              onClose={() => {}}
             />
           </TabsContent>
 
@@ -122,17 +121,6 @@ const Index = () => {
 
           <TabsContent value="settlements" className="space-y-6">
             <SettlementHistory settlements={settlements} />
-          </TabsContent>
-
-          <TabsContent value="grocery" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <GroceryList />
-              </div>
-              <div>
-                <MarketNotification />
-              </div>
-            </div>
           </TabsContent>
         </Tabs>
       </div>

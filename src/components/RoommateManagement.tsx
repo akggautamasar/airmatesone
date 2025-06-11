@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,68 +6,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Users, Plus, IndianRupee, Phone, Trash2, Mail } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-
-interface Roommate {
-  id: number;
-  name: string;
-  upiId: string;
-  email: string;
-  phone?: string;
-  balance: number;
-}
+import { useRoommates } from "@/hooks/useRoommates";
 
 export const RoommateManagement = () => {
-  const [roommates, setRoommates] = useState<Roommate[]>([
-    { id: 1, name: "Piyush Ranjan", upiId: "worksbeyondworks@oksbi", email: "worksbeyondworks@gmail.com", phone: "+91 98765 43210", balance: 0 },
-    { id: 2, name: "Kshitij Gupta", upiId: "kshitij.gupta.5680-1@okhdfcbank", email: "kshitij.gupta.5680@gmail.com", phone: "+91 87654 32109", balance: -150 },
-    { id: 3, name: "Ayush Vaibhav", upiId: "ayushvaibhav31@ybl", email: "ayushvaibhav31@gmail.com", phone: "+91 76543 21098", balance: 200 },
-    { id: 4, name: "Abhishek Athiya", upiId: "9302596396@ybl", email: "abhiathiya786@gmail.com", phone: "+91 65432 10987", balance: -100 },
-    { id: 5, name: "Jitendra Kumar Lodhi", upiId: "lodhikumar07@okhdfcbank", email: "lodhijk7@gmail.com", phone: "+91 54321 09876", balance: -75 },
-  ]);
-
+  const { roommates, loading, addRoommate, deleteRoommate, sendEmailRequest } = useRoommates();
   const [newRoommate, setNewRoommate] = useState({
     name: '',
-    upiId: '',
+    upi_id: '',
     email: '',
     phone: ''
   });
 
-  const { toast } = useToast();
-
-  const addRoommate = () => {
-    if (!newRoommate.name || !newRoommate.upiId || !newRoommate.email) {
-      toast({
-        title: "Missing Information",
-        description: "Name, UPI ID, and Email are required.",
-        variant: "destructive",
-      });
+  const handleAddRoommate = () => {
+    if (!newRoommate.name || !newRoommate.upi_id || !newRoommate.email) {
       return;
     }
 
-    const newId = Math.max(...roommates.map(r => r.id)) + 1;
-    setRoommates([...roommates, {
-      id: newId,
-      ...newRoommate,
-      balance: 0
-    }]);
-
-    setNewRoommate({ name: '', upiId: '', email: '', phone: '' });
-    
-    toast({
-      title: "Roommate Added!",
-      description: `${newRoommate.name} has been added to your group.`,
-    });
-  };
-
-  const deleteRoommate = (roommateId: number) => {
-    const roommate = roommates.find(r => r.id === roommateId);
-    setRoommates(roommates.filter(r => r.id !== roommateId));
-    
-    toast({
-      title: "Roommate Removed",
-      description: `${roommate?.name} has been removed from your group.`,
-    });
+    addRoommate(newRoommate);
+    setNewRoommate({ name: '', upi_id: '', email: '', phone: '' });
   };
 
   const handleUPIPayment = (upiId: string, amount: number) => {
@@ -74,65 +31,13 @@ export const RoommateManagement = () => {
     window.open(paymentUrl, '_blank');
   };
 
-  const sendEmailRequest = async (roommate: Roommate) => {
-    const emailData = {
-      from: "AirMates@airmedisphere.in",
-      to: [roommate.email],
-      subject: "Payment Request from AirMates",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #2563eb;">Payment Request from AirMates</h2>
-          <p>Hi ${roommate.name},</p>
-          <p>You have a pending payment request on AirMates.</p>
-          <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin: 0; color: #374151;">Amount Due: ₹${Math.abs(roommate.balance)}</h3>
-          </div>
-          <p>Please settle this amount at your earliest convenience.</p>
-          <p>Best regards,<br/>AirMates Team</p>
-        </div>
-      `
-    };
-
-    try {
-      console.log('Sending email request to:', roommate.email);
-      console.log('Email data:', emailData);
-      
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer re_FP4rP9T5_Kb4CC9NEihP8GK6JushBooPL`
-        },
-        body: JSON.stringify(emailData)
-      });
-
-      console.log('Response status:', response.status);
-
-      const result = await response.json();
-      console.log('API Response:', result);
-      
-      if (response.ok) {
-        toast({
-          title: "Request Sent!",
-          description: `Payment request email sent to ${roommate.name}`,
-        });
-      } else {
-        console.error('Email sending failed:', result);
-        toast({
-          title: "Failed to Send Request",
-          description: result.message || `Failed to send email to ${roommate.name}`,
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('Email request error:', error);
-      toast({
-        title: "Error",
-        description: `Failed to send email to ${roommate.name}. Please try again.`,
-        variant: "destructive",
-      });
-    }
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -163,8 +68,8 @@ export const RoommateManagement = () => {
               <Input
                 id="upiId"
                 placeholder="name@paytm"
-                value={newRoommate.upiId}
-                onChange={(e) => setNewRoommate({...newRoommate, upiId: e.target.value})}
+                value={newRoommate.upi_id}
+                onChange={(e) => setNewRoommate({...newRoommate, upi_id: e.target.value})}
               />
             </div>
             <div className="space-y-2">
@@ -188,7 +93,7 @@ export const RoommateManagement = () => {
             </div>
           </div>
           <Button 
-            onClick={addRoommate}
+            onClick={handleAddRoommate}
             className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -226,7 +131,7 @@ export const RoommateManagement = () => {
                     <h3 className="font-semibold">{roommate.name}</h3>
                     <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                       <IndianRupee className="h-3 w-3" />
-                      <span>{roommate.upiId}</span>
+                      <span>{roommate.upi_id}</span>
                     </div>
                     <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                       <Mail className="h-3 w-3" />
@@ -256,7 +161,7 @@ export const RoommateManagement = () => {
                       <>
                         <Button
                           size="sm"
-                          onClick={() => handleUPIPayment(roommate.upiId, roommate.balance)}
+                          onClick={() => handleUPIPayment(roommate.upi_id, roommate.balance)}
                           className="bg-blue-600 hover:bg-blue-700"
                         >
                           Pay
