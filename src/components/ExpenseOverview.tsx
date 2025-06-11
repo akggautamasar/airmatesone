@@ -133,30 +133,60 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
   const sendEmailRequest = async (settlement: Settlement) => {
     setIsRequestLoading(settlement.email);
     
+    const emailData = {
+      from: "AirMates@airmedisphere.in",
+      to: [settlement.email],
+      subject: "Payment Request from AirMates",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2563eb;">Payment Request from AirMates</h2>
+          <p>Hi ${settlement.name},</p>
+          <p>You have a pending payment request on AirMates.</p>
+          <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="margin: 0; color: #374151;">Amount Due: ₹${settlement.amount.toFixed(2)}</h3>
+          </div>
+          <p>Please settle this amount at your earliest convenience.</p>
+          <p>Best regards,<br/>AirMates Team</p>
+        </div>
+      `
+    };
+
     try {
-      console.log('Attempting to send email request to:', settlement.email);
+      console.log('Sending email request to:', settlement.email);
+      console.log('Email data:', emailData);
       
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      console.log('Email request simulated successfully');
-      
-      toast({
-        title: "Request Sent!",
-        description: `Payment request sent successfully`,
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer re_FP4rP9T5_Kb4CC9NEihP8GK6JushBooPL`
+        },
+        body: JSON.stringify(emailData)
       });
+
+      console.log('Response status:', response.status);
+
+      const result = await response.json();
+      console.log('API Response:', result);
       
-      setTimeout(() => {
+      if (response.ok) {
         toast({
-          title: "Notification Delivered",
-          description: `Payment request notification has been delivered for ₹${settlement.amount.toFixed(2)}`,
+          title: "Request Sent!",
+          description: `Payment request email sent successfully`,
         });
-      }, 2000);
-      
+      } else {
+        console.error('Email sending failed:', result);
+        toast({
+          title: "Failed to Send Request",
+          description: result.message || `Failed to send email. Please try again.`,
+          variant: "destructive",
+        });
+      }
     } catch (error) {
-      console.error('Error sending email request:', error);
+      console.error('Email request error:', error);
       toast({
-        title: "Request Failed",
-        description: `Unable to send request. Please try again later.`,
+        title: "Error",
+        description: `Failed to send email. Please try again.`,
         variant: "destructive",
       });
     } finally {
