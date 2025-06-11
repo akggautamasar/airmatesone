@@ -1,0 +1,179 @@
+
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Users, Plus, IndianRupee, Phone } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+interface Roommate {
+  id: number;
+  name: string;
+  upiId: string;
+  phone?: string;
+  balance: number;
+}
+
+export const RoommateManagement = () => {
+  const [roommates, setRoommates] = useState<Roommate[]>([
+    { id: 1, name: "Rahul", upiId: "rahul@paytm", phone: "+91 98765 43210", balance: -150 },
+    { id: 2, name: "Priya", upiId: "priya@phonepe", phone: "+91 87654 32109", balance: 200 },
+    { id: 3, name: "Arjun", upiId: "arjun@gpay", phone: "+91 76543 21098", balance: -100 },
+    { id: 4, name: "Sneha", upiId: "sneha@paytm", phone: "+91 65432 10987", balance: 50 },
+  ]);
+
+  const [newRoommate, setNewRoommate] = useState({
+    name: '',
+    upiId: '',
+    phone: ''
+  });
+
+  const { toast } = useToast();
+
+  const addRoommate = () => {
+    if (!newRoommate.name || !newRoommate.upiId) {
+      toast({
+        title: "Missing Information",
+        description: "Name and UPI ID are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newId = Math.max(...roommates.map(r => r.id)) + 1;
+    setRoommates([...roommates, {
+      id: newId,
+      ...newRoommate,
+      balance: 0
+    }]);
+
+    setNewRoommate({ name: '', upiId: '', phone: '' });
+    
+    toast({
+      title: "Roommate Added!",
+      description: `${newRoommate.name} has been added to your group.`,
+    });
+  };
+
+  const handleUPIPayment = (upiId: string, amount: number) => {
+    const paymentUrl = `https://quantxpay.vercel.app/${upiId}/${Math.abs(amount)}`;
+    window.open(paymentUrl, '_blank');
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Add Roommate */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Plus className="h-5 w-5" />
+            <span>Add New Roommate</span>
+          </CardTitle>
+          <CardDescription>
+            Add a roommate to your expense sharing group
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                placeholder="Enter name"
+                value={newRoommate.name}
+                onChange={(e) => setNewRoommate({...newRoommate, name: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="upiId">UPI ID</Label>
+              <Input
+                id="upiId"
+                placeholder="name@paytm"
+                value={newRoommate.upiId}
+                onChange={(e) => setNewRoommate({...newRoommate, upiId: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone (Optional)</Label>
+              <Input
+                id="phone"
+                placeholder="+91 xxxxx xxxxx"
+                value={newRoommate.phone}
+                onChange={(e) => setNewRoommate({...newRoommate, phone: e.target.value})}
+              />
+            </div>
+          </div>
+          <Button 
+            onClick={addRoommate}
+            className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Roommate
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Roommates List */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Users className="h-5 w-5" />
+            <span>Your Roommates ({roommates.length})</span>
+          </CardTitle>
+          <CardDescription>
+            Manage your roommate group and settle expenses
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {roommates.map((roommate) => (
+            <div key={roommate.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center space-x-4">
+                <div className="bg-gradient-to-r from-blue-600 to-green-600 rounded-full p-3">
+                  <Users className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">{roommate.name}</h3>
+                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                    <IndianRupee className="h-3 w-3" />
+                    <span>{roommate.upiId}</span>
+                  </div>
+                  {roommate.phone && (
+                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                      <Phone className="h-3 w-3" />
+                      <span>{roommate.phone}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <div className="text-right">
+                  <p className={`font-semibold ${roommate.balance < 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                    {roommate.balance < 0 ? '-' : '+'}₹{Math.abs(roommate.balance)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {roommate.balance < 0 ? 'owes you' : 'you owe'}
+                  </p>
+                </div>
+                
+                {roommate.balance !== 0 && (
+                  <Button
+                    size="sm"
+                    onClick={() => handleUPIPayment(roommate.upiId, roommate.balance)}
+                    className={roommate.balance < 0 
+                      ? "bg-green-600 hover:bg-green-700" 
+                      : "bg-blue-600 hover:bg-blue-700"
+                    }
+                  >
+                    {roommate.balance < 0 ? 'Request' : 'Pay'}
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
