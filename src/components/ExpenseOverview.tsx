@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,61 +44,59 @@ export const ExpenseOverview = () => {
 
   const sendEmailRequest = async (settlement: Settlement) => {
     const emailData = {
-      to: settlement.email,
-      subject: "Payment Request from Airmates",
-      message: `Hi ${settlement.name},\n\nYou have a pending payment request on Airmates.\n\nAmount: ₹${settlement.amount}\n\nPlease settle this amount at your earliest convenience.\n\nBest regards,\nAirmates Team`
+      from: "AirMates@airmedisphere.in",
+      to: [settlement.email],
+      subject: "Payment Request from AirMates",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2563eb;">Payment Request from AirMates</h2>
+          <p>Hi ${settlement.name},</p>
+          <p>You have a pending payment request on AirMates.</p>
+          <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="margin: 0; color: #374151;">Amount Due: ₹${settlement.amount}</h3>
+          </div>
+          <p>Please settle this amount at your earliest convenience.</p>
+          <p>Best regards,<br/>AirMates Team</p>
+        </div>
+      `
     };
 
     try {
       console.log('Sending email request to:', settlement.email);
       console.log('Email data:', emailData);
       
-      const response = await fetch('https://quantxsms.vercel.app/api/send-single', {
+      const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
-        mode: 'cors',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+          'Authorization': `Bearer re_FP4rP9T5_Kb4CC9NEihP8GK6JushBooPL`
         },
         body: JSON.stringify(emailData)
       });
 
       console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
 
-      const responseText = await response.text();
-      console.log('Raw response:', responseText);
-
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('Failed to parse response as JSON:', parseError);
-        throw new Error('Invalid response format from server');
-      }
-
-      console.log('Parsed API Response:', result);
+      const result = await response.json();
+      console.log('API Response:', result);
       
-      if (response.ok && result.success) {
+      if (response.ok) {
         toast({
           title: "Request Sent!",
           description: `Payment request email sent to ${settlement.name}`,
         });
       } else {
+        console.error('Email sending failed:', result);
         toast({
           title: "Failed to Send Request",
-          description: result.message || `Server responded with status ${response.status}`,
+          description: result.message || `Failed to send email to ${settlement.name}`,
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error('Email request error:', error);
-      
-      // Fallback: Show a mock success for demo purposes
       toast({
-        title: "Email Service Unavailable",
-        description: `Unable to send email to ${settlement.name}. This might be due to CORS restrictions or API availability.`,
+        title: "Error",
+        description: `Failed to send email to ${settlement.name}. Please try again.`,
         variant: "destructive",
       });
     }
