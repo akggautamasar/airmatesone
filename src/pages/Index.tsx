@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -67,18 +66,8 @@ const Index = () => {
     category: expense.category
   }));
 
-  // Mock settlements for now - in a real app this would come from the database
-  const settlements = [
-    {
-      id: "1",
-      name: "Kshitij Gupta",
-      amount: 150,
-      type: "owes" as const,
-      upiId: "kshitij.gupta.5680-1@okhdfcbank",
-      email: "kshitij.gupta.5680@gmail.com",
-      status: "pending" as const
-    }
-  ];
+  // Empty settlements array - will be populated from database in the future
+  const settlements: any[] = [];
 
   return (
     <div className="min-h-screen bg-gray-50">

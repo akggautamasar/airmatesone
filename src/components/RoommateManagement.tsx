@@ -34,22 +34,6 @@ export const RoommateManagement = () => {
     window.open(paymentUrl, '_blank');
   };
 
-  // Function to add predefined roommates for worksbeyondworks@gmail.com
-  const addPredefinedRoommates = async () => {
-    const predefinedRoommates = [
-      { name: 'Kshitij Gupta', upi_id: 'kshitij.gupta@paytm', email: 'kshitij.gupta@gmail.com', phone: '' },
-      { name: 'Ayush', upi_id: 'ayush@paytm', email: 'ayush@gmail.com', phone: '' },
-      { name: 'Vaibhav', upi_id: 'vaibhav@paytm', email: 'vaibhav@gmail.com', phone: '' },
-      { name: 'Abhishek', upi_id: 'abhishek@paytm', email: 'abhishek@gmail.com', phone: '' },
-      { name: 'Athiya', upi_id: 'athiya@paytm', email: 'athiya@gmail.com', phone: '' },
-      { name: 'Jitendra Kumar Lodhi', upi_id: 'jitendra@paytm', email: 'jitendra@gmail.com', phone: '' }
-    ];
-
-    for (const roommate of predefinedRoommates) {
-      await addRoommate(roommate);
-    }
-  };
-
   // Create a combined list that includes the current user as the first entry
   const allMembers = [
     // Current user as the owner
@@ -60,7 +44,8 @@ export const RoommateManagement = () => {
       email: user?.email || '',
       phone: '',
       balance: 0,
-      isCurrentUser: true
+      isCurrentUser: true,
+      user_id: user?.id || ''
     },
     // Other roommates
     ...roommates.map(r => ({ ...r, isCurrentUser: false }))
@@ -135,16 +120,6 @@ export const RoommateManagement = () => {
               <Plus className="h-4 w-4 mr-2" />
               Add Roommate
             </Button>
-            
-            {user?.email === 'worksbeyondworks@gmail.com' && roommates.length === 0 && (
-              <Button 
-                onClick={addPredefinedRoommates}
-                variant="outline"
-                className="border-green-600 text-green-600 hover:bg-green-50"
-              >
-                Add My Roommates
-              </Button>
-            )}
           </div>
         </CardContent>
       </Card>
