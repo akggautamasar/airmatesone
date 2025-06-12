@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { NavBar } from "@/components/NavBar";
@@ -12,12 +13,15 @@ import { useExpenses } from "@/hooks/useExpenses";
 import { useRoommates } from "@/hooks/useRoommates";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { Plus } from "lucide-react";
 
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { expenses, addExpense, deleteExpense } = useExpenses();
   const { roommates } = useRoommates();
+  const [showAddExpense, setShowAddExpense] = useState(false);
+  const [settlements, setSettlements] = useState<any[]>([]);
 
   useEffect(() => {
     console.log('Index page - user:', user?.email, 'loading:', loading);
@@ -66,8 +70,15 @@ const Index = () => {
     category: expense.category
   }));
 
-  // Empty settlements array - will be populated from database in the future
-  const settlements: any[] = [];
+  const handleAddExpense = (expense: any) => {
+    addExpense({
+      description: expense.description,
+      amount: expense.amount,
+      paid_by: expense.paidBy,
+      category: expense.category,
+      date: new Date().toISOString()
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -92,23 +103,27 @@ const Index = () => {
               expenses={formattedExpenses}
               onExpenseUpdate={() => {}}
               settlements={settlements}
-              onSettlementUpdate={() => {}}
+              onSettlementUpdate={setSettlements}
             />
           </TabsContent>
 
           <TabsContent value="expenses" className="space-y-6">
+            <div className="flex justify-center">
+              <Button 
+                onClick={() => setShowAddExpense(true)}
+                className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
+                size="lg"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Add New Expense
+              </Button>
+            </div>
+            
             <AddExpense 
-              onAddExpense={(expense) => {
-                addExpense({
-                  description: expense.description,
-                  amount: expense.amount,
-                  paid_by: expense.paidBy,
-                  category: expense.category,
-                  date: new Date().toISOString()
-                });
-              }}
+              open={showAddExpense}
+              onClose={() => setShowAddExpense(false)}
+              onAddExpense={handleAddExpense}
               roommates={roommates.map(r => r.name)}
-              onClose={() => {}}
             />
           </TabsContent>
 

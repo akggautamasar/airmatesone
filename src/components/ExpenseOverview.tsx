@@ -1,9 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { IndianRupee, TrendingUp, TrendingDown, Users, Trash2, Mail, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useRoommates } from "@/hooks/useRoommates";
+import { useProfile } from "@/hooks/useProfile";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Expense {
   id: number;
@@ -36,62 +40,47 @@ interface ExpenseOverviewProps {
 export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settlements, onSettlementUpdate }: ExpenseOverviewProps) => {
   const { toast } = useToast();
   const [isRequestLoading, setIsRequestLoading] = useState<string | null>(null);
+  const { roommates } = useRoommates();
+  const { profile } = useProfile();
+  const { user } = useAuth();
 
-  // Roommate data with UPI and email info
-  const roommateData = [
-    { name: "Kshitij Gupta", upiId: "kshitij.gupta.5680-1@okhdfcbank", email: "kshitij.gupta.5680@gmail.com" },
-    { name: "Ayush Vaibhav", upiId: "ayushvaibhav31@ybl", email: "ayushvaibhav31@gmail.com" },
-    { name: "Abhishek Athiya", upiId: "9302596396@ybl", email: "abhiathiya786@gmail.com" },
-    { name: "Jitendra Kumar Lodhi", upiId: "lodhikumar07@okhdfcbank", email: "lodhijk7@gmail.com" },
-  ];
-
-  // Calculate settlements based on actual expenses
+  // Calculate settlements based on actual expenses and roommates
   const calculateSettlements = (): Settlement[] => {
-    if (expenses.length === 0) return [];
+    if (expenses.length === 0 || roommates.length === 0) return [];
 
-    const totalRoommates = roommateData.length + 1; // +1 for "You"
+    const currentUserName = profile?.name || user?.email?.split('@')[0] || 'You';
+    const allPeople = [currentUserName, ...roommates.map(r => r.name)];
     const calculatedSettlements: Settlement[] = [];
 
     expenses.forEach(expense => {
-      const sharePerPerson = expense.amount / totalRoommates;
+      const totalPeople = allPeople.length;
+      const sharePerPerson = expense.amount / totalPeople;
       
       // Everyone except the payer owes money to the payer
-      if (expense.paidBy !== "You") {
-        // You owe money to the person who paid
-        calculatedSettlements.push({
-          id: `you-to-${expense.paidBy}-${expense.id}`,
-          name: "You",
-          amount: sharePerPerson,
-          type: "owes",
-          upiId: roommateData.find(r => r.name === expense.paidBy)?.upiId || "",
-          email: roommateData.find(r => r.name === expense.paidBy)?.email || "",
-          status: "pending"
-        });
-      }
-
-      // All other roommates owe money to the person who paid
-      roommateData.forEach(roommate => {
-        if (roommate.name !== expense.paidBy) {
-          if (expense.paidBy === "You") {
-            // Roommate owes money to you
+      allPeople.forEach(person => {
+        if (person !== expense.paidBy) {
+          const owedToPerson = roommates.find(r => r.name === expense.paidBy);
+          
+          if (expense.paidBy === currentUserName) {
+            // Roommate owes money to current user
             calculatedSettlements.push({
-              id: `${roommate.name}-to-you-${expense.id}`,
-              name: roommate.name,
+              id: `${person}-to-you-${expense.id}`,
+              name: person,
               amount: sharePerPerson,
-              type: "owes",
-              upiId: "your.upi@example.com",
-              email: "your.email@example.com",
+              type: "owed",
+              upiId: profile?.upi_id || "",
+              email: user?.email || "",
               status: "pending"
             });
-          } else {
-            // Roommate owes money to another roommate
+          } else if (person === currentUserName) {
+            // Current user owes money to roommate
             calculatedSettlements.push({
-              id: `${roommate.name}-to-${expense.paidBy}-${expense.id}`,
-              name: roommate.name,
+              id: `you-to-${expense.paidBy}-${expense.id}`,
+              name: "You",
               amount: sharePerPerson,
               type: "owes",
-              upiId: roommateData.find(r => r.name === expense.paidBy)?.upiId || "",
-              email: roommateData.find(r => r.name === expense.paidBy)?.email || "",
+              upiId: owedToPerson?.upi_id || "",
+              email: owedToPerson?.email || "",
               status: "pending"
             });
           }
@@ -102,13 +91,13 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
     return calculatedSettlements;
   };
 
-  // Update settlements whenever expenses change
+  // Update settlements whenever expenses or roommates change
   useEffect(() => {
     const newCalculatedSettlements = calculateSettlements();
     const existingSettledSettlements = settlements.filter(s => s.status === "settled");
     const allSettlements = [...newCalculatedSettlements, ...existingSettledSettlements];
     onSettlementUpdate(allSettlements);
-  }, [expenses]);
+  }, [expenses, roommates]);
 
   const handleUPIPayment = (upiId: string, amount: number) => {
     const paymentUrl = `https://quantxpay.vercel.app/${upiId}/${amount}`;
@@ -153,7 +142,6 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
 
     try {
       console.log('Sending email request to:', settlement.email);
-      console.log('Email data:', emailData);
       
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -164,10 +152,7 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
         body: JSON.stringify(emailData)
       });
 
-      console.log('Response status:', response.status);
-
       const result = await response.json();
-      console.log('API Response:', result);
       
       if (response.ok) {
         toast({
@@ -175,7 +160,6 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
           description: `Payment request email sent successfully`,
         });
       } else {
-        console.error('Email sending failed:', result);
         toast({
           title: "Failed to Send Request",
           description: result.message || `Failed to send email. Please try again.`,
@@ -183,7 +167,6 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
         });
       }
     } catch (error) {
-      console.error('Email request error:', error);
       toast({
         title: "Error",
         description: `Failed to send email. Please try again.`,
@@ -208,8 +191,8 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
 
   // Calculate totals
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const totalOwed = 0;
-  const totalOwes = pendingSettlements.filter(s => s.name === "You").reduce((sum, s) => sum + s.amount, 0);
+  const totalOwed = pendingSettlements.filter(s => s.type === "owed").reduce((sum, s) => sum + s.amount, 0);
+  const totalOwes = pendingSettlements.filter(s => s.type === "owes").reduce((sum, s) => sum + s.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -325,7 +308,7 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
                     </div>
                     <div>
                       <p className="font-medium">
-                        {settlement.name === "You" ? "You owe" : `${settlement.name} owes`}
+                        {settlement.type === "owes" ? "You owe" : `${settlement.name} owes you`}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         Payment needed
@@ -339,13 +322,15 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
                       </p>
                     </div>
                     <div className="flex space-x-1">
-                      <Button
-                        size="sm"
-                        onClick={() => handleUPIPayment(settlement.upiId, settlement.amount)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        Pay
-                      </Button>
+                      {settlement.type === "owes" && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleUPIPayment(settlement.upiId, settlement.amount)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          Pay
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="outline"
@@ -383,15 +368,4 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
       </div>
     </div>
   );
-};
-
-// Export roommates data for use in other components
-export const getRoommates = () => {
-  const roommateData = [
-    { name: "Kshitij Gupta", upiId: "kshitij.gupta.5680-1@okhdfcbank", email: "kshitij.gupta.5680@gmail.com" },
-    { name: "Ayush Vaibhav", upiId: "ayushvaibhav31@ybl", email: "ayushvaibhav31@gmail.com" },
-    { name: "Abhishek Athiya", upiId: "9302596396@ybl", email: "abhiathiya786@gmail.com" },
-    { name: "Jitendra Kumar Lodhi", upiId: "lodhikumar07@okhdfcbank", email: "lodhijk7@gmail.com" },
-  ];
-  return ['You', ...roommateData.map(roommate => roommate.name)];
 };
