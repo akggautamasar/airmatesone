@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,11 +7,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Mail, Lock, User, Eye, EyeOff } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 export const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [signUpForm, setSignUpForm] = useState({
     email: '',
@@ -24,6 +27,14 @@ export const Auth = () => {
     email: '',
     password: ''
   });
+
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (user) {
+      console.log('User is logged in, redirecting to dashboard');
+      navigate("/");
+    }
+  }, [user, navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,6 +89,7 @@ export const Auth = () => {
         title: "Welcome back!",
         description: "You have successfully signed in.",
       });
+      // Navigation will happen automatically via useEffect when user state changes
     }
     setLoading(false);
   };

@@ -8,7 +8,6 @@ import { ExpenseOverview } from "@/components/ExpenseOverview";
 import { AddExpense } from "@/components/AddExpense";
 import { RoommateManagement } from "@/components/RoommateManagement";
 import { SettlementHistory } from "@/components/SettlementHistory";
-import { GroceryList } from "@/components/GroceryList";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useRoommates } from "@/hooks/useRoommates";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,9 @@ const Index = () => {
   const { roommates } = useRoommates();
 
   useEffect(() => {
+    console.log('Index page - user:', user?.email, 'loading:', loading);
     if (!loading && !user) {
+      console.log('Redirecting to auth page');
       navigate("/auth");
     }
   }, [user, loading, navigate]);
@@ -82,6 +83,11 @@ const Index = () => {
     <div className="min-h-screen bg-gray-50">
       <NavBar />
       <div className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user.email}!</h1>
+          <p className="text-gray-600">Manage your expenses and roommate settlements.</p>
+        </div>
+        
         <Tabs defaultValue="overview" className="space-y-8">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
