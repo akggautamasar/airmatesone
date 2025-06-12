@@ -1,15 +1,18 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Users, Plus, IndianRupee, Phone, Trash2, Mail } from "lucide-react";
+import { Users, Plus, IndianRupee, Phone, Trash2, Mail, Crown } from "lucide-react";
 import { useRoommates } from "@/hooks/useRoommates";
+import { useProfile } from "@/hooks/useProfile";
+import { useAuth } from "@/hooks/useAuth";
 
 export const RoommateManagement = () => {
   const { roommates, loading, addRoommate, deleteRoommate, sendEmailRequest } = useRoommates();
+  const { profile } = useProfile();
+  const { user } = useAuth();
   const [newRoommate, setNewRoommate] = useState({
     name: '',
     upi_id: '',
@@ -30,6 +33,38 @@ export const RoommateManagement = () => {
     const paymentUrl = `https://quantxpay.vercel.app/${upiId}/${Math.abs(amount)}`;
     window.open(paymentUrl, '_blank');
   };
+
+  // Function to add predefined roommates for worksbeyondworks@gmail.com
+  const addPredefinedRoommates = async () => {
+    const predefinedRoommates = [
+      { name: 'Kshitij Gupta', upi_id: 'kshitij.gupta@paytm', email: 'kshitij.gupta@gmail.com', phone: '' },
+      { name: 'Ayush', upi_id: 'ayush@paytm', email: 'ayush@gmail.com', phone: '' },
+      { name: 'Vaibhav', upi_id: 'vaibhav@paytm', email: 'vaibhav@gmail.com', phone: '' },
+      { name: 'Abhishek', upi_id: 'abhishek@paytm', email: 'abhishek@gmail.com', phone: '' },
+      { name: 'Athiya', upi_id: 'athiya@paytm', email: 'athiya@gmail.com', phone: '' },
+      { name: 'Jitendra Kumar Lodhi', upi_id: 'jitendra@paytm', email: 'jitendra@gmail.com', phone: '' }
+    ];
+
+    for (const roommate of predefinedRoommates) {
+      await addRoommate(roommate);
+    }
+  };
+
+  // Create a combined list that includes the current user as the first entry
+  const allMembers = [
+    // Current user as the owner
+    {
+      id: 'current-user',
+      name: profile?.name || user?.email?.split('@')[0] || 'You',
+      upi_id: profile?.upi_id || 'Not set',
+      email: user?.email || '',
+      phone: '',
+      balance: 0,
+      isCurrentUser: true
+    },
+    // Other roommates
+    ...roommates.map(r => ({ ...r, isCurrentUser: false }))
+  ];
 
   if (loading) {
     return (
@@ -92,13 +127,25 @@ export const RoommateManagement = () => {
               />
             </div>
           </div>
-          <Button 
-            onClick={handleAddRoommate}
-            className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Roommate
-          </Button>
+          <div className="flex space-x-2">
+            <Button 
+              onClick={handleAddRoommate}
+              className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Roommate
+            </Button>
+            
+            {user?.email === 'worksbeyondworks@gmail.com' && roommates.length === 0 && (
+              <Button 
+                onClick={addPredefinedRoommates}
+                variant="outline"
+                className="border-green-600 text-green-600 hover:bg-green-50"
+              >
+                Add My Roommates
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -107,40 +154,49 @@ export const RoommateManagement = () => {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Users className="h-5 w-5" />
-            <span>Your Roommates ({roommates.length})</span>
+            <span>Group Members ({allMembers.length})</span>
           </CardTitle>
           <CardDescription>
             Manage your roommate group and settle expenses
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {roommates.length === 0 ? (
+          {allMembers.length === 1 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No roommates added yet</p>
               <p className="text-sm">Add your first roommate to get started</p>
             </div>
           ) : (
-            roommates.map((roommate) => (
-              <div key={roommate.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            allMembers.map((member) => (
+              <div key={member.id} className={`flex items-center justify-between p-4 rounded-lg ${member.isCurrentUser ? 'bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200' : 'bg-gray-50'}`}>
                 <div className="flex items-center space-x-4">
-                  <div className="bg-gradient-to-r from-blue-600 to-green-600 rounded-full p-3">
-                    <Users className="h-5 w-5 text-white" />
+                  <div className={`rounded-full p-3 ${member.isCurrentUser ? 'bg-gradient-to-r from-blue-600 to-green-600' : 'bg-gradient-to-r from-blue-600 to-green-600'}`}>
+                    {member.isCurrentUser ? (
+                      <Crown className="h-5 w-5 text-white" />
+                    ) : (
+                      <Users className="h-5 w-5 text-white" />
+                    )}
                   </div>
                   <div>
-                    <h3 className="font-semibold">{roommate.name}</h3>
+                    <div className="flex items-center space-x-2">
+                      <h3 className="font-semibold">{member.name}</h3>
+                      {member.isCurrentUser && (
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">You</span>
+                      )}
+                    </div>
                     <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                       <IndianRupee className="h-3 w-3" />
-                      <span>{roommate.upi_id}</span>
+                      <span>{member.upi_id}</span>
                     </div>
                     <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                       <Mail className="h-3 w-3" />
-                      <span>{roommate.email}</span>
+                      <span>{member.email}</span>
                     </div>
-                    {roommate.phone && (
+                    {member.phone && (
                       <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                         <Phone className="h-3 w-3" />
-                        <span>{roommate.phone}</span>
+                        <span>{member.phone}</span>
                       </div>
                     )}
                   </div>
@@ -148,29 +204,29 @@ export const RoommateManagement = () => {
                 
                 <div className="flex items-center space-x-3">
                   <div className="text-right">
-                    <p className={`font-semibold ${roommate.balance < 0 ? 'text-orange-600' : roommate.balance > 0 ? 'text-green-600' : 'text-gray-600'}`}>
-                      {roommate.balance === 0 ? '₹0' : (roommate.balance < 0 ? '-' : '+') + '₹' + Math.abs(roommate.balance)}
+                    <p className={`font-semibold ${member.balance < 0 ? 'text-orange-600' : member.balance > 0 ? 'text-green-600' : 'text-gray-600'}`}>
+                      {member.balance === 0 ? '₹0' : (member.balance < 0 ? '-' : '+') + '₹' + Math.abs(member.balance)}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {roommate.balance < 0 ? 'owes you' : roommate.balance > 0 ? 'you owe' : 'settled'}
+                      {member.balance < 0 ? 'owes you' : member.balance > 0 ? 'you owe' : 'settled'}
                     </p>
                   </div>
                   
                   <div className="flex space-x-2">
-                    {roommate.balance !== 0 && (
+                    {!member.isCurrentUser && member.balance !== 0 && (
                       <>
                         <Button
                           size="sm"
-                          onClick={() => handleUPIPayment(roommate.upi_id, roommate.balance)}
+                          onClick={() => handleUPIPayment(member.upi_id, member.balance)}
                           className="bg-blue-600 hover:bg-blue-700"
                         >
                           Pay
                         </Button>
-                        {roommate.balance < 0 && (
+                        {member.balance < 0 && (
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => sendEmailRequest(roommate)}
+                            onClick={() => sendEmailRequest(member)}
                           >
                             Request
                           </Button>
@@ -178,27 +234,29 @@ export const RoommateManagement = () => {
                       </>
                     )}
                     
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Remove Roommate</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to remove {roommate.name} from your group? This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => deleteRoommate(roommate.id)}>
-                            Remove
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    {!member.isCurrentUser && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remove Roommate</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to remove {member.name} from your group? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteRoommate(member.id)}>
+                              Remove
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
                 </div>
               </div>

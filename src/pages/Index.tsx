@@ -8,6 +8,7 @@ import { ExpenseOverview } from "@/components/ExpenseOverview";
 import { AddExpense } from "@/components/AddExpense";
 import { RoommateManagement } from "@/components/RoommateManagement";
 import { SettlementHistory } from "@/components/SettlementHistory";
+import { Profile } from "@/components/Profile";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useRoommates } from "@/hooks/useRoommates";
 import { Button } from "@/components/ui/button";
@@ -89,11 +90,12 @@ const Index = () => {
         </div>
         
         <Tabs defaultValue="overview" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="expenses">Add Expense</TabsTrigger>
             <TabsTrigger value="roommates">Roommates</TabsTrigger>
             <TabsTrigger value="settlements">Settlements</TabsTrigger>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -127,6 +129,10 @@ const Index = () => {
 
           <TabsContent value="settlements" className="space-y-6">
             <SettlementHistory settlements={settlements} />
+          </TabsContent>
+
+          <TabsContent value="profile" className="space-y-6">
+            <Profile />
           </TabsContent>
         </Tabs>
       </div>
