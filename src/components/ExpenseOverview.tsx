@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRoommates } from "@/hooks/useRoommates";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
+import { useExpenses } from "@/hooks/useExpenses";
 
 interface Expense {
   id: number;
@@ -43,6 +43,7 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
   const { roommates } = useRoommates();
   const { profile } = useProfile();
   const { user } = useAuth();
+  const { deleteExpense: deleteExpenseFromDB } = useExpenses();
 
   // Calculate settlements based on actual expenses and roommates
   const calculateSettlements = (): Settlement[] => {
@@ -177,13 +178,22 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
     }
   };
 
-  const deleteExpense = (expenseId: number) => {
-    const updatedExpenses = expenses.filter(expense => expense.id !== expenseId);
-    onExpenseUpdate(updatedExpenses);
-    toast({
-      title: "Expense Deleted",
-      description: "The expense has been removed successfully.",
-    });
+  const deleteExpense = async (expenseId: number) => {
+    try {
+      // Use the deleteExpense function from useExpenses hook
+      await deleteExpenseFromDB(expenseId.toString());
+      
+      // Update local state as well for immediate UI feedback
+      const updatedExpenses = expenses.filter(expense => expense.id !== expenseId);
+      onExpenseUpdate(updatedExpenses);
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete expense. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Filter settlements to show only pending ones in the quick settlements section
