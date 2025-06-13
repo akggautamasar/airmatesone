@@ -21,22 +21,32 @@ export const useRoommates = () => {
   const { toast } = useToast();
 
   const fetchRoommates = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     try {
+      setLoading(true);
+      console.log('Fetching roommates for user:', user.email);
+      
       const { data, error } = await supabase
         .from('roommates')
         .select('*')
-        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Fetched roommates:', data);
       setRoommates(data || []);
     } catch (error: any) {
       console.error('Error fetching roommates:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch roommates",
+        description: `Failed to fetch roommates: ${error.message}`,
         variant: "destructive",
       });
     } finally {
@@ -45,16 +55,67 @@ export const useRoommates = () => {
   };
 
   const addRoommate = async (roommate: Omit<Roommate, 'id' | 'user_id' | 'balance'>) => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to add roommates",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
+      console.log('Adding roommate:', roommate);
+      console.log('Current user:', user.id);
+
+      // Validate required fields
+      if (!roommate.name || !roommate.upi_id || !roommate.email) {
+        toast({
+          title: "Error",
+          description: "Please fill in all required fields (name, UPI ID, and email)",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if roommate already exists for this user
+      const { data: existingRoommate, error: checkError } = await supabase
+        .from('roommates')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('email', roommate.email)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found" which is expected
+        console.error('Error checking existing roommate:', checkError);
+        throw checkError;
+      }
+
+      if (existingRoommate) {
+        toast({
+          title: "Error",
+          description: "This roommate has already been added",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { data, error } = await supabase
         .from('roommates')
-        .insert([{ ...roommate, user_id: user.id, balance: 0 }])
+        .insert([{ 
+          ...roommate, 
+          user_id: user.id, 
+          balance: 0 
+        }])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase insert error:', error);
+        throw error;
+      }
+
+      console.log('Successfully added roommate:', data);
       setRoommates(prev => [data, ...prev]);
       
       toast({
@@ -65,7 +126,7 @@ export const useRoommates = () => {
       console.error('Error adding roommate:', error);
       toast({
         title: "Error",
-        description: "Failed to add roommate",
+        description: `Failed to add roommate: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       });
     }
@@ -73,12 +134,17 @@ export const useRoommates = () => {
 
   const deleteRoommate = async (roommateId: string) => {
     try {
+      console.log('Deleting roommate:', roommateId);
+      
       const { error } = await supabase
         .from('roommates')
         .delete()
         .eq('id', roommateId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase delete error:', error);
+        throw error;
+      }
       
       const deletedRoommate = roommates.find(r => r.id === roommateId);
       setRoommates(prev => prev.filter(roommate => roommate.id !== roommateId));
@@ -91,7 +157,7 @@ export const useRoommates = () => {
       console.error('Error deleting roommate:', error);
       toast({
         title: "Error",
-        description: "Failed to delete roommate",
+        description: `Failed to delete roommate: ${error.message}`,
         variant: "destructive",
       });
     }
@@ -151,7 +217,9 @@ export const useRoommates = () => {
   };
 
   useEffect(() => {
-    fetchRoommates();
+    if (user) {
+      fetchRoommates();
+    }
   }, [user]);
 
   return {

@@ -1,17 +1,17 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { IndianRupee, TrendingUp, TrendingDown, Users, Trash2, Mail, Check } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { useRoommates } from "@/hooks/useRoommates";
-import { useProfile } from "@/hooks/useProfile";
-import { useAuth } from "@/hooks/useAuth";
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { TrendingUp, TrendingDown, DollarSign, Calendar, Users, Trash2, IndianRupee } from "lucide-react";
 import { useExpenses } from "@/hooks/useExpenses";
+import { useRoommates } from "@/hooks/useRoommates";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Expense {
-  id: string; // Changed from number to string to handle UUIDs
+  id: string;
   description: string;
   amount: number;
   paidBy: string;
@@ -21,370 +21,344 @@ interface Expense {
 
 interface Settlement {
   id: string;
-  name: string;
   amount: number;
-  type: "owes" | "owed";
-  upiId: string;
-  email: string;
-  status: "pending" | "settled";
-  settledDate?: string;
+  from: string;
+  to: string;
+  status: string;
 }
 
 interface ExpenseOverviewProps {
-  onAddExpense?: (expense: Omit<Expense, 'id'>) => void;
   expenses: Expense[];
-  onExpenseUpdate: (expenses: Expense[]) => void;
+  onExpenseUpdate: () => void;
   settlements: Settlement[];
   onSettlementUpdate: (settlements: Settlement[]) => void;
 }
 
-export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settlements, onSettlementUpdate }: ExpenseOverviewProps) => {
-  const { toast } = useToast();
-  const [isRequestLoading, setIsRequestLoading] = useState<string | null>(null);
+export const ExpenseOverview = ({ expenses, onExpenseUpdate, settlements, onSettlementUpdate }: ExpenseOverviewProps) => {
+  const { deleteExpense } = useExpenses();
   const { roommates } = useRoommates();
-  const { profile } = useProfile();
   const { user } = useAuth();
-  const { deleteExpense: deleteExpenseFromDB } = useExpenses();
+  const [localSettlements, setLocalSettlements] = useState<Settlement[]>([]);
 
-  // Calculate settlements based on actual expenses and roommates
-  const calculateSettlements = (): Settlement[] => {
-    if (expenses.length === 0 || roommates.length === 0) return [];
-
-    const currentUserName = profile?.name || user?.email?.split('@')[0] || 'You';
+  // Memoize calculations to prevent unnecessary re-renders
+  const calculations = useMemo(() => {
+    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    
+    // Calculate balances based on expenses and roommates
+    const balanceMap = new Map<string, number>();
+    
+    // Initialize all roommates and current user with 0 balance
     const currentUserEmail = user?.email || '';
+    balanceMap.set(currentUserEmail, 0);
     
-    // Create a comprehensive list of all people including current user and all roommates
-    const allPeople = [
-      { name: currentUserName, email: currentUserEmail, upiId: profile?.upi_id || '' },
-      ...roommates.map(r => ({ name: r.name, email: r.email, upiId: r.upi_id }))
-    ];
-    
-    const calculatedSettlements: Settlement[] = [];
+    roommates.forEach(roommate => {
+      balanceMap.set(roommate.email, 0);
+    });
+
+    // Calculate who paid what
+    const totalPeople = roommates.length + 1; // +1 for current user
+    const perPersonShare = totalExpenses / totalPeople;
 
     expenses.forEach(expense => {
-      const totalPeople = allPeople.length;
-      const sharePerPerson = expense.amount / totalPeople;
+      // Find who paid this expense
+      const paidByEmail = expense.paidBy === 'You' || expense.paidBy === user?.email?.split('@')[0] 
+        ? currentUserEmail 
+        : roommates.find(r => r.name === expense.paidBy || r.email === expense.paidBy)?.email || expense.paidBy;
       
-      // Find the person who paid
-      const payer = allPeople.find(person => person.name === expense.paidBy);
-      
-      // Everyone except the payer owes money to the payer
-      allPeople.forEach(person => {
-        if (person.name !== expense.paidBy) {
-          if (expense.paidBy === currentUserName) {
-            // Roommate owes money to current user
-            calculatedSettlements.push({
-              id: `${person.name}-to-you-${expense.id}`,
-              name: person.name,
-              amount: sharePerPerson,
-              type: "owed",
-              upiId: currentUserEmail,
-              email: person.email,
-              status: "pending"
-            });
-          } else if (person.name === currentUserName) {
-            // Current user owes money to roommate (payer)
-            calculatedSettlements.push({
-              id: `you-to-${expense.paidBy}-${expense.id}`,
-              name: "You",
-              amount: sharePerPerson,
-              type: "owes",
-              upiId: payer?.upiId || "",
-              email: payer?.email || "",
-              status: "pending"
-            });
-          }
-        }
-      });
-    });
-
-    return calculatedSettlements;
-  };
-
-  // Update settlements whenever expenses or roommates change
-  useEffect(() => {
-    const newCalculatedSettlements = calculateSettlements();
-    const existingSettledSettlements = settlements.filter(s => s.status === "settled");
-    const allSettlements = [...newCalculatedSettlements, ...existingSettledSettlements];
-    onSettlementUpdate(allSettlements);
-  }, [expenses, roommates, profile, user]);
-
-  const handleUPIPayment = (upiId: string, amount: number) => {
-    const paymentUrl = `https://quantxpay.vercel.app/${upiId}/${amount}`;
-    window.open(paymentUrl, '_blank');
-  };
-
-  const markAsPaid = (settlement: Settlement) => {
-    const updatedSettlements = settlements.map(s => 
-      s.id === settlement.id 
-        ? { ...s, status: "settled" as const, settledDate: new Date().toLocaleDateString() }
-        : s
-    );
-    
-    onSettlementUpdate(updatedSettlements);
-    
-    toast({
-      title: "Payment Marked as Settled",
-      description: `₹${settlement.amount.toFixed(2)} payment has been marked as settled`,
-    });
-  };
-
-  const sendEmailRequest = async (settlement: Settlement) => {
-    setIsRequestLoading(settlement.email);
-    
-    const emailData = {
-      from: "AirMates@airmedisphere.in",
-      to: [settlement.email],
-      subject: "Payment Request from AirMates",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #2563eb;">Payment Request from AirMates</h2>
-          <p>Hi ${settlement.name},</p>
-          <p>You have a pending payment request on AirMates.</p>
-          <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin: 0; color: #374151;">Amount Due: ₹${settlement.amount.toFixed(2)}</h3>
-          </div>
-          <p>Please settle this amount at your earliest convenience.</p>
-          <p>Best regards,<br/>AirMates Team</p>
-        </div>
-      `
-    };
-
-    try {
-      console.log('Sending email request to:', settlement.email);
-      
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer re_FP4rP9T5_Kb4CC9NEihP8GK6JushBooPL`
-        },
-        body: JSON.stringify(emailData)
-      });
-
-      const result = await response.json();
-      
-      if (response.ok) {
-        toast({
-          title: "Request Sent!",
-          description: `Payment request email sent successfully`,
-        });
-      } else {
-        toast({
-          title: "Failed to Send Request",
-          description: result.message || `Failed to send email. Please try again.`,
-          variant: "destructive",
-        });
+      if (paidByEmail && balanceMap.has(paidByEmail)) {
+        balanceMap.set(paidByEmail, (balanceMap.get(paidByEmail) || 0) + expense.amount);
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: `Failed to send email. Please try again.`,
-        variant: "destructive",
-      });
-    } finally {
-      setIsRequestLoading(null);
-    }
-  };
+    });
 
-  const deleteExpense = async (expenseId: string) => { // Changed parameter type to string
-    try {
-      // Use the deleteExpense function from useExpenses hook
-      await deleteExpenseFromDB(expenseId); // No need to convert to string anymore
+    // Calculate final balances (what each person owes/is owed)
+    const finalBalances: { name: string; email: string; balance: number }[] = [];
+    
+    balanceMap.forEach((amountPaid, email) => {
+      const balance = amountPaid - perPersonShare;
+      let name = email;
       
-      // Update local state as well for immediate UI feedback
-      const updatedExpenses = expenses.filter(expense => expense.id !== expenseId);
-      onExpenseUpdate(updatedExpenses);
+      if (email === currentUserEmail) {
+        name = 'You';
+      } else {
+        const roommate = roommates.find(r => r.email === email);
+        name = roommate?.name || email.split('@')[0];
+      }
+      
+      finalBalances.push({ name, email, balance });
+    });
+
+    return {
+      totalExpenses,
+      perPersonShare,
+      finalBalances
+    };
+  }, [expenses, roommates, user?.email]);
+
+  // Use useEffect with proper dependencies to avoid infinite loops
+  useEffect(() => {
+    if (settlements.length !== localSettlements.length) {
+      setLocalSettlements(settlements);
+    }
+  }, [settlements.length]); // Only depend on length to avoid infinite loops
+
+  const categoryData = expenses.reduce((acc, expense) => {
+    const existing = acc.find(item => item.name === expense.category);
+    if (existing) {
+      existing.value += expense.amount;
+    } else {
+      acc.push({ name: expense.category, value: expense.amount });
+    }
+    return acc;
+  }, [] as { name: string; value: number }[]);
+
+  const monthlyData = expenses.reduce((acc, expense) => {
+    const month = new Date(expense.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    const existing = acc.find(item => item.month === month);
+    if (existing) {
+      existing.amount += expense.amount;
+    } else {
+      acc.push({ month, amount: expense.amount });
+    }
+    return acc;
+  }, [] as { month: string; amount: number }[]);
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+
+  const handleDeleteExpense = async (expenseId: string) => {
+    try {
+      await deleteExpense(expenseId);
+      onExpenseUpdate();
     } catch (error) {
       console.error('Error deleting expense:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete expense. Please try again.",
-        variant: "destructive",
-      });
     }
   };
 
-  // Filter settlements to show only pending ones in the quick settlements section
-  const pendingSettlements = settlements.filter(s => s.status === "pending");
+  const createSettlement = (from: string, to: string, amount: number) => {
+    const newSettlement: Settlement = {
+      id: Math.random().toString(36).substr(2, 9),
+      amount: Math.abs(amount),
+      from,
+      to,
+      status: 'pending'
+    };
+    
+    const updatedSettlements = [...localSettlements, newSettlement];
+    setLocalSettlements(updatedSettlements);
+    onSettlementUpdate(updatedSettlements);
+  };
 
-  // Calculate totals
-  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const totalOwed = pendingSettlements.filter(s => s.type === "owed").reduce((sum, s) => sum + s.amount, 0);
-  const totalOwes = pendingSettlements.filter(s => s.type === "owes").reduce((sum, s) => sum + s.amount, 0);
+  if (expenses.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <DollarSign className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No expenses yet</h3>
+        <p className="text-gray-500">Start by adding your first expense to see insights here.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-800">Total Expenses</CardTitle>
-            <IndianRupee className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+            <IndianRupee className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-900">₹{totalExpenses}</div>
-            <p className="text-xs text-blue-600">This month</p>
+            <div className="text-2xl font-bold">₹{calculations.totalExpenses.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">
+              {expenses.length} expense{expenses.length !== 1 ? 's' : ''} recorded
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-800">You're Owed</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-sm font-medium">Per Person</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-900">₹{totalOwed.toFixed(2)}</div>
-            <p className="text-xs text-green-600">From roommates</p>
+            <div className="text-2xl font-bold">₹{calculations.perPersonShare.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">
+              Split among {roommates.length + 1} people
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-orange-800">You Owe</CardTitle>
-            <TrendingDown className="h-4 w-4 text-orange-600" />
+            <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-900">₹{totalOwes.toFixed(2)}</div>
-            <p className="text-xs text-orange-600">To roommates</p>
+            <div className="text-2xl font-bold">{expenses.length > 0 ? expenses[0].date : 'N/A'}</div>
+            <p className="text-xs text-muted-foreground">Last expense added</p>
           </CardContent>
         </Card>
       </div>
 
+      {/* Balances Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Current Balances</CardTitle>
+          <CardDescription>Who owes what to whom</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {calculations.finalBalances.map((person, index) => (
+            <div key={index} className="flex items-center justify-between p-4 rounded-lg bg-gray-50">
+              <div className="flex items-center space-x-3">
+                <div className="rounded-full bg-blue-100 p-2">
+                  <Users className="h-4 w-4 text-blue-600" />
+                </div>
+                <div>
+                  <p className="font-medium">{person.name}</p>
+                  <p className="text-sm text-muted-foreground">{person.email}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Badge variant={person.balance > 0 ? "default" : person.balance < 0 ? "destructive" : "secondary"}>
+                  {person.balance === 0 ? "Settled" : 
+                   person.balance > 0 ? `Gets ₹${person.balance.toFixed(2)}` : 
+                   `Owes ₹${Math.abs(person.balance).toFixed(2)}`}
+                </Badge>
+                {person.balance !== 0 && person.name !== 'You' && (
+                  <Button 
+                    size="sm" 
+                    onClick={() => {
+                      if (person.balance < 0) {
+                        // They owe you money
+                        createSettlement(person.name, 'You', Math.abs(person.balance));
+                      } else {
+                        // You owe them money
+                        createSettlement('You', person.name, person.balance);
+                      }
+                    }}
+                  >
+                    {person.balance < 0 ? 'Request' : 'Settle'}
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Expenses */}
+        {/* Category Breakdown */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Expenses</CardTitle>
-            <CardDescription>Latest shared expenses in your group</CardDescription>
+            <CardTitle>Expenses by Category</CardTitle>
+            <CardDescription>Breakdown of spending categories</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {expenses.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <IndianRupee className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No expenses yet</p>
-                <p className="text-sm">Add your first expense to get started</p>
-              </div>
+          <CardContent>
+            {categoryData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {categoryData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [`₹${value}`, 'Amount']} />
+                </PieChart>
+              </ResponsiveContainer>
             ) : (
-              expenses.map((expense) => (
-                <div key={expense.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex-1">
-                    <p className="font-medium">{expense.description}</p>
-                    <p className="text-sm text-muted-foreground">Paid by {expense.paidBy} • {expense.date}</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="text-right">
-                      <p className="font-semibold">₹{expense.amount}</p>
-                      <p className="text-xs text-muted-foreground">{expense.category}</p>
-                    </div>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Expense</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete "{expense.description}"? This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => deleteExpense(expense.id)}>
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-              ))
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No category data available
+              </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Quick Settlements */}
+        {/* Monthly Trend */}
         <Card>
           <CardHeader>
-            <CardTitle>Quick Settlements</CardTitle>
-            <CardDescription>Who owes money and to whom</CardDescription>
+            <CardTitle>Monthly Spending Trend</CardTitle>
+            <CardDescription>Track your spending over time</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {pendingSettlements.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No settlements needed</p>
-                <p className="text-sm">Add expenses to see settlement calculations</p>
-              </div>
+          <CardContent>
+            {monthlyData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => [`₹${value}`, 'Amount']} />
+                  <Legend />
+                  <Bar dataKey="amount" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
             ) : (
-              pendingSettlements.map((settlement, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-full p-2">
-                      <Users className="h-4 w-4 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-medium">
-                        {settlement.type === "owes" ? "You owe" : `${settlement.name} owes you`}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Payment needed
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <div className="text-right mr-2">
-                      <p className="font-semibold text-orange-600">
-                        ₹{settlement.amount.toFixed(2)}
-                      </p>
-                    </div>
-                    <div className="flex space-x-1">
-                      {settlement.type === "owes" && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleUPIPayment(settlement.upiId, settlement.amount)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                          Pay
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => sendEmailRequest(settlement)}
-                        disabled={isRequestLoading === settlement.email}
-                        className="min-w-[70px]"
-                      >
-                        {isRequestLoading === settlement.email ? (
-                          <div className="flex items-center space-x-1">
-                            <div className="w-3 h-3 border border-gray-400 border-t-blue-600 rounded-full animate-spin"></div>
-                          </div>
-                        ) : (
-                          <>
-                            <Mail className="h-3 w-3 mr-1" />
-                            Request
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => markAsPaid(settlement)}
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        <Check className="h-3 w-3 mr-1" />
-                        Mark Paid
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No monthly data available
+              </div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Recent Expenses */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Expenses</CardTitle>
+          <CardDescription>Your latest spending activity</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {expenses.slice(0, 5).map((expense) => (
+              <div key={expense.id} className="flex items-center justify-between p-4 rounded-lg border">
+                <div className="flex items-center space-x-4">
+                  <div className="rounded-full bg-blue-100 p-2">
+                    <DollarSign className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{expense.description}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Paid by {expense.paidBy} • {expense.date} • {expense.category}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <span className="font-semibold">₹{expense.amount}</span>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Expense</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete "{expense.description}"? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDeleteExpense(expense.id)}>
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
