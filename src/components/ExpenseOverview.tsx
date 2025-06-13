@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,38 +51,46 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
     if (expenses.length === 0 || roommates.length === 0) return [];
 
     const currentUserName = profile?.name || user?.email?.split('@')[0] || 'You';
-    const allPeople = [currentUserName, ...roommates.map(r => r.name)];
+    const currentUserEmail = user?.email || '';
+    
+    // Create a comprehensive list of all people including current user and all roommates
+    const allPeople = [
+      { name: currentUserName, email: currentUserEmail, upiId: profile?.upi_id || '' },
+      ...roommates.map(r => ({ name: r.name, email: r.email, upiId: r.upi_id }))
+    ];
+    
     const calculatedSettlements: Settlement[] = [];
 
     expenses.forEach(expense => {
       const totalPeople = allPeople.length;
       const sharePerPerson = expense.amount / totalPeople;
       
+      // Find the person who paid
+      const payer = allPeople.find(person => person.name === expense.paidBy);
+      
       // Everyone except the payer owes money to the payer
       allPeople.forEach(person => {
-        if (person !== expense.paidBy) {
-          const owedToPerson = roommates.find(r => r.name === expense.paidBy);
-          
+        if (person.name !== expense.paidBy) {
           if (expense.paidBy === currentUserName) {
             // Roommate owes money to current user
             calculatedSettlements.push({
-              id: `${person}-to-you-${expense.id}`,
-              name: person,
+              id: `${person.name}-to-you-${expense.id}`,
+              name: person.name,
               amount: sharePerPerson,
               type: "owed",
-              upiId: profile?.upi_id || "",
-              email: user?.email || "",
+              upiId: currentUserEmail,
+              email: person.email,
               status: "pending"
             });
-          } else if (person === currentUserName) {
-            // Current user owes money to roommate
+          } else if (person.name === currentUserName) {
+            // Current user owes money to roommate (payer)
             calculatedSettlements.push({
               id: `you-to-${expense.paidBy}-${expense.id}`,
               name: "You",
               amount: sharePerPerson,
               type: "owes",
-              upiId: owedToPerson?.upi_id || "",
-              email: owedToPerson?.email || "",
+              upiId: payer?.upiId || "",
+              email: payer?.email || "",
               status: "pending"
             });
           }
@@ -98,7 +107,7 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
     const existingSettledSettlements = settlements.filter(s => s.status === "settled");
     const allSettlements = [...newCalculatedSettlements, ...existingSettledSettlements];
     onSettlementUpdate(allSettlements);
-  }, [expenses, roommates]);
+  }, [expenses, roommates, profile, user]);
 
   const handleUPIPayment = (upiId: string, amount: number) => {
     const paymentUrl = `https://quantxpay.vercel.app/${upiId}/${amount}`;
