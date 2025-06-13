@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -60,9 +59,9 @@ const Index = () => {
     );
   }
 
-  // Convert expenses format for compatibility
+  // Convert expenses format for compatibility - keep UUID as string
   const formattedExpenses = expenses.map(expense => ({
-    id: parseInt(expense.id) || 1,
+    id: expense.id, // Keep as UUID string, don't convert to number
     description: expense.description,
     amount: expense.amount,
     paidBy: expense.paid_by,

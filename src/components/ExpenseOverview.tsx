@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useExpenses } from "@/hooks/useExpenses";
 
 interface Expense {
-  id: number;
+  id: string; // Changed from number to string to handle UUIDs
   description: string;
   amount: number;
   paidBy: string;
@@ -178,10 +178,10 @@ export const ExpenseOverview = ({ onAddExpense, expenses, onExpenseUpdate, settl
     }
   };
 
-  const deleteExpense = async (expenseId: number) => {
+  const deleteExpense = async (expenseId: string) => { // Changed parameter type to string
     try {
       // Use the deleteExpense function from useExpenses hook
-      await deleteExpenseFromDB(expenseId.toString());
+      await deleteExpenseFromDB(expenseId); // No need to convert to string anymore
       
       // Update local state as well for immediate UI feedback
       const updatedExpenses = expenses.filter(expense => expense.id !== expenseId);
