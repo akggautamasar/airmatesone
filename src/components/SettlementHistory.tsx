@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,8 +13,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Settlement } from '@/types';
+export type { Settlement } from '@/types';
 import { SettlementItem } from './settlement/SettlementItem';
+import { Settlement } from '@/types';
 
 export interface SettlementHistoryProps {
   settlements: Settlement[];
