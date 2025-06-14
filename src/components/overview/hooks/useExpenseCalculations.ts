@@ -64,7 +64,10 @@ export const useExpenseCalculations = ({
 
   const allParticipantNames = useMemo(() => {
     const names = new Set<string>([currentUserDisplayName]);
+    // Always include all roommates
     roommates.forEach(r => names.add(r.name));
+    
+    // Add any additional participants from expenses who aren't already roommates
     if (expenses.length > 0) {
         expenses.forEach(e => {
             const payerDisplayName = e.paidBy === user?.email?.split('@')[0] || e.paidBy === profile?.name ? currentUserDisplayName : e.paidBy;
@@ -80,84 +83,90 @@ export const useExpenseCalculations = ({
 
   const calculations = useMemo(() => {
     const totalExpensesValue = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-    let finalBalancesArray: { name: string; balance: number }[] = [];
+    
+    // Initialize balance map for ALL participants (including roommates who haven't paid anything)
+    const balanceMap = new Map<string, number>();
+    allParticipantNames.forEach(name => balanceMap.set(name, 0));
 
-    if (expenses.length === 0) {
-        finalBalancesArray = allParticipantNames.map(name => ({ name, balance: 0 }));
-    } else {
-        const balanceMap = new Map<string, number>();
-        allParticipantNames.forEach(name => balanceMap.set(name, 0));
+    // Calculate expenses - what each person paid and owes
+    expenses.forEach(expense => {
+        const payerName = expense.paidBy === user?.email?.split('@')[0] || expense.paidBy === profile?.name ? currentUserDisplayName : expense.paidBy;
+        
+        // Add to what they paid (credit)
+        if (balanceMap.has(payerName)) {
+             balanceMap.set(payerName, (balanceMap.get(payerName) || 0) + expense.amount);
+        } else if (allParticipantNames.includes(payerName)) {
+             balanceMap.set(payerName, expense.amount);
+        }
 
-        expenses.forEach(expense => {
-            const payerName = expense.paidBy === user?.email?.split('@')[0] || expense.paidBy === profile?.name ? currentUserDisplayName : expense.paidBy;
-            if (balanceMap.has(payerName)) {
-                 balanceMap.set(payerName, (balanceMap.get(payerName) || 0) + expense.amount);
-            } else if (allParticipantNames.includes(payerName)) {
-                 balanceMap.set(payerName, expense.amount);
-            }
+        // Calculate what each person owes for this expense (debit)
+        const effectiveSharers = expense.sharers && expense.sharers.length > 0
+          ? expense.sharers.map(s => s === user?.email?.split('@')[0] || s === profile?.name ? currentUserDisplayName : s)
+          : allParticipantNames;
 
-            const effectiveSharers = expense.sharers && expense.sharers.length > 0
-              ? expense.sharers.map(s => s === user?.email?.split('@')[0] || s === profile?.name ? currentUserDisplayName : s)
-              : allParticipantNames;
+        const numSharers = effectiveSharers.length;
 
-            const numSharers = effectiveSharers.length;
+        if (numSharers > 0) {
+          const amountPerSharer = expense.amount / numSharers;
+          effectiveSharers.forEach(sharerName => {
+             if (balanceMap.has(sharerName)) {
+                balanceMap.set(sharerName, (balanceMap.get(sharerName) || 0) - amountPerSharer);
+             } else if (allParticipantNames.includes(sharerName)) {
+                balanceMap.set(sharerName, -amountPerSharer);
+             }
+          });
+        }
+    });
 
-            if (numSharers > 0) {
-              const amountPerSharer = expense.amount / numSharers;
-              effectiveSharers.forEach(sharerName => {
-                 if (balanceMap.has(sharerName)) {
-                    balanceMap.set(sharerName, (balanceMap.get(sharerName) || 0) - amountPerSharer);
-                 } else if (allParticipantNames.includes(sharerName)) {
-                    balanceMap.set(sharerName, -amountPerSharer);
-                 }
-              });
-            }
-        });
+    // Apply settled settlements to adjust balances
+    settlements.forEach(settlement => {
+        if (settlement.status === 'settled') {
+          let debtorName: string | undefined;
+          let creditorName: string | undefined;
+          const settlementOwnerIsCurrentUser = settlement.user_id === currentUserId;
 
-        settlements.forEach(settlement => {
-            if (settlement.status === 'settled') {
-              let debtorName: string | undefined;
-              let creditorName: string | undefined;
-              const settlementOwnerIsCurrentUser = settlement.user_id === currentUserId;
-
-              if (settlementOwnerIsCurrentUser) {
-                  if (settlement.type === 'owes') {
-                      debtorName = currentUserDisplayName;
-                      creditorName = settlement.name;
-                  } else {
-                      debtorName = settlement.name;
-                      creditorName = currentUserDisplayName;
-                  }
+          if (settlementOwnerIsCurrentUser) {
+              if (settlement.type === 'owes') {
+                  debtorName = currentUserDisplayName;
+                  creditorName = settlement.name;
               } else {
-                  const ownerProfile = roommates.find(r => r.user_id === settlement.user_id);
-                  const ownerDisplayName = ownerProfile?.name || `User ${settlement.user_id.substring(0,5)}`;
-                  if (settlement.type === 'owes') {
-                      debtorName = ownerDisplayName;
-                      creditorName = (settlement.name === user?.email || settlement.name === profile?.name) ? currentUserDisplayName : settlement.name;
-                  } else {
-                      debtorName = (settlement.name === user?.email || settlement.name === profile?.name) ? currentUserDisplayName : settlement.name;
-                      creditorName = ownerDisplayName;
-                  }
+                  debtorName = settlement.name;
+                  creditorName = currentUserDisplayName;
               }
-              
-              if (debtorName && allParticipantNames.includes(debtorName) && balanceMap.has(debtorName)) {
-                  balanceMap.set(debtorName, (balanceMap.get(debtorName) || 0) + settlement.amount);
+          } else {
+              const ownerProfile = roommates.find(r => r.user_id === settlement.user_id);
+              const ownerDisplayName = ownerProfile?.name || `User ${settlement.user_id.substring(0,5)}`;
+              if (settlement.type === 'owes') {
+                  debtorName = ownerDisplayName;
+                  creditorName = (settlement.name === user?.email || settlement.name === profile?.name) ? currentUserDisplayName : settlement.name;
+              } else {
+                  debtorName = (settlement.name === user?.email || settlement.name === profile?.name) ? currentUserDisplayName : settlement.name;
+                  creditorName = ownerDisplayName;
               }
-              if (creditorName && allParticipantNames.includes(creditorName) && balanceMap.has(creditorName)) {
-                  balanceMap.set(creditorName, (balanceMap.get(creditorName) || 0) - settlement.amount);
-              }
-            }
-        });
+          }
+          
+          // Apply settlement: debtor gets positive adjustment (reduces their debt), creditor gets negative (reduces what they're owed)
+          if (debtorName && allParticipantNames.includes(debtorName) && balanceMap.has(debtorName)) {
+              balanceMap.set(debtorName, (balanceMap.get(debtorName) || 0) + settlement.amount);
+          }
+          if (creditorName && allParticipantNames.includes(creditorName) && balanceMap.has(creditorName)) {
+              balanceMap.set(creditorName, (balanceMap.get(creditorName) || 0) - settlement.amount);
+          }
+        }
+    });
 
-        allParticipantNames.forEach(name => {
-            if (balanceMap.has(name)) {
-                 finalBalancesArray.push({ name, balance: parseFloat(balanceMap.get(name)!.toFixed(2)) });
-            } else {
-                 finalBalancesArray.push({ name, balance: 0 });
-            }
-        });
-        finalBalancesArray.sort((a, b) => allParticipantNames.indexOf(a.name) - allParticipantNames.indexOf(b.name));
-    }
+    // Convert to final balances array
+    const finalBalancesArray: { name: string; balance: number }[] = [];
+    allParticipantNames.forEach(name => {
+        if (balanceMap.has(name)) {
+             finalBalancesArray.push({ name, balance: parseFloat(balanceMap.get(name)!.toFixed(2)) });
+        } else {
+             finalBalancesArray.push({ name, balance: 0 });
+        }
+    });
+    
+    // Sort to maintain consistent order
+    finalBalancesArray.sort((a, b) => allParticipantNames.indexOf(a.name) - allParticipantNames.indexOf(b.name));
 
     return {
       totalExpenses: totalExpensesValue,
