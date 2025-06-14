@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Calendar, Users, Trash2, IndianRupee } from "lucide-react";
+import { TrendingUp, TrendingDown, Calendar, Users, Trash2, IndianRupee } from "lucide-react";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useRoommates } from "@/hooks/useRoommates";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,7 +13,7 @@ interface Expense {
   id: string;
   description: string;
   amount: number;
-  paidBy: string;
+  paidBy: string; // This should ideally be paid_by to match useExpenses hook if it's coming from there
   date: string;
   category: string;
 }
@@ -57,7 +56,7 @@ export const ExpenseOverview = ({ expenses, onExpenseUpdate, settlements, onSett
 
     // Calculate who paid what
     const totalPeople = roommates.length + 1; // +1 for current user
-    const perPersonShare = totalExpenses / totalPeople;
+    const perPersonShare = totalExpenses > 0 && totalPeople > 0 ? totalExpenses / totalPeople : 0;
 
     expenses.forEach(expense => {
       // Find who paid this expense
@@ -150,7 +149,7 @@ export const ExpenseOverview = ({ expenses, onExpenseUpdate, settlements, onSett
   if (expenses.length === 0) {
     return (
       <div className="text-center py-12">
-        <DollarSign className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+        <IndianRupee className="h-16 w-16 mx-auto text-gray-400 mb-4" />
         <h3 className="text-lg font-medium text-gray-900 mb-2">No expenses yet</h3>
         <p className="text-gray-500">Start by adding your first expense to see insights here.</p>
       </div>
@@ -193,7 +192,7 @@ export const ExpenseOverview = ({ expenses, onExpenseUpdate, settlements, onSett
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{expenses.length > 0 ? expenses[0].date : 'N/A'}</div>
+            <div className="text-2xl font-bold">{expenses.length > 0 ? new Date(expenses[0].date).toLocaleDateString() : 'N/A'}</div>
             <p className="text-xs text-muted-foreground">Last expense added</p>
           </CardContent>
         </Card>
@@ -271,7 +270,7 @@ export const ExpenseOverview = ({ expenses, onExpenseUpdate, settlements, onSett
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => [`₹${value}`, 'Amount']} />
+                  <Tooltip formatter={(value) => [`₹${value.toLocaleString('en-IN')}`, 'Amount']} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -294,8 +293,8 @@ export const ExpenseOverview = ({ expenses, onExpenseUpdate, settlements, onSett
                 <BarChart data={monthlyData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => [`₹${value}`, 'Amount']} />
+                  <YAxis tickFormatter={(value) => `₹${value.toLocaleString('en-IN')}`} />
+                  <Tooltip formatter={(value) => [`₹${Number(value).toLocaleString('en-IN')}`, 'Amount']} />
                   <Legend />
                   <Bar dataKey="amount" fill="#8884d8" />
                 </BarChart>
@@ -321,17 +320,17 @@ export const ExpenseOverview = ({ expenses, onExpenseUpdate, settlements, onSett
               <div key={expense.id} className="flex items-center justify-between p-4 rounded-lg border">
                 <div className="flex items-center space-x-4">
                   <div className="rounded-full bg-blue-100 p-2">
-                    <DollarSign className="h-4 w-4 text-blue-600" />
+                    <IndianRupee className="h-4 w-4 text-blue-600" />
                   </div>
                   <div>
                     <p className="font-medium">{expense.description}</p>
                     <p className="text-sm text-muted-foreground">
-                      Paid by {expense.paidBy} • {expense.date} • {expense.category}
+                      Paid by {expense.paidBy} • {new Date(expense.date).toLocaleDateString()} • {expense.category}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <span className="font-semibold">₹{expense.amount}</span>
+                  <span className="font-semibold">₹{expense.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="outline" size="sm">
