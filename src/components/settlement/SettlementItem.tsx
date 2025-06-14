@@ -58,6 +58,16 @@ export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDel
 
     console.log(`[SettlementItem] Rendering: ${settlement.id}, type: ${settlement.type}, status: ${settlement.status}, actionText: ${actionButtonText}`);
 
+    const handleStatusUpdate = (newStatus: "pending" | "debtor_paid" | "settled") => {
+        if (!settlement.transaction_group_id) {
+            console.error('[SettlementItem] Cannot update status: missing transaction_group_id');
+            return;
+        }
+        
+        console.log(`[SettlementItem] Updating status from ${settlement.status} to ${newStatus} for group ${settlement.transaction_group_id}`);
+        onUpdateStatus(settlement.transaction_group_id, newStatus);
+    };
+
     return (
       <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-${color}-50 rounded-lg border border-${color}-200 space-y-2 sm:space-y-0`}>
         <div className="flex items-center space-x-3">
@@ -104,15 +114,15 @@ export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDel
                         if (settlement.type === 'owes' && settlement.status === 'pending') {
                             // Debtor marking as paid - set to debtor_paid status
                             console.log(`[SettlementItem] Debtor marking as paid, setting to debtor_paid`);
-                            onUpdateStatus(settlement.transaction_group_id!, 'debtor_paid'); 
+                            handleStatusUpdate('debtor_paid'); 
                         } else if (settlement.type === 'owed' && settlement.status === 'pending') {
                             // Creditor marking as received - directly settle
                             console.log(`[SettlementItem] Creditor marking as received, settling directly`);
-                            onUpdateStatus(settlement.transaction_group_id!, 'settled');
+                            handleStatusUpdate('settled');
                         } else if (settlement.type === 'owed' && settlement.status === 'debtor_paid') {
                             // Creditor confirming payment received
                             console.log(`[SettlementItem] Creditor confirming receipt, settling`);
-                            onUpdateStatus(settlement.transaction_group_id!, 'settled');
+                            handleStatusUpdate('settled');
                         }
                     }}
                     className={`bg-white hover:bg-gray-50 border-green-400 text-green-600 hover:text-green-700 w-full sm:w-auto`}
@@ -132,7 +142,7 @@ export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDel
                     size="sm"
                     onClick={() => {
                         console.log(`[SettlementItem] Manual payment button clicked`);
-                        onUpdateStatus(settlement.transaction_group_id!, 'debtor_paid');
+                        handleStatusUpdate('debtor_paid');
                     }}
                     className="bg-white hover:bg-gray-50 border-green-400 text-green-600 hover:text-green-700 w-full sm:w-auto"
                   >

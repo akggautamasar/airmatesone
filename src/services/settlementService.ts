@@ -2,7 +2,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
-import { Settlement } from '@/components/SettlementHistory'; // Assuming Settlement type is here
+import { Settlement } from '@/types';
 import { mapSupabaseToSettlement } from '@/utils/settlementUtils';
 
 interface UserDetails {
@@ -131,6 +131,12 @@ export const updateSettlementStatusInSupabase = async (
   userIdMakingUpdate: string // For logging/context
 ): Promise<Tables<'settlements'>[] | null> => {
   console.log(`[settlementService] User ${userIdMakingUpdate} initiating update for transaction_group_id: ${transaction_group_id} to newStatus: ${newStatus}`);
+  
+  // Validate status before sending to database
+  if (!['pending', 'debtor_paid', 'settled'].includes(newStatus)) {
+    console.error(`[settlementService] Invalid status value: ${newStatus}`);
+    throw new Error(`Invalid status value: ${newStatus}. Must be one of: pending, debtor_paid, settled`);
+  }
   
   const updatePayloadForDb: TablesUpdate<'settlements'> = {
     status: newStatus,
