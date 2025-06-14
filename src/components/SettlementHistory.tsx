@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button"; // Added Button import
-import { Clock, Check, ExternalLink } from "lucide-react"; // Added ExternalLink
+import { Button } from "@/components/ui/button";
+import { Clock, Check, CreditCard, BadgeCheck } from "lucide-react";
 
 interface Settlement {
   id: string;
@@ -18,20 +17,30 @@ interface Settlement {
 
 interface SettlementHistoryProps {
   settlements: Settlement[];
+  // We might need a function prop here later to actually mark as paid
+  // onMarkAsPaid: (settlementId: string) => void; 
 }
 
 const SettlementHistory = ({ settlements }: SettlementHistoryProps) => {
   const pendingSettlements = settlements.filter(s => s.status === "pending");
   const settledSettlements = settlements.filter(s => s.status === "settled");
 
-  const handleSettleClick = (upiId: string, amount: number) => {
+  const handlePayClick = (upiId: string, amount: number) => {
     if (!upiId || amount <= 0) {
-      console.error("Invalid UPI ID or amount for settlement.");
+      console.error("Invalid UPI ID or amount for payment.");
       // Optionally, show a toast message to the user
       return;
     }
+    // Ensure the URL format is https://quantxpay.vercel.app/<your-upi-id>/<amount>
     const paymentUrl = `https://quantxpay.vercel.app/${upiId}/${amount.toFixed(2)}`;
     window.open(paymentUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleMarkAsPaidClick = (settlementId: string) => {
+    console.log(`Marking settlement ${settlementId} as paid.`);
+    // Here you would typically call a function to update the settlement status in your backend
+    // For example: onMarkAsPaid(settlementId);
+    // alert(`Marking settlement ${settlementId} as paid. (Placeholder action)`);
   };
 
   return (
@@ -75,20 +84,42 @@ const SettlementHistory = ({ settlements }: SettlementHistoryProps) => {
                   <div className="flex flex-col items-end space-y-1 self-end sm:self-center">
                     <p className="font-semibold text-orange-600">₹{settlement.amount.toFixed(2)}</p>
                     {settlement.type === "owes" && settlement.upiId && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleSettleClick(settlement.upiId, settlement.amount)}
-                        className="bg-white hover:bg-gray-50 border-orange-300 text-orange-600 hover:text-orange-700"
-                      >
-                        Settle via UPI
-                        <ExternalLink className="ml-2 h-3 w-3" />
-                      </Button>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 mt-1 w-full sm:w-auto justify-end">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handlePayClick(settlement.upiId, settlement.amount)}
+                          className="bg-white hover:bg-gray-50 border-orange-300 text-orange-600 hover:text-orange-700 w-full sm:w-auto"
+                        >
+                          Pay
+                          <CreditCard className="ml-2 h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleMarkAsPaidClick(settlement.id)}
+                          className="bg-white hover:bg-gray-50 border-green-400 text-green-600 hover:text-green-700 w-full sm:w-auto"
+                        >
+                          Mark as Paid
+                          <BadgeCheck className="ml-2 h-3 w-3" />
+                        </Button>
+                      </div>
                     )}
                     {settlement.type === "owes" && !settlement.upiId && (
-                       <p className="text-xs text-muted-foreground">UPI ID not available</p>
+                       <p className="text-xs text-muted-foreground">UPI ID not available for direct payment</p>
                     )}
-                     <p className="text-xs text-orange-500">Pending</p>
+                     {!settlement.upiId && settlement.type === "owes" && ( /* Show Mark as Paid even if no UPI for manual settlement */
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleMarkAsPaidClick(settlement.id)}
+                          className="bg-white hover:bg-gray-50 border-green-400 text-green-600 hover:text-green-700 w-full sm:w-auto mt-1"
+                        >
+                          Mark as Paid
+                          <BadgeCheck className="ml-2 h-3 w-3" />
+                        </Button>
+                     )}
+                     <p className="text-xs text-orange-500 mt-1">Pending</p>
                   </div>
                 </div>
               ))
@@ -133,4 +164,3 @@ const SettlementHistory = ({ settlements }: SettlementHistoryProps) => {
 };
 
 export { SettlementHistory };
-
