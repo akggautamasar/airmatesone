@@ -116,11 +116,11 @@ export const useSettlements = () => {
         
         if (otherUserId) {
             const otherPartySettlementEntryForDb = {
-                user_id: otherUserId,
-                name: currentUserInvolves.name,
-                email: user.email || '', 
-                upi_id: otherPartyInvolves.type === 'owes' ? currentUserInvolves.upi_id : otherPartyInvolves.upi_id,
-                type: otherPartyInvolves.type,
+                user_id: otherUserId, // This is the crucial part for the other user's record
+                name: currentUserInvolves.name, // Name of the person they are settling with (current user)
+                email: user.email || '',  // Email of the person they are settling with (current user)
+                upi_id: otherPartyInvolves.type === 'owes' ? currentUserInvolves.upi_id : otherPartyInvolves.upi_id, // UPI ID for their perspective
+                type: otherPartyInvolves.type, // Their perspective of the transaction ('owes' or 'owed')
                 amount,
                 status: 'pending' as const,
                 transaction_group_id: transactionGroupId,
@@ -130,10 +130,11 @@ export const useSettlements = () => {
                 .insert(otherPartySettlementEntryForDb);
             if (otherUserError) {
                  console.error("Failed to create settlement record for other party:", otherUserError);
+                 // Potentially toast an error here, but don't block the current user's settlement
             }
         }
 
-      await fetchSettlements();
+      await fetchSettlements(); // Refetch all settlements for the current user
       toast({ title: "Settlement Initiated", description: "The settlement has been recorded." });
       
       // Map the returned Supabase row to the frontend Settlement type
@@ -160,13 +161,17 @@ export const useSettlements = () => {
       const { error } = await supabase
         .from('settlements')
         .update(updatePayloadForDb)
-        .eq('transaction_group_id', transaction_group_id);
+        .eq('transaction_group_id', transaction_group_id); // This updates ALL records with this group ID
 
       if (error) {
         console.error('Error updating settlement status by group:', error);
-        throw error;
+        throw error; // Re-throw to be caught by the caller or the catch block below
       }
       
+      // Important: After updating, both users' local state (if they are online) should reflect this.
+      // `fetchSettlements()` only updates for the current user.
+      // For real-time updates for the other user, Supabase Realtime would be needed.
+      // For now, this ensures the current user sees the update.
       await fetchSettlements(); 
       toast({ title: "Settlement Updated", description: `Settlement status changed to ${newStatus}.` });
     } catch (error: any) {
