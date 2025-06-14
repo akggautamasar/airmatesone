@@ -33,12 +33,12 @@ const getStatusText = (status: Settlement['status'], type: Settlement['type'], n
 };
 
 const getActionText = (status: Settlement['status'], type: Settlement['type']) => {
-    if (type === 'owes') { // Current user owes money
-      if (status === 'pending') return "Mark as Paid & Finalize"; 
+    if (type === 'owes') { // Current user owes money (debtor)
+      if (status === 'pending') return "Mark as Paid"; 
       if (status === 'debtor_paid') return "Awaiting Confirmation"; 
-    } else { // Current user is owed money
-      if (status === 'pending') return "Payment Received"; 
-      if (status === 'debtor_paid') return "Confirm & Settle"; 
+    } else { // Current user is owed money (creditor)
+      if (status === 'pending') return "Mark as Received"; 
+      if (status === 'debtor_paid') return "Confirm Receipt"; 
     }
     return null;
 };
@@ -56,7 +56,7 @@ export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDel
     const color = getStatusColor(settlement.status);
     const actionButtonText = getActionText(settlement.status, settlement.type);
 
-    console.log(`SettlementItem rendering: ${settlement.id}, type: ${settlement.type}, status: ${settlement.status}, actionText: ${actionButtonText}`);
+    console.log(`[SettlementItem] Rendering: ${settlement.id}, type: ${settlement.type}, status: ${settlement.status}, actionText: ${actionButtonText}`);
 
     return (
       <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-${color}-50 rounded-lg border border-${color}-200 space-y-2 sm:space-y-0`}>
@@ -81,7 +81,7 @@ export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDel
           <p className={`font-semibold text-${color}-600`}>₹{settlement.amount.toFixed(2)}</p>
           
           <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 mt-1 w-full sm:w-auto justify-end">
-            {/* UPI Payment button for debtors */}
+            {/* UPI Payment button for debtors (those who owe money) */}
             {isPendingTab && settlement.type === "owes" && settlement.status === "pending" && settlement.upiId && (
                 <Button 
                     variant="outline" 
@@ -100,15 +100,18 @@ export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDel
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                        console.log(`Action button clicked for settlement ${settlement.id}: type=${settlement.type}, status=${settlement.status}`);
+                        console.log(`[SettlementItem] Action button clicked: type=${settlement.type}, status=${settlement.status}`);
                         if (settlement.type === 'owes' && settlement.status === 'pending') {
-                            // Debtor marking as paid - directly settle
-                            onUpdateStatus(settlement.transaction_group_id!, 'settled'); 
+                            // Debtor marking as paid - set to debtor_paid status
+                            console.log(`[SettlementItem] Debtor marking as paid, setting to debtor_paid`);
+                            onUpdateStatus(settlement.transaction_group_id!, 'debtor_paid'); 
+                        } else if (settlement.type === 'owed' && settlement.status === 'pending') {
+                            // Creditor marking as received - directly settle
+                            console.log(`[SettlementItem] Creditor marking as received, settling directly`);
+                            onUpdateStatus(settlement.transaction_group_id!, 'settled');
                         } else if (settlement.type === 'owed' && settlement.status === 'debtor_paid') {
                             // Creditor confirming payment received
-                            onUpdateStatus(settlement.transaction_group_id!, 'settled');
-                        } else if (settlement.type === 'owed' && settlement.status === 'pending') {
-                            // Creditor marking as payment received - directly settle
+                            console.log(`[SettlementItem] Creditor confirming receipt, settling`);
                             onUpdateStatus(settlement.transaction_group_id!, 'settled');
                         }
                     }}
@@ -116,9 +119,9 @@ export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDel
                     disabled={actionButtonText === "Awaiting Confirmation"}
                 >
                     {actionButtonText}
-                    {actionButtonText === "Mark as Paid & Finalize" && <UserCheck className="ml-2 h-3 w-3" />} 
-                    {actionButtonText === "Confirm & Settle" && <CheckCircle className="ml-2 h-3 w-3" />}
-                    {actionButtonText === "Payment Received" && <CheckCircle className="ml-2 h-3 w-3" />}
+                    {actionButtonText === "Mark as Paid" && <UserCheck className="ml-2 h-3 w-3" />} 
+                    {actionButtonText === "Mark as Received" && <CheckCircle className="ml-2 h-3 w-3" />}
+                    {actionButtonText === "Confirm Receipt" && <CheckCircle className="ml-2 h-3 w-3" />}
                 </Button>
             )}
 
@@ -127,10 +130,13 @@ export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDel
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onUpdateStatus(settlement.transaction_group_id!, 'settled')} 
+                    onClick={() => {
+                        console.log(`[SettlementItem] Manual payment button clicked`);
+                        onUpdateStatus(settlement.transaction_group_id!, 'debtor_paid');
+                    }}
                     className="bg-white hover:bg-gray-50 border-green-400 text-green-600 hover:text-green-700 w-full sm:w-auto"
                   >
-                    Mark as Paid & Finalize (Manual) 
+                    Mark as Paid (Manual) 
                     <UserCheck className="ml-2 h-3 w-3" />
                 </Button>
             )}

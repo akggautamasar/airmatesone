@@ -51,7 +51,7 @@ export const useSettlements = () => {
       toast({ title: "Error", description: "You must be logged in.", variant: "destructive" });
       return null;
     }
-    console.log(`[useSettlements] User ${user.id} initiating addSettlementPair.`);
+    console.log(`[useSettlements] User ${user.id} initiating addSettlementPair. CurrentUser type: ${currentUserInvolves.type}`);
     try {
       const newSettlement = await addSettlementPairToSupabase(
         supabase,
@@ -64,22 +64,17 @@ export const useSettlements = () => {
       await fetchSettlements(); // Refetch to update local state
       
       if (newSettlement) {
-        if (newSettlement.status === 'settled') {
-          if (newSettlement.type === 'owed') { // Current user is the creditor
-            toast({ 
-              title: "Payment Received", 
-              description: `You have recorded a received payment from ${newSettlement.name}. They will be notified.` 
-            });
-          } else { // Current user is the debtor
-            toast({ title: "Payment Recorded", description: `Your payment to ${newSettlement.name} has been recorded.` });
-          }
-        } else if (newSettlement.status === 'debtor_paid') {
-          toast({ title: "Payment Marked as Paid", description: `Your payment to ${newSettlement.name} has been marked. They will be notified to confirm.` });
+        if (newSettlement.type === 'owes') {
+          toast({ 
+            title: "Settlement Created", 
+            description: `You owe ₹${newSettlement.amount.toFixed(2)} to ${newSettlement.name}` 
+          });
         } else {
-          toast({ title: "Settlement Recorded", description: "A new settlement has been recorded." });
+          toast({ 
+            title: "Settlement Created", 
+            description: `${newSettlement.name} owes you ₹${newSettlement.amount.toFixed(2)}` 
+          });
         }
-      } else {
-        toast({ title: "Settlement Recorded", description: "The settlement has been recorded." });
       }
 
       return newSettlement;
@@ -110,20 +105,16 @@ export const useSettlements = () => {
       console.log(`[useSettlements] Calling fetchSettlements() for user ${user.id} after update of transaction_group_id ${transaction_group_id}.`);
       await fetchSettlements(); // Refetch settlements for the current user to update local state
       
-      if (newStatus === 'settled' && updatedRecords && updatedRecords.length > 0) {
-        const userSettlement = updatedRecords.find(r => r.user_id === user.id);
-        if (userSettlement) {
-          if (userSettlement.type === 'owed') { // Current user is creditor
-            toast({ 
-              title: "Payment Received", 
-              description: `You have recorded a received payment from ${userSettlement.name}. They will be notified.` 
-            });
-          } else { // Current user is debtor
-            toast({ title: "Settlement Confirmed", description: `Your payment to ${userSettlement.name} has been confirmed.` });
-          }
-        } else {
-          toast({ title: "Settlement Settled", description: "The transaction is now marked as settled." });
-        }
+      if (newStatus === 'settled') {
+        toast({ 
+          title: "Settlement Completed", 
+          description: "The settlement has been marked as completed." 
+        });
+      } else if (newStatus === 'debtor_paid') {
+        toast({ 
+          title: "Payment Marked", 
+          description: "Payment has been marked as sent. Awaiting confirmation from the creditor." 
+        });
       } else {
         toast({ title: "Settlement Updated", description: `The settlement status has been changed to ${newStatus}.` });
       }

@@ -102,9 +102,13 @@ const Index = () => {
 
     const amountPerSharer = expense.amount / effectiveSharers.length;
 
-    // Create settlements for each sharer who didn't pay
+    console.log(`[Index] Creating settlements for expense: payer=${payerName}, sharers=${effectiveSharers.join(',')}, amountPerSharer=${amountPerSharer}`);
+
+    // Create settlements for each sharer who didn't pay (debtors)
     for (const sharerName of effectiveSharers) {
       if (sharerName !== payerName) {
+        console.log(`[Index] Creating settlement: ${sharerName} owes ${payerName} ₹${amountPerSharer}`);
+        
         // Find the details for both parties
         const debtorDetails = sharerName === currentUserDisplayName 
           ? { name: currentUserDisplayName, email: user?.email || '', upi_id: profile?.upi_id || '' }
@@ -115,21 +119,28 @@ const Index = () => {
           : roommates.find(r => r.name === payerName);
 
         if (debtorDetails && creditorDetails) {
+          console.log(`[Index] Found details - Debtor: ${debtorDetails.name} (${debtorDetails.email}), Creditor: ${creditorDetails.name} (${creditorDetails.email})`);
+          
+          // Always create settlement from current user's perspective
           if (sharerName === currentUserDisplayName) {
-            // Current user owes money
+            // Current user is the debtor - they owe money
+            console.log(`[Index] Current user is debtor, creating 'owes' settlement`);
             await addSettlementPair(
               { ...debtorDetails, type: 'owes' as const },
               { ...creditorDetails, type: 'owed' as const },
               amountPerSharer
             );
           } else if (payerName === currentUserDisplayName) {
-            // Current user is owed money
+            // Current user is the creditor - they are owed money
+            console.log(`[Index] Current user is creditor, creating 'owed' settlement`);
             await addSettlementPair(
               { ...creditorDetails, type: 'owed' as const },
               { ...debtorDetails, type: 'owes' as const },
               amountPerSharer
             );
           }
+        } else {
+          console.warn(`[Index] Could not find details for debtor: ${sharerName} or creditor: ${payerName}`);
         }
       }
     }
