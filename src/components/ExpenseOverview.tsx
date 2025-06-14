@@ -230,7 +230,7 @@ export const ExpenseOverview = ({
         toast({
             title: "Mediation Not Supported",
             description: "Directly settling between two other roommates from this screen is not fully supported yet. Please manage such settlements individually or via Settlement History if applicable.",
-            variant: "warning"
+            variant: "default"
          });
         return; 
     }
@@ -324,7 +324,7 @@ export const ExpenseOverview = ({
             const activeSettlementWithPerson = settlements.find(s => 
                 s.status !== 'settled' &&
                 ((s.name === person.name && s.user_id === currentUserId) || 
-                 (s.name === currentUserDisplayName && person.name === (roommates.find(r => r.user_id === s.user_id)?.name || s.user_id))) // check against person's name or their original id if not in roommates
+                 (s.name === currentUserDisplayName && person.name === (roommates.find(r => r.user_id === s.user_id)?.name || s.user_id)))
             );
 
             let actionContent = null;
