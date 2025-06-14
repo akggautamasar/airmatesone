@@ -8,12 +8,13 @@ export function getCurrentUserDisplayName(profile: any, user: any) {
 }
 
 export function getEffectiveSharers(expense: any, currentUserDisplayName: string, roommates: any[]) {
+  // If sharers are explicitly provided by the expense form, use them directly.
+  // The form already provides the correct display names.
   if (expense.sharers && expense.sharers.length > 0) {
-    return expense.sharers.map((s: string) =>
-      [currentUserDisplayName, ...roommates.map((r: any) => r.name)].includes(s)
-        ? currentUserDisplayName
-        : s
-    );
+    return expense.sharers;
   }
-  return [currentUserDisplayName, ...roommates.map((r: any) => r.name)];
+  
+  // If no sharers are specified, default to splitting among everyone.
+  // Using Set to ensure the list of participants is unique.
+  return Array.from(new Set([currentUserDisplayName, ...roommates.map((r: any) => r.name)]));
 }
