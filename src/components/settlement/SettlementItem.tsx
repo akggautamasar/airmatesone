@@ -82,11 +82,11 @@ export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDel
           
           <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 mt-1 w-full sm:w-auto justify-end">
             {/* UPI Payment button for debtors */}
-            {isPendingTab && settlement.type === "owes" && settlement.status === "pending" && settlement.upi_id && (
+            {isPendingTab && settlement.type === "owes" && settlement.status === "pending" && settlement.upiId && (
                 <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={() => handlePayClick(settlement.upi_id, settlement.amount)}
+                    onClick={() => handlePayClick(settlement.upiId, settlement.amount)}
                     className={`bg-white hover:bg-gray-50 border-${color}-300 text-${color}-600 hover:text-${color}-700 w-full sm:w-auto`}
                 >
                     Pay via UPI
@@ -123,7 +123,7 @@ export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDel
             )}
 
             {/* Manual payment button for debtors without UPI */}
-            {isPendingTab && settlement.type === "owes" && settlement.status === "pending" && !settlement.upi_id && settlement.transaction_group_id && (
+            {isPendingTab && settlement.type === "owes" && settlement.status === "pending" && !settlement.upiId && settlement.transaction_group_id && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -149,7 +149,7 @@ export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDel
               </AlertDialogTrigger>
             )}
           </div>
-          {isPendingTab && settlement.type === "owes" && settlement.status === "pending" && !settlement.upi_id && (
+          {isPendingTab && settlement.type === "owes" && settlement.status === "pending" && !settlement.upiId && (
               <p className="text-xs text-muted-foreground mt-1">UPI ID not available for direct payment</p>
           )}
         </div>
