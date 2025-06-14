@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,7 @@ interface BalanceListProps {
   roommates: Roommate[];
   settlements: DetailedSettlement[];
   currentUserId: string | undefined;
-  onDebtorMarksAsPaid: (debtorName: string, creditorName: string, amountToSettle: number) => Promise<void>;
+  onDebtorMarksAsPaid: (debtorName: string, creditorName: string, amountToSettle: number, initialStatus?: 'pending' | 'debtor_paid' | 'settled') => Promise<void>;
   onCreditorConfirmsReceipt: (transactionGroupId: string, newStatus: "settled") => Promise<void>;
   onCreditorRequestsPayment: (debtorName: string, creditorName: string, amountToSettle: number) => Promise<void>;
   onPayViaUpi: (upiId: string, amount: number) => void;

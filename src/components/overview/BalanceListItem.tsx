@@ -18,7 +18,7 @@ interface BalanceListItemProps {
   roommates: Roommate[],
   settlements: Settlement[],
   currentUserId: string | undefined,
-  onDebtorMarksAsPaid: (debtorName: string, creditorName: string, amountToSettle: number) => Promise<void>,
+  onDebtorMarksAsPaid: (debtorName: string, creditorName: string, amountToSettle: number, initialStatus?: 'pending' | 'debtor_paid' | 'settled') => Promise<void>,
   onCreditorConfirmsReceipt: (transactionGroupId: string, newStatus: "settled") => Promise<void>,
   onCreditorRequestsPayment: (debtorName: string, creditorName: string, amountToSettle: number) => Promise<void>,
   onPayViaUpi: (upiId: string, amount: number) => void,
@@ -99,12 +99,9 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
         const debtorName = person.name; // The other party is the debtor
         const creditorName = currentUserDisplayName; // The current user is the creditor
         
-        // This function now correctly handles the creation and immediate settlement.
-        // We are swapping the arguments because the underlying handler seems to
-        // misinterpret the roles. This should fix the bug where marking a payment
-        // as received created the wrong type of settlement.
-        // @ts-ignore - Temporarily ignoring since the prop signature in parent is not yet updated
-        await onDebtorMarksAsPaid(creditorName, debtorName, amountToSettle, 'settled');
+        // The handler correctly determines roles based on who is passed as the debtor.
+        // Current user is the creditor, so the other party is the debtor.
+        await onDebtorMarksAsPaid(debtorName, creditorName, amountToSettle, 'settled');
       }
     };
 

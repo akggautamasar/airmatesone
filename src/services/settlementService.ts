@@ -39,26 +39,15 @@ export const addSettlementPairToSupabase = async (
   initialStatus: 'pending' | 'debtor_paid' | 'settled' = 'pending'
 ): Promise<Settlement> => {
   console.log('[settlementService] addSettlementPair called with initialStatus:', initialStatus);
-  
-  let finalCurrentUserInvolves = { ...currentUserInvolves };
-  let finalOtherPartyInvolves = { ...otherPartyInvolves };
-
-  // Critical fix: "Mark as Received" is only available to creditors and creates a 'settled' transaction instantly.
-  // Flawed upstream logic passes incorrect roles ('type'). We intercept and correct them here.
-  if (initialStatus === 'settled') {
-    console.log('[settlementService] Correcting roles for "settled" status. Current user is the creditor.');
-    finalCurrentUserInvolves.type = 'owed';
-    finalOtherPartyInvolves.type = 'owes';
-  }
 
   const transactionGroupId = uuidv4();
 
   const newSettlementEntryForDb: TablesInsert<'settlements'> = {
     user_id: currentUserId,
-    name: finalOtherPartyInvolves.name,
-    email: finalOtherPartyInvolves.email,
-    upi_id: finalCurrentUserInvolves.type === 'owes' ? finalOtherPartyInvolves.upi_id : finalCurrentUserInvolves.upi_id,
-    type: finalCurrentUserInvolves.type,
+    name: otherPartyInvolves.name,
+    email: otherPartyInvolves.email,
+    upi_id: currentUserInvolves.type === 'owes' ? otherPartyInvolves.upi_id : currentUserInvolves.upi_id,
+    type: currentUserInvolves.type,
     amount,
     status: initialStatus,
     transaction_group_id: transactionGroupId,
@@ -82,23 +71,23 @@ export const addSettlementPairToSupabase = async (
   const { data: profileData, error: profileError } = await supabase
     .from('profiles')
     .select('id')
-    .eq('email', finalOtherPartyInvolves.email)
+    .eq('email', otherPartyInvolves.email)
     .single();
 
   if (profileData && !profileError) {
     otherUserId = profileData.id;
   } else {
-    console.warn("[settlementService] Could not find profile for other user by email:", finalOtherPartyInvolves.email, "settlement will only be one-sided for now.");
+    console.warn("[settlementService] Could not find profile for other user by email:", otherPartyInvolves.email, "settlement will only be one-sided for now.");
   }
   
   // Prevent creating a duplicate settlement for the current user if otherParty info is wrong.
   if (otherUserId && otherUserId !== currentUserId) {
     const otherPartySettlementEntryForDb: TablesInsert<'settlements'> = {
       user_id: otherUserId,
-      name: finalCurrentUserInvolves.name,
-      email: finalCurrentUserInvolves.email,
-      upi_id: finalOtherPartyInvolves.type === 'owes' ? finalCurrentUserInvolves.upi_id : finalOtherPartyInvolves.upi_id,
-      type: finalOtherPartyInvolves.type,
+      name: currentUserInvolves.name,
+      email: currentUserInvolves.email,
+      upi_id: otherPartyInvolves.type === 'owes' ? currentUserInvolves.upi_id : otherPartyInvolves.upi_id,
+      type: otherPartyInvolves.type,
       amount,
       status: initialStatus,
       transaction_group_id: transactionGroupId,
