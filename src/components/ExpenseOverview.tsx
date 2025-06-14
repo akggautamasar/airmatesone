@@ -47,7 +47,7 @@ export const ExpenseOverview = ({
   settlements, 
   onAddSettlementPair, 
   currentUserId,
-  onUpdateStatus, // Renamed from onUpdateStatus to avoid conflict if we redefine it locally
+  onUpdateStatus,
   onDeleteSettlementGroup
 }: ExpenseOverviewProps) => {
   const { deleteExpense } = useExpenses();
@@ -207,92 +207,97 @@ export const ExpenseOverview = ({
     }
   };
   
-  const initiateSettlementProcess = async (
-    debtorName: string, 
+  const initiateDebtorPaymentProcess = async (
+    _debtorNameIgnored: string, // This will be currentUserDisplayName, passed from BalanceList
     creditorName: string, 
-    amountToSettle: number,
-    settleImmediately: boolean = false
+    amountToSettle: number
   ) => {
     const absAmount = Math.abs(amountToSettle);
     if (absAmount < 0.01) return;
 
-    const currentUserIsDebtor = debtorName === currentUserDisplayName;
-    const currentUserIsCreditor = creditorName === currentUserDisplayName;
-
-    const debtorRoommate = roommates.find(r => r.name === debtorName);
-    const creditorRoommate = roommates.find(r => r.name === creditorName);
-
-    const currentUserProfileDetails = {
+    const debtorDetails = {
         name: currentUserDisplayName,
         email: user?.email || '',
         upi_id: profile?.upi_id || ''
     };
+    const creditorRoommate = roommates.find(r => r.name === creditorName);
+    const creditorDetails = creditorRoommate 
+        ? { name: creditorRoommate.name, email: creditorRoommate.email, upi_id: creditorRoommate.upi_id } 
+        : { name: creditorName, email: 'unknown', upi_id: ''}; // Fallback if creditor is not a registered roommate
 
-    let debtorDetails, creditorDetails;
+    const currentUserPerspective = { ...debtorDetails, type: 'owes' as const };
+    const otherPartyPerspective = { ...creditorDetails, type: 'owed' as const };
 
-    if (currentUserIsDebtor) {
-        debtorDetails = currentUserProfileDetails;
-        creditorDetails = creditorRoommate ? { name: creditorRoommate.name, email: creditorRoommate.email, upi_id: creditorRoommate.upi_id } : { name: creditorName, email: 'unknown', upi_id: ''};
-    } else if (currentUserIsCreditor) {
-        creditorDetails = currentUserProfileDetails;
-        debtorDetails = debtorRoommate ? { name: debtorRoommate.name, email: debtorRoommate.email, upi_id: debtorRoommate.upi_id } : { name: debtorName, email: 'unknown', upi_id: ''};
-    } else {
-        if (!debtorRoommate || !creditorRoommate) {
+    try {
+        const createdSettlement = await onAddSettlementPair(currentUserPerspective, otherPartyPerspective, absAmount);
+        if (createdSettlement && createdSettlement.transaction_group_id) {
+            await onUpdateStatus(createdSettlement.transaction_group_id, 'debtor_paid');
             toast({
-                title: "Settlement Error",
-                description: `Cannot initiate settlement between ${debtorName} and ${creditorName} as one or both are not registered roommates with full details.`,
-                variant: "destructive",
+              title: "Payment Marked as Paid",
+              description: `Your payment to ${creditorName} for ₹${absAmount.toFixed(2)} has been marked. ${creditorName} will be notified to confirm.`,
             });
-            return;
+        } else {
+            // This case might occur if onAddSettlementPair returns null or a settlement without a transaction_group_id
+             // which implies an issue in the hook or DB interaction not creating the pair correctly.
+            console.error("Settlement pair creation failed or did not return a transaction group ID. Settlement:", createdSettlement);
+            throw new Error("Settlement pair creation failed or did not return a transaction group ID.");
         }
-        debtorDetails = { name: debtorRoommate.name, email: debtorRoommate.email, upi_id: debtorRoommate.upi_id };
-        creditorDetails = { name: creditorRoommate.name, email: creditorRoommate.email, upi_id: creditorRoommate.upi_id };
-    }
-    
-    let currentUserPerspective, otherPartyPerspective;
-
-    if (currentUserIsDebtor) {
-        currentUserPerspective = { ...debtorDetails, type: 'owes' as const };
-        otherPartyPerspective = { ...creditorDetails, type: 'owed' as const };
-    } else if (currentUserIsCreditor) {
-        currentUserPerspective = { ...creditorDetails, type: 'owed' as const };
-        otherPartyPerspective = { ...debtorDetails, type: 'owes' as const };
-    } else {
-        console.warn("Settlement initiation between two other parties not fully supported by this UI path in ExpenseOverview. Ensure onAddSettlementPair can handle this or adjust UI flow.");
+        onExpenseUpdate(); 
+    } catch (error) {
+        console.error("Error in initiateDebtorPaymentProcess:", error);
         toast({
-            title: "Mediation Not Supported",
-            description: "Directly settling between two other roommates from this screen is not fully supported yet. Please manage such settlements individually or via Settlement History if applicable.",
-            variant: "default"
-         });
-        return; 
-    }
-    
-    const createdSettlement = await onAddSettlementPair(currentUserPerspective, otherPartyPerspective, absAmount);
-    
-    if (createdSettlement && settleImmediately && createdSettlement.transaction_group_id) {
-      try {
-        await onUpdateStatus(createdSettlement.transaction_group_id, 'settled');
-        toast({
-          title: "Balance Settled",
-          description: `The balance with ${creditorName === currentUserDisplayName ? debtorName : creditorName} has been marked as settled.`,
-        });
-      } catch (error) {
-        console.error("Error directly settling balance:", error);
-        toast({
-          title: "Settlement Error",
-          description: "Could not immediately mark the balance as settled. Please check Settlement History.",
-          variant: "destructive",
-        });
-      }
-    } else if (createdSettlement && !settleImmediately) {
-        toast({
-          title: "Settlement Initiated",
-          description: `A settlement process has been initiated with ${creditorName === currentUserDisplayName ? debtorName : creditorName}. Check Settlement History.`,
+            title: "Error Marking Payment",
+            description: `Could not mark payment to ${creditorName}. Please try again. Details: ${error instanceof Error ? error.message : String(error)}`,
+            variant: "destructive",
         });
     }
-    onExpenseUpdate(); 
   };
 
+  const initiateCreditorRequestProcess = async (
+    debtorName: string,
+    _creditorNameIgnored: string, // This will be currentUserDisplayName
+    amountToSettle: number
+  ) => {
+    const absAmount = Math.abs(amountToSettle);
+    if (absAmount < 0.01) return;
+    
+    const creditorDetails = {
+        name: currentUserDisplayName,
+        email: user?.email || '',
+        upi_id: profile?.upi_id || ''
+    };
+    const debtorRoommate = roommates.find(r => r.name === debtorName);
+    const debtorDetails = debtorRoommate 
+        ? { name: debtorRoommate.name, email: debtorRoommate.email, upi_id: debtorRoommate.upi_id } 
+        : { name: debtorName, email: 'unknown', upi_id: ''}; // Fallback if debtor is not a registered roommate
+
+    const currentUserPerspective = { ...creditorDetails, type: 'owed' as const };
+    const otherPartyPerspective = { ...debtorDetails, type: 'owes' as const };
+
+    try {
+        const createdSettlement = await onAddSettlementPair(currentUserPerspective, otherPartyPerspective, absAmount);
+        if (createdSettlement) {
+            // onAddSettlementPair should create settlements with 'pending' status by default
+            toast({
+              title: "Payment Requested",
+              description: `A payment request for ₹${absAmount.toFixed(2)} has been sent to ${debtorName}.`,
+            });
+        } else {
+            // This case might occur if onAddSettlementPair returns null.
+            console.error("Settlement pair creation failed. Returned null.");
+            throw new Error("Settlement pair creation failed.");
+        }
+        onExpenseUpdate(); 
+    } catch (error) {
+        console.error("Error in initiateCreditorRequestProcess:", error);
+        toast({
+            title: "Error Requesting Payment",
+            description: `Could not request payment from ${debtorName}. Please try again. Details: ${error instanceof Error ? error.message : String(error)}`,
+            variant: "destructive",
+        });
+    }
+  };
+  
   const handlePayClick = (upiId: string, amount: number) => {
     if (!upiId || amount <= 0) {
       console.error("Invalid UPI ID or amount for payment.");
@@ -335,7 +340,7 @@ export const ExpenseOverview = ({
         settlements={settlements}
         currentUserId={currentUserId}
         onDebtorMarksAsPaid={initiateDebtorPaymentProcess}
-        onCreditorConfirmsReceipt={onUpdateStatus} // Directly pass the status update function
+        onCreditorConfirmsReceipt={onUpdateStatus} 
         onCreditorRequestsPayment={initiateCreditorRequestProcess}
         onPayViaUpi={handlePayClick}
       />
