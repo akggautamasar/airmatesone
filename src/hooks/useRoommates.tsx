@@ -30,9 +30,11 @@ export const useRoommates = () => {
       setLoading(true);
       console.log('Fetching roommates for user:', user.email);
       
+      // Query roommates table directly - no joins with users table
       const { data, error } = await supabase
         .from('roommates')
         .select('*')
+        .or(`user_id.eq.${user.id},email.eq.${user.email}`)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -84,9 +86,9 @@ export const useRoommates = () => {
         .select('id')
         .eq('user_id', user.id)
         .eq('email', roommate.email)
-        .single();
+        .maybeSingle();
 
-      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found" which is expected
+      if (checkError) {
         console.error('Error checking existing roommate:', checkError);
         throw checkError;
       }
