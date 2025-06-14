@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -68,7 +67,10 @@ export const useSettlements = () => {
         if (newSettlement.status === 'settled') {
           // This case is for "Mark as Received" by a creditor or "I've Paid" by a debtor being settled instantly.
           if (newSettlement.type === 'owed') { // Current user is the creditor
-            toast({ title: "Payment Received", description: `You have recorded a received payment from ${newSettlement.name}. They will be notified.` });
+            toast({ 
+              title: "Payment Received", 
+              description: `You have recorded a received payment from ${newSettlement.name}. They will be notified.` 
+            });
           } else { // Current user is the debtor
             toast({ title: "Payment Recorded", description: `Your payment to ${newSettlement.name} has been recorded.` });
           }
@@ -114,7 +116,10 @@ export const useSettlements = () => {
         const userSettlement = updatedRecords.find(r => r.user_id === user.id);
         if (userSettlement) {
           if (userSettlement.type === 'owed') { // Current user is creditor
-            toast({ title: "Payment Received", description: `You have recorded a received payment from ${userSettlement.name}. They will be notified.` });
+            toast({ 
+              title: "Payment Received", 
+              description: `You have recorded a received payment from ${userSettlement.name}. They will be notified.` 
+            });
           } else { // Current user is debtor
             toast({ title: "Settlement Confirmed", description: `Your payment to ${userSettlement.name} has been confirmed.` });
           }
