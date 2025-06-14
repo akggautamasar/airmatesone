@@ -9,30 +9,25 @@ import { useExpenses } from "@/hooks/useExpenses";
 import { useRoommates } from "@/hooks/useRoommates";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { Settlement as DetailedSettlement } from "@/components/SettlementHistory"; // Import standardized Settlement type
 
 interface Expense {
   id: string;
   description: string;
   amount: number;
   paidBy: string;
-  date: string;
+  date: string; // Kept as string from formattedExpenses
   category: string;
   sharers?: string[] | null;
 }
 
-interface Settlement {
-  id:string;
-  amount: number;
-  from: string;
-  to: string;
-  status: string;
-}
+// Internal Settlement interface removed, using DetailedSettlement from SettlementHistory
 
 interface ExpenseOverviewProps {
   expenses: Expense[];
   onExpenseUpdate: () => void;
-  settlements: Settlement[];
-  onSettlementUpdate: (settlements: Settlement[]) => void;
+  settlements: DetailedSettlement[]; // Use DetailedSettlement
+  onSettlementUpdate: (settlements: DetailedSettlement[]) => void; // Use DetailedSettlement
 }
 
 export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, settlements, onSettlementUpdate }: ExpenseOverviewProps) => {
@@ -40,7 +35,7 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
   const { roommates } = useRoommates();
   const { user } = useAuth();
   const { profile } = useProfile();
-  const [localSettlements, setLocalSettlements] = useState<Settlement[]>(settlements);
+  const [localSettlements, setLocalSettlements] = useState<DetailedSettlement[]>(settlements);
 
   const currentUserDisplayName = useMemo(() => {
     return profile?.name || user?.email?.split('@')[0] || 'You';
@@ -49,8 +44,10 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
   const allParticipantNames = useMemo(() => {
     const names = new Set<string>([currentUserDisplayName]);
     roommates.forEach(r => names.add(r.name));
+    propsExpenses.forEach(e => names.add(e.paidBy)); // Ensure all payers are included
+    propsExpenses.forEach(e => e.sharers?.forEach(s => names.add(s))); // Ensure all sharers are included
     return Array.from(names);
-  }, [currentUserDisplayName, roommates]);
+  }, [currentUserDisplayName, roommates, propsExpenses]);
 
   const calculations = useMemo(() => {
     const totalExpenses = propsExpenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -60,18 +57,43 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
 
     propsExpenses.forEach(expense => {
       const payerName = expense.paidBy;
-      
       balanceMap.set(payerName, (balanceMap.get(payerName) || 0) + expense.amount);
 
-      const expenseSharers = expense.sharers && expense.sharers.length > 0 ? expense.sharers : allParticipantNames;
-      const numSharers = expenseSharers.length;
+      const expenseSharers = expense.sharers && expense.sharers.length > 0 ? expense.sharers : allParticipantNames.filter(name => name !== payerName); // if all, exclude payer initially
+      
+      // If sharers are explicitly 'all' or empty (implying all), ensure payer isn't double counted if they are also a sharer conceptually
+      // The original logic implies payer pays for the group, and then their share is subtracted.
+      
+      const effectiveSharers = expense.sharers && expense.sharers.length > 0 
+        ? expense.sharers 
+        : allParticipantNames; // if no specific sharers, it's shared among everyone
+
+      const numSharers = effectiveSharers.length;
       
       if (numSharers > 0) {
         const amountPerSharer = expense.amount / numSharers;
-        expenseSharers.forEach(sharerName => {
+        effectiveSharers.forEach(sharerName => {
           balanceMap.set(sharerName, (balanceMap.get(sharerName) || 0) - amountPerSharer);
         });
       }
+    });
+
+    // Adjust balances based on settlements
+    localSettlements.forEach(settlement => {
+      let S_from: string, S_to: string;
+      // Determine who paid whom from the settlement's perspective relative to currentUserDisplayName
+      if (settlement.type === "owes") { // Current user (owes) settlement.name
+        S_from = currentUserDisplayName; // Debtor is current user
+        S_to = settlement.name;         // Creditor is settlement.name
+      } else { // settlement.name (owes) current user
+        S_from = settlement.name;         // Debtor is settlement.name
+        S_to = currentUserDisplayName; // Creditor is current user
+      }
+      
+      // Debtor's balance increases (becomes less negative / more positive as they've paid)
+      balanceMap.set(S_from, (balanceMap.get(S_from) || 0) + settlement.amount);
+      // Creditor's balance decreases (becomes less positive / more negative as they've received payment)
+      balanceMap.set(S_to, (balanceMap.get(S_to) || 0) - settlement.amount);
     });
 
     const finalBalances: { name: string; balance: number }[] = [];
@@ -83,7 +105,7 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
       totalExpenses,
       finalBalances
     };
-  }, [propsExpenses, allParticipantNames, currentUserDisplayName]);
+  }, [propsExpenses, allParticipantNames, currentUserDisplayName, localSettlements]); // Added localSettlements
 
   useEffect(() => {
     setLocalSettlements(settlements);
@@ -100,7 +122,10 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
   }, [] as { name: string; value: number }[]);
 
   const monthlyData = propsExpenses.reduce((acc, expense) => {
-    const month = new Date(expense.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    const dateObj = new Date(expense.date); // Ensure expense.date is a valid date string or Date object
+    // Check if dateObj is valid before calling toLocaleDateString
+    const month = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : "Invalid Date";
+
     const existing = acc.find(item => item.month === month);
     if (existing) {
       existing.amount += expense.amount;
@@ -121,35 +146,44 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
     }
   };
 
-  const createSettlement = (from: string, to: string, amount: number) => {
-    const newSettlement: Settlement = {
-      id: Math.random().toString(36).substr(2, 9),
-      amount: Math.abs(amount),
-      from,
-      to,
-      status: 'pending'
+  const createSettlement = (debtor: string, creditor: string, amountToSettle: number) => {
+    const isCurrentUserDebtor = debtor === currentUserDisplayName;
+    const typeForHistory: "owes" | "owed" = isCurrentUserDebtor ? "owes" : "owed";
+    const otherPartyName = isCurrentUserDebtor ? creditor : debtor;
+    const otherPartyRoommate = roommates.find(r => r.name === otherPartyName);
+    // Assuming roommate object has an email property, if not, adjust accordingly or remove.
+    const otherPartyEmail = roommates.find(r => r.name === otherPartyName)?.email || ''; 
+
+    const newDetailedSettlement: DetailedSettlement = {
+      id: Math.random().toString(36).substr(2, 9), // Consider more robust ID generation if needed
+      amount: Math.abs(amountToSettle),
+      name: otherPartyName,
+      type: typeForHistory,
+      upiId: otherPartyRoommate?.upi_id || '', 
+      email: otherPartyEmail, // Use found email
+      status: 'pending',
+      // settledDate can be omitted for new pending settlements
     };
     
-    const updatedSettlements = [...localSettlements, newSettlement];
-    setLocalSettlements(updatedSettlements);
-    onSettlementUpdate(updatedSettlements);
+    const updatedSettlements = [...localSettlements, newDetailedSettlement];
+    setLocalSettlements(updatedSettlements); // Update local state first
+    onSettlementUpdate(updatedSettlements); // Then propagate to parent
   };
 
   const handlePayClick = (upiId: string, amount: number) => {
     if (!upiId || amount <= 0) {
       console.error("Invalid UPI ID or amount for payment.");
-      // Optionally, show a toast message to the user
       return;
     }
     const paymentUrl = `https://quantxpay.vercel.app/${upiId}/${amount.toFixed(2)}`;
     window.open(paymentUrl, '_blank', 'noopener,noreferrer');
   };
 
-  if (propsExpenses.length === 0) {
+  if (propsExpenses.length === 0 && localSettlements.length === 0) { // Check localSettlements too
     return (
       <div className="text-center py-12">
         <IndianRupee className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No expenses yet</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No expenses or settlements yet</h3>
         <p className="text-gray-500">Start by adding your first expense to see insights here.</p>
       </div>
     );
@@ -188,7 +222,7 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
       <Card>
         <CardHeader>
           <CardTitle>Current Balances</CardTitle>
-          <CardDescription>Who owes what to whom, based on shared expenses</CardDescription>
+          <CardDescription>Who owes what to whom, based on shared expenses and settlements</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {calculations.finalBalances.map((person, index) => {
@@ -198,15 +232,15 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
             return (
               <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg bg-gray-50 space-y-2 sm:space-y-0">
                 <div className="flex items-center space-x-3">
-                  <div className="rounded-full bg-blue-100 p-2">
-                    <Users className="h-4 w-4 text-blue-600" />
+                  <div className={`rounded-full p-2 ${person.balance > 0.005 ? 'bg-green-100' : person.balance < -0.005 ? 'bg-red-100' : 'bg-gray-100'}`}>
+                    <Users className={`h-4 w-4 ${person.balance > 0.005 ? 'text-green-600' : person.balance < -0.005 ? 'text-red-600' : 'text-gray-600'}`} />
                   </div>
                   <div>
-                    <p className="font-medium">{person.name}</p>
+                    <p className="font-medium">{person.name}{isViewingOwnBalance ? " (You)" : ""}</p>
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row items-end sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 self-end sm:self-center w-full sm:w-auto justify-end">
-                  <Badge variant={person.balance > 0.005 ? "default" : person.balance < -0.005 ? "destructive" : "secondary"}>
+                  <Badge variant={person.balance > 0.005 ? "default" : person.balance < -0.005 ? "destructive" : "secondary"} className={`${person.balance > 0.005 ? 'bg-green-500 hover:bg-green-600' : ''}`}>
                     {person.balance === 0 || (person.balance < 0.005 && person.balance > -0.005) ? "Settled" : 
                      person.balance > 0 ? `Gets ₹${person.balance.toFixed(2)}` : 
                      `Owes ₹${Math.abs(person.balance).toFixed(2)}`}
@@ -214,15 +248,20 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
                   
                   {!isViewingOwnBalance && (
                     <>
-                      {/* Scenario: The person being displayed (person) IS OWED money (person.balance > 0),
-                          so the CURRENT USER might need to PAY them. */}
-                      {person.balance > 0.005 && (
+                      {/* Scenario: The person being displayed (person) IS OWED money by the pool (person.balance > 0),
+                          This means the CURRENT USER might owe them if current user's balance is negative.
+                          Or, if current user also has positive balance, this is about settling between pool creditors.
+                          The buttons should reflect direct action between currentUser and 'person'.
+                          If person.balance > 0, it means 'person' is a net creditor to the expense pool.
+                          If currentUser is a net debtor, currentUser effectively owes 'person' (among others).
+                      */}
+                      {person.balance > 0.005 && currentUserDisplayName !== person.name && ( // 'person' is owed by the pool. Current user might pay them.
                         <>
                           {roommateInfo?.upi_id && (
                             <Button 
                               size="sm" 
                               variant="outline"
-                              onClick={() => handlePayClick(roommateInfo.upi_id, person.balance)}
+                              onClick={() => handlePayClick(roommateInfo.upi_id, person.balance)} // Pay amount 'person' is owed overall
                               className="border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700 w-full sm:w-auto"
                             >
                               Pay
@@ -232,6 +271,7 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
                           <Button 
                             size="sm" 
                             variant="outline"
+                             // CurrentUser (debtor) pays person (creditor) the amount person is owed by pool
                             onClick={() => createSettlement(currentUserDisplayName, person.name, person.balance)}
                             className="border-green-400 text-green-600 hover:bg-green-50 hover:text-green-700 w-full sm:w-auto"
                           >
@@ -241,16 +281,19 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
                         </>
                       )}
 
-                      {/* Scenario: The person being displayed (person) OWES money (person.balance < 0),
-                          so the CURRENT USER might need to REQUEST from them. */}
-                      {person.balance < -0.005 && (
+                      {/* Scenario: The person being displayed (person) OWES money to the pool (person.balance < 0).
+                          The CURRENT USER might be owed by them if current user's balance is positive.
+                          This is currentUser requesting payment from 'person'.
+                      */}
+                      {person.balance < -0.005 && currentUserDisplayName !== person.name && ( // 'person' owes the pool. Current user might request from them.
                         <Button 
                           size="sm" 
                           variant="outline"
+                          // person (debtor) pays CurrentUser (creditor) the amount person owes to pool
                           onClick={() => createSettlement(person.name, currentUserDisplayName, Math.abs(person.balance))}
                           className="border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto"
                         >
-                          Request
+                          Request/Mark Received
                         </Button>
                       )}
                     </>
@@ -288,7 +331,7 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => [`₹${value.toLocaleString('en-IN')}`, 'Amount']} />
+                  <Tooltip formatter={(value) => [`₹${Number(value).toLocaleString('en-IN')}`, 'Amount']} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -330,7 +373,7 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
       <Card>
         <CardHeader>
           <CardTitle>Recent Expenses</CardTitle>
-          <CardDescription>Your latest spending activity. {/** Sharers: {expense.sharers ? expense.sharers.join(', ') : 'All'} */}</CardDescription>
+          <CardDescription>Your latest spending activity.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">

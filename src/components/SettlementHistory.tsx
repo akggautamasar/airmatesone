@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Clock, Check, CreditCard, BadgeCheck } from "lucide-react";
 
-interface Settlement {
+export interface Settlement { // Added export
   id: string;
   name: string; // Name of the other person involved in the settlement
   amount: number;

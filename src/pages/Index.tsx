@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExpenseOverview } from "@/components/ExpenseOverview";
 import { AddExpense } from "@/components/AddExpense";
 import { RoommateManagement } from "@/components/RoommateManagement";
-import { SettlementHistory } from "@/components/SettlementHistory";
+import { SettlementHistory, Settlement } from "@/components/SettlementHistory"; // Import Settlement type
 import { Profile } from "@/components/Profile";
 import { useExpenses } from "@/hooks/useExpenses";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ const Index = () => {
   const navigate = useNavigate();
   const { expenses, addExpense, deleteExpense } = useExpenses();
   const [showAddExpense, setShowAddExpense] = useState(false);
-  const [settlements, setSettlements] = useState<any[]>([]);
+  const [settlements, setSettlements] = useState<Settlement[]>([]); // Use imported Settlement type
 
   useEffect(() => {
     console.log('Index page - user:', user?.email, 'loading:', loading);
@@ -62,9 +62,9 @@ const Index = () => {
     description: expense.description,
     amount: expense.amount,
     paidBy: expense.paid_by,
-    date: new Date(expense.date).toLocaleDateString(),
+    date: new Date(expense.date).toLocaleDateString(), // Consider keeping as ISO string or Date object for consistency
     category: expense.category,
-    sharers: expense.sharers || [] // Pass sharers, default to empty array if null/undefined
+    sharers: expense.sharers || []
   }));
 
   const handleAddExpense = (expense: any) => {
@@ -74,7 +74,7 @@ const Index = () => {
       paid_by: expense.paidBy,
       category: expense.category,
       date: new Date().toISOString(),
-      sharers: expense.sharers // Pass the sharers array
+      sharers: expense.sharers
     });
   };
 
