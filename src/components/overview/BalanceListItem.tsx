@@ -73,7 +73,7 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
       };
     });
 
-    // Find the first group with status 'debtor_paid', 'pending', or 'settled'
+    // Find groups with different statuses
     const groupWithDebtorPaid = groupViews.find(g =>
       g.statuses.some(status => status === 'debtor_paid')
     );
@@ -89,6 +89,12 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
 
     // Check if balance is essentially zero (settled up)
     const isBalanceSettled = Math.abs(amount) < 0.005;
+    
+    // Check if there are any settled transactions that would cover this balance
+    const hasSettledTransactions = groupWithSettled || relevantPairSettlements.some(s => s.status === 'settled');
+    
+    // Consider fully settled if balance is near zero OR if there are settled transactions and no unsettled ones
+    const isFullySettled = isBalanceSettled || (hasSettledTransactions && !unsettledGroup);
 
     // Helper to initiate and settle if no group exists
     const handleCreditorMarkAsReceived = async () => {
@@ -117,7 +123,7 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
           </Badge>
         );
         actionContent = null;
-      } else if (isBalanceSettled) {
+      } else if (isFullySettled) {
         // If balance is settled, show settled status
         statusText = (
           <Badge variant="outline" className="text-xs text-green-600 border-green-300">
@@ -157,9 +163,6 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
       }
     } else if (iAmCreditor) {
       // CREDITOR VIEW
-      // Check if the balance is settled OR if there's a settled group with no unsettled transactions
-      const isFullySettled = isBalanceSettled || (groupWithSettled && !unsettledGroup);
-
       if (isFullySettled) {
         statusText = (
           <Badge variant="outline" className="text-xs text-green-600 border-green-300">
