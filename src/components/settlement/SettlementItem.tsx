@@ -37,7 +37,7 @@ const getActionText = (status: Settlement['status'], type: Settlement['type']) =
       if (status === 'pending') return "Mark as Paid & Finalize"; 
       if (status === 'debtor_paid') return "Awaiting Confirmation"; 
     } else { // Current user is owed money
-      if (status === 'pending') return "Awaiting Payment"; 
+      if (status === 'pending') return "Payment Received"; 
       if (status === 'debtor_paid') return "Confirm & Settle"; 
     }
     return null;
@@ -100,14 +100,18 @@ export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDel
                             onUpdateStatus(settlement.transaction_group_id!, 'settled'); 
                         } else if (settlement.type === 'owed' && settlement.status === 'debtor_paid') {
                             onUpdateStatus(settlement.transaction_group_id!, 'settled');
+                        } else if (settlement.type === 'owed' && settlement.status === 'pending') {
+                            // Creditor marking as payment received - directly settle
+                            onUpdateStatus(settlement.transaction_group_id!, 'settled');
                         }
                     }}
                     className={`bg-white hover:bg-gray-50 border-green-400 text-green-600 hover:text-green-700 w-full sm:w-auto`}
-                    disabled={actionButtonText === "Awaiting Payment" || actionButtonText === "Awaiting Confirmation"}
+                    disabled={actionButtonText === "Awaiting Confirmation"}
                 >
                     {actionButtonText}
                     {actionButtonText === "Mark as Paid & Finalize" && <UserCheck className="ml-2 h-3 w-3" />} 
                     {actionButtonText === "Confirm & Settle" && <CheckCircle className="ml-2 h-3 w-3" />}
+                    {actionButtonText === "Payment Received" && <CheckCircle className="ml-2 h-3 w-3" />}
                 </Button>
             )}
              {isPendingTab && settlement.type === "owes" && settlement.status === "pending" && !settlement.upiId && settlement.transaction_group_id && (
