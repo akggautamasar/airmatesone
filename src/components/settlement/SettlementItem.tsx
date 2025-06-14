@@ -56,6 +56,8 @@ export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDel
     const color = getStatusColor(settlement.status);
     const actionButtonText = getActionText(settlement.status, settlement.type);
 
+    console.log(`SettlementItem rendering: ${settlement.id}, type: ${settlement.type}, status: ${settlement.status}, actionText: ${actionButtonText}`);
+
     return (
       <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-${color}-50 rounded-lg border border-${color}-200 space-y-2 sm:space-y-0`}>
         <div className="flex items-center space-x-3">
@@ -79,11 +81,12 @@ export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDel
           <p className={`font-semibold text-${color}-600`}>₹{settlement.amount.toFixed(2)}</p>
           
           <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 mt-1 w-full sm:w-auto justify-end">
-            {isPendingTab && settlement.type === "owes" && settlement.status === "pending" && settlement.upiId && (
+            {/* UPI Payment button for debtors */}
+            {isPendingTab && settlement.type === "owes" && settlement.status === "pending" && settlement.upi_id && (
                 <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={() => handlePayClick(settlement.upiId, settlement.amount)}
+                    onClick={() => handlePayClick(settlement.upi_id, settlement.amount)}
                     className={`bg-white hover:bg-gray-50 border-${color}-300 text-${color}-600 hover:text-${color}-700 w-full sm:w-auto`}
                 >
                     Pay via UPI
@@ -91,14 +94,18 @@ export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDel
                 </Button>
             )}
 
+            {/* Action buttons based on status and type */}
             {isPendingTab && actionButtonText && settlement.transaction_group_id && (
                 <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
+                        console.log(`Action button clicked for settlement ${settlement.id}: type=${settlement.type}, status=${settlement.status}`);
                         if (settlement.type === 'owes' && settlement.status === 'pending') {
+                            // Debtor marking as paid - directly settle
                             onUpdateStatus(settlement.transaction_group_id!, 'settled'); 
                         } else if (settlement.type === 'owed' && settlement.status === 'debtor_paid') {
+                            // Creditor confirming payment received
                             onUpdateStatus(settlement.transaction_group_id!, 'settled');
                         } else if (settlement.type === 'owed' && settlement.status === 'pending') {
                             // Creditor marking as payment received - directly settle
@@ -114,7 +121,9 @@ export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDel
                     {actionButtonText === "Payment Received" && <CheckCircle className="ml-2 h-3 w-3" />}
                 </Button>
             )}
-             {isPendingTab && settlement.type === "owes" && settlement.status === "pending" && !settlement.upiId && settlement.transaction_group_id && (
+
+            {/* Manual payment button for debtors without UPI */}
+            {isPendingTab && settlement.type === "owes" && settlement.status === "pending" && !settlement.upi_id && settlement.transaction_group_id && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -125,6 +134,8 @@ export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDel
                     <UserCheck className="ml-2 h-3 w-3" />
                 </Button>
             )}
+
+            {/* Delete button */}
             {settlement.transaction_group_id && (
               <AlertDialogTrigger asChild>
                 <Button
@@ -138,7 +149,7 @@ export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDel
               </AlertDialogTrigger>
             )}
           </div>
-          {isPendingTab && settlement.type === "owes" && settlement.status === "pending" && !settlement.upiId && (
+          {isPendingTab && settlement.type === "owes" && settlement.status === "pending" && !settlement.upi_id && (
               <p className="text-xs text-muted-foreground mt-1">UPI ID not available for direct payment</p>
           )}
         </div>

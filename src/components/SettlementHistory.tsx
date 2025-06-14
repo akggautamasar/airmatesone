@@ -28,8 +28,18 @@ export interface SettlementHistoryProps {
 const SettlementHistory = ({ settlements, onUpdateStatus, onDeleteSettlementGroup, hasActiveExpenses }: SettlementHistoryProps) => {
   const [settlementToDelete, setSettlementToDelete] = useState<Settlement | null>(null);
   
-  const pendingSettlements = settlements.filter(s => s.status === "pending" || s.status === "debtor_paid");
+  console.log('SettlementHistory: All settlements received:', settlements);
+  
+  const pendingSettlements = settlements.filter(s => {
+    const isPending = s.status === "pending" || s.status === "debtor_paid";
+    console.log(`Settlement ${s.id}: status=${s.status}, type=${s.type}, name=${s.name}, isPending=${isPending}`);
+    return isPending;
+  });
+  
   const settledSettlements = settlements.filter(s => s.status === "settled");
+
+  console.log('SettlementHistory: Pending settlements count:', pendingSettlements.length);
+  console.log('SettlementHistory: Settled settlements count:', settledSettlements.length);
 
   const getStatusText = (status: Settlement['status'], type: Settlement['type'], name: string) => {
     if (status === 'pending') {
@@ -80,15 +90,18 @@ const SettlementHistory = ({ settlements, onUpdateStatus, onDeleteSettlementGrou
                     </div>
                   )}
                   <div className="space-y-4">
-                   {pendingSettlements.map((s) => (
-                    <SettlementItem
-                      key={s.id}
-                      settlement={s}
-                      isPendingTab={true}
-                      onUpdateStatus={onUpdateStatus}
-                      onDeleteTrigger={setSettlementToDelete}
-                    />
-                   ))}
+                   {pendingSettlements.map((s) => {
+                    console.log(`Rendering pending settlement: ${s.id}, type: ${s.type}, status: ${s.status}, name: ${s.name}`);
+                    return (
+                      <SettlementItem
+                        key={s.id}
+                        settlement={s}
+                        isPendingTab={true}
+                        onUpdateStatus={onUpdateStatus}
+                        onDeleteTrigger={setSettlementToDelete}
+                      />
+                    );
+                   })}
                   </div>
                 </>
               )}
