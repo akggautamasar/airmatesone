@@ -140,15 +140,7 @@ export const deleteSettlementGroupFromSupabase = async (
   const { error } = await supabase
     .from('settlements')
     .delete()
-    .eq('transaction_group_id', transaction_group_id)
-    .eq('user_id', userIdMakingDeletion); // As per new RLS, user can only delete their own. To delete group, RLS needs adjustment or this becomes deleteUserSettlementFromGroup
-
-  // If the intention is to delete ALL records in the group (which requires broader RLS or a backend function):
-  // const { error } = await supabase
-  //   .from('settlements')
-  //   .delete()
-  //   .eq('transaction_group_id', transaction_group_id);
-
+    .eq('transaction_group_id', transaction_group_id);
 
   if (error) {
     console.error(`[settlementService] Error deleting settlement records for group ${transaction_group_id} for user ${userIdMakingDeletion}:`, error);

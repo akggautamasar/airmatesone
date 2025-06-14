@@ -85,15 +85,12 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
     const unsettledGroup = groupViews.find(g =>
       g.statuses.some(status => status === 'pending' || status === 'debtor_paid')
     );
-    // Find a groupId in order of priority: debtor_paid → pending → unsettled
-    let targetGroupId: string | undefined = groupWithDebtorPaid?.groupId || groupWithPending?.groupId || unsettledGroup?.groupId;
-    const hasAnyGroup = Boolean(targetGroupId);
+    const hasAnyGroup = Boolean(unsettledGroup);
 
     // Helper to initiate and settle if no group exists
     const handleCreditorMarkAsReceived = async () => {
-      if (hasAnyGroup && targetGroupId) {
-        // There is an existing group to settle
-        await onCreditorConfirmsReceipt(targetGroupId, 'settled');
+      if (unsettledGroup && unsettledGroup.groupId) {
+        await onCreditorConfirmsReceipt(unsettledGroup.groupId, 'settled');
       } else {
         // No settlement exists. Instantly create and settle one for this pair.
         if (!currentUserId || !otherPartyRoommateInfo) return;
@@ -103,15 +100,11 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
         const creditorName = currentUserDisplayName; // The current user is the creditor
         
         // This function now correctly handles the creation and immediate settlement.
-        // We pass 'settled' as the fourth argument, which will be a new parameter
-        // in the handler in Index.tsx to set the initial status.
-        // The handler in Index.tsx will need to be updated to accept this. For now,
-        // we are assuming it's `(debtorName, creditorName, amount, initialStatus)`.
-        // This is a temporary solution until the parent component can be updated.
-        // We are passing `debtorName` first, then `creditorName`.
-        // The handler in Index should use these to set roles correctly.
+        // We are swapping the arguments because the underlying handler seems to
+        // misinterpret the roles. This should fix the bug where marking a payment
+        // as received created the wrong type of settlement.
         // @ts-ignore - Temporarily ignoring since the prop signature in parent is not yet updated
-        await onDebtorMarksAsPaid(debtorName, creditorName, amountToSettle, 'settled');
+        await onDebtorMarksAsPaid(creditorName, debtorName, amountToSettle, 'settled');
       }
     };
 
@@ -156,9 +149,11 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
       }
     } else if (iAmCreditor) {
       // CREDITOR VIEW
-      // Show the Mark as Received button ALWAYS, unless fully settled up (all settlements settled and balance is 0)
-      const fullySettled = (person.balance === 0 || (person.balance < 0.005 && person.balance > -0.005)) || (groupWithSettled && !unsettledGroup && !groupWithDebtorPaid && !groupWithPending);
-      if (fullySettled) {
+      // Show the Mark as Received button ALWAYS, unless fully settled up
+      const isFullySettled = (person.balance > -0.005 && person.balance < 0.005);
+      const hasUnsettledGroup = unsettledGroup || groupWithDebtorPaid || groupWithPending;
+
+      if (isFullySettled && !hasUnsettledGroup) {
         statusText = (
           <Badge variant="outline" className="text-xs text-green-600 border-green-300">
             Fully settled
@@ -193,8 +188,8 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
   return (
     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg bg-gray-50 space-y-2 sm:space-y-0">
       <div className="flex items-center space-x-3">
-        <div className={`rounded-full p-2 ${person.balance > 0.005 ? 'bg-green-100' : person.balance < -0.005 ? 'bg-red-100' : 'bg-gray-100'}`}>
-          <Users className={`h-4 w-4 ${person.balance > 0.005 ? 'text-green-600' : person.balance < -0.005 ? 'text-red-600' : 'text-gray-600'}`} />
+        <div className={`rounded-full p-2 ${person.balance > 0.005 ? 'bg-red-100' : person.balance < -0.005 ? 'bg-green-100' : 'bg-gray-100'}`}>
+          <Users className={`h-4 w-4 ${person.balance > 0.005 ? 'text-red-600' : person.balance < -0.005 ? 'text-green-600' : 'text-gray-600'}`} />
         </div>
         <div>
           <p className="font-medium">{person.name}{isViewingOwnBalance ? " (You)" : ""}</p>
@@ -202,10 +197,10 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
         </div>
       </div>
       <div className="flex flex-col sm:flex-row items-end sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 self-end sm:self-center w-full sm:w-auto justify-end">
-        <Badge variant={person.balance > 0.005 ? "default" : person.balance < -0.005 ? "destructive" : "secondary"} className={`${person.balance > 0.005 ? 'bg-green-500 hover:bg-green-600' : ''} whitespace-nowrap`}>
+        <Badge variant={person.balance > 0.005 ? "destructive" : person.balance < -0.005 ? "default" : "secondary"} className={`${person.balance < -0.005 ? 'bg-green-500 hover:bg-green-600' : ''} whitespace-nowrap`}>
           {person.balance === 0 || (person.balance < 0.005 && person.balance > -0.005) ? "Settled Up" :
-            person.balance > 0 ? `Is Owed ₹${person.balance.toFixed(2)}` :
-              `Owes ₹${Math.abs(person.balance).toFixed(2)}`}
+            person.balance > 0 ? `Owes ₹${person.balance.toFixed(2)}` :
+              `Is Owed ₹${Math.abs(person.balance).toFixed(2)}`}
         </Badge>
         {actionContent}
       </div>
