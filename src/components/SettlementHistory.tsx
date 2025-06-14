@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Clock, Check, CreditCard, UserCheck, CheckCircle, Send, Trash2 } from "lucide-react";
+import { Clock, Check, CreditCard, UserCheck, CheckCircle, Send, Trash2, Info } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,9 +33,10 @@ interface SettlementHistoryProps {
   currentUserId: string | undefined; 
   onUpdateStatus: (transaction_group_id: string, newStatus: "pending" | "debtor_paid" | "settled") => void;
   onDeleteSettlementGroup: (transaction_group_id: string) => void;
+  hasActiveExpenses: boolean; // New prop
 }
 
-const SettlementHistory = ({ settlements, currentUserId, onUpdateStatus, onDeleteSettlementGroup }: SettlementHistoryProps) => {
+const SettlementHistory = ({ settlements, currentUserId, onUpdateStatus, onDeleteSettlementGroup, hasActiveExpenses }: SettlementHistoryProps) => {
   const [settlementToDelete, setSettlementToDelete] = useState<Settlement | null>(null);
   
   const pendingSettlements = settlements.filter(s => s.status === "pending" || s.status === "debtor_paid");
@@ -62,7 +63,6 @@ const SettlementHistory = ({ settlements, currentUserId, onUpdateStatus, onDelet
       return type === 'owes' ? `You owe ${name}` : `${name} owes you`;
     }
     if (status === 'debtor_paid') {
-      // This state means the debtor has paid, and creditor needs to confirm.
       return type === 'owes' ? `You've marked as paid to ${name}, awaiting their confirmation` : `${name} marked as paid, confirm receipt`;
     }
     if (status === 'settled') {
@@ -127,10 +127,13 @@ const SettlementHistory = ({ settlements, currentUserId, onUpdateStatus, onDelet
                     size="sm"
                     onClick={() => {
                         if (settlement.type === 'owes' && settlement.status === 'pending') {
+                            // For "Mark as Paid & Finalize", directly settle if user is debtor and it's pending
                             onUpdateStatus(settlement.transaction_group_id!, 'settled'); 
                         } else if (settlement.type === 'owed' && settlement.status === 'debtor_paid') {
+                            // For "Confirm & Settle", creditor confirms debtor's payment
                             onUpdateStatus(settlement.transaction_group_id!, 'settled');
                         }
+                        // No action for "Awaiting Payment" or "Awaiting Confirmation" from this button directly
                     }}
                     className={`bg-white hover:bg-gray-50 border-green-400 text-green-600 hover:text-green-700 w-full sm:w-auto`}
                     disabled={actionButtonText === "Awaiting Payment" || actionButtonText === "Awaiting Confirmation"}
@@ -140,7 +143,7 @@ const SettlementHistory = ({ settlements, currentUserId, onUpdateStatus, onDelet
                     {actionButtonText === "Confirm & Settle" && <CheckCircle className="ml-2 h-3 w-3" />}
                 </Button>
             )}
-            {isPendingTab && settlement.type === "owes" && settlement.status === "pending" && !settlement.upiId && settlement.transaction_group_id && (
+             {isPendingTab && settlement.type === "owes" && settlement.status === "pending" && !settlement.upiId && settlement.transaction_group_id && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -165,7 +168,7 @@ const SettlementHistory = ({ settlements, currentUserId, onUpdateStatus, onDelet
             )}
           </div>
           {isPendingTab && settlement.type === "owes" && settlement.status === "pending" && !settlement.upiId && (
-              <p className="text-xs text-muted-foreground">UPI ID not available for direct payment</p>
+              <p className="text-xs text-muted-foreground mt-1">UPI ID not available for direct payment</p>
           )}
         </div>
       </div>
@@ -192,10 +195,25 @@ const SettlementHistory = ({ settlements, currentUserId, onUpdateStatus, onDelet
               {pendingSettlements.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No pending settlements</p>
+                  <p>No pending settlements.</p>
                 </div>
               ) : (
-                pendingSettlements.map((s) => renderSettlementItem(s, true))
+                <>
+                  {!hasActiveExpenses && (
+                    <div className="p-3 mb-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm flex items-start space-x-2">
+                      <Info className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium">No Active Expenses</p>
+                        <p>
+                          The pending settlements listed below may relate to past activity or can be managed/deleted individually using the trash icon.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="space-y-4">
+                   {pendingSettlements.map((s) => renderSettlementItem(s, true))}
+                  </div>
+                </>
               )}
             </TabsContent>
             

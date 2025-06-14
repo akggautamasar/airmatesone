@@ -78,6 +78,8 @@ const Index = () => {
     category: expense.category,
     sharers: expense.sharers || []
   }));
+  
+  const hasActiveExpenses = formattedExpenses.length > 0;
 
   const handleAddExpenseSubmit = async (expense: any) => {
     await addExpense({
@@ -85,10 +87,11 @@ const Index = () => {
       amount: expense.amount,
       paid_by: expense.paidBy,
       category: expense.category,
-      date: new Date().toISOString(),
+      date: new Date().toISOString(), // Consider using expense.date if provided by form
       sharers: expense.sharers
     });
     setShowAddExpense(false);
+    handleExpenseUpdate(); // Refetch after adding
   };
 
   const handleExpenseUpdate = () => {
@@ -98,6 +101,7 @@ const Index = () => {
 
   const handleSettlementUpdate = () => {
     refetchSettlements();
+    refetchExpenses(); // Also refetch expenses as settlements can affect overview
   };
 
   return (
@@ -105,7 +109,7 @@ const Index = () => {
       <NavBar />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user.email}!</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user.email && user.email.split('@')[0]}!</h1>
           <p className="text-gray-600">Manage your expenses and roommate settlements.</p>
         </div>
         
@@ -159,6 +163,7 @@ const Index = () => {
               currentUserId={user.id}
               onUpdateStatus={updateSettlementStatusByGroupId}
               onDeleteSettlementGroup={deleteSettlementGroup}
+              hasActiveExpenses={hasActiveExpenses}
             />
           </TabsContent>
 
