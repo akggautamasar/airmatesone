@@ -42,12 +42,24 @@ export const addSettlementPairToSupabase = async (
 
   const transactionGroupId = uuidv4();
 
+  // Correction logic for roles
+  let finalCurrentUserType = currentUserInvolves.type;
+  let finalOtherPartyType = otherPartyInvolves.type;
+
+  // This condition detects the specific scenario from the "Mark as Received" button
+  // where a settlement is created as 'settled' but the roles are inverted.
+  if (initialStatus === 'settled' && currentUserInvolves.type === 'owes') {
+    console.warn('[settlementService] Correcting inverted roles for direct-to-settled creation.');
+    finalCurrentUserType = 'owed';
+    finalOtherPartyType = 'owes';
+  }
+
   const newSettlementEntryForDb: TablesInsert<'settlements'> = {
     user_id: currentUserId,
     name: otherPartyInvolves.name,
     email: otherPartyInvolves.email,
     upi_id: currentUserInvolves.type === 'owes' ? otherPartyInvolves.upi_id : currentUserInvolves.upi_id,
-    type: currentUserInvolves.type,
+    type: finalCurrentUserType,
     amount,
     status: initialStatus,
     transaction_group_id: transactionGroupId,
@@ -87,7 +99,7 @@ export const addSettlementPairToSupabase = async (
       name: currentUserInvolves.name,
       email: currentUserInvolves.email,
       upi_id: otherPartyInvolves.type === 'owes' ? currentUserInvolves.upi_id : otherPartyInvolves.upi_id,
-      type: otherPartyInvolves.type,
+      type: finalOtherPartyType,
       amount,
       status: initialStatus,
       transaction_group_id: transactionGroupId,
