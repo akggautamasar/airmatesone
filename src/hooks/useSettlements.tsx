@@ -65,7 +65,6 @@ export const useSettlements = () => {
       
       if (newSettlement) {
         if (newSettlement.status === 'settled') {
-          // This case is for "Mark as Received" by a creditor or "I've Paid" by a debtor being settled instantly.
           if (newSettlement.type === 'owed') { // Current user is the creditor
             toast({ 
               title: "Payment Received", 
@@ -75,7 +74,6 @@ export const useSettlements = () => {
             toast({ title: "Payment Recorded", description: `Your payment to ${newSettlement.name} has been recorded.` });
           }
         } else if (newSettlement.status === 'debtor_paid') {
-          // This case is for "I've Paid"
           toast({ title: "Payment Marked as Paid", description: `Your payment to ${newSettlement.name} has been marked. They will be notified to confirm.` });
         } else {
           toast({ title: "Settlement Recorded", description: "A new settlement has been recorded." });
@@ -124,7 +122,6 @@ export const useSettlements = () => {
             toast({ title: "Settlement Confirmed", description: `Your payment to ${userSettlement.name} has been confirmed.` });
           }
         } else {
-          // Fallback if the user's record wasn't returned for some reason
           toast({ title: "Settlement Settled", description: "The transaction is now marked as settled." });
         }
       } else {
