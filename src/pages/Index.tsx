@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -100,9 +101,16 @@ const Index = () => {
     refetchSettlements();
   };
 
-  const handleSettlementUpdate = () => {
-    refetchSettlements();
-    refetchExpenses(); // Also refetch expenses as settlements can affect overview
+  const handleSettlementStatusUpdate = async (
+    transaction_group_id: string,
+    newStatus: "pending" | "debtor_paid" | "settled"
+  ) => {
+    await updateSettlementStatusByGroupId(transaction_group_id, newStatus);
+    // The overview balances depend on both expenses and settled transactions.
+    // While settlements don't alter expense data, refetching expenses ensures
+    // the overview component is re-evaluated with the freshest data, resolving
+    // potential stale state issues after a settlement status changes.
+    refetchExpenses();
   };
 
   return (
@@ -130,7 +138,7 @@ const Index = () => {
               settlements={settlements}
               onAddSettlementPair={addSettlementPair}
               currentUserId={user.id}
-              onUpdateStatus={updateSettlementStatusByGroupId} 
+              onUpdateStatus={handleSettlementStatusUpdate} 
               onDeleteSettlementGroup={deleteSettlementGroup}
             />
           </TabsContent>
@@ -161,7 +169,7 @@ const Index = () => {
           <TabsContent value="settlements" className="space-y-6">
             <SettlementHistory 
               settlements={settlements} 
-              onUpdateStatus={updateSettlementStatusByGroupId}
+              onUpdateStatus={handleSettlementStatusUpdate}
               onDeleteSettlementGroup={deleteSettlementGroup}
               hasActiveExpenses={hasActiveExpenses}
             />
