@@ -12,6 +12,11 @@ import { useProfile } from "@/hooks/useProfile";
 import { Settlement as DetailedSettlement } from "@/components/SettlementHistory";
 import { useToast } from "@/components/ui/use-toast";
 
+import { SummaryCards } from "./overview/SummaryCards";
+import { BalanceList } from "./overview/BalanceList";
+import { ChartsSection } from "./overview/ChartsSection";
+import { RecentExpensesList } from "./overview/RecentExpensesList";
+
 interface Expense {
   id: string;
   description: string;
@@ -33,7 +38,7 @@ interface ExpenseOverviewProps {
   ) => Promise<DetailedSettlement | null>;
   currentUserId: string | undefined;
   onUpdateStatus: (transactionGroupId: string, status: string) => Promise<void>;
-  onDeleteSettlementGroup?: (transactionGroupId: string) => Promise<void>; // Added this line
+  onDeleteSettlementGroup?: (transactionGroupId: string) => Promise<void>;
 }
 
 export const ExpenseOverview = ({ 
@@ -43,7 +48,7 @@ export const ExpenseOverview = ({
   onAddSettlementPair, 
   currentUserId,
   onUpdateStatus,
-  // onDeleteSettlementGroup // Destructure if used, but not strictly necessary to fix the TS error
+  // onDeleteSettlementGroup is available but not directly used by ExpenseOverview itself post-refactor
 }: ExpenseOverviewProps) => {
   const { deleteExpense } = useExpenses();
   const { roommates } = useRoommates();
@@ -59,13 +64,15 @@ export const ExpenseOverview = ({
     const names = new Set<string>([currentUserDisplayName]);
     roommates.forEach(r => names.add(r.name));
     propsExpenses.forEach(e => {
-        if (e.paidBy !== currentUserDisplayName && !roommates.find(rm => rm.name === e.paidBy)) names.add(e.paidBy);
+        const payerDisplayName = e.paidBy === user?.email?.split('@')[0] || e.paidBy === profile?.name ? currentUserDisplayName : e.paidBy;
+        if (payerDisplayName !== currentUserDisplayName && !roommates.find(rm => rm.name === payerDisplayName)) names.add(payerDisplayName);
     });
     propsExpenses.forEach(e => e.sharers?.forEach(s => {
-        if (s !== currentUserDisplayName && !roommates.find(rm => rm.name === s)) names.add(s);
+        const sharerDisplayName = s === user?.email?.split('@')[0] || s === profile?.name ? currentUserDisplayName : s;
+        if (sharerDisplayName !== currentUserDisplayName && !roommates.find(rm => rm.name === sharerDisplayName)) names.add(sharerDisplayName);
     }));
     return Array.from(names);
-  }, [currentUserDisplayName, roommates, propsExpenses]);
+  }, [currentUserDisplayName, roommates, propsExpenses, user, profile]);
 
   const calculations = useMemo(() => {
     const totalExpenses = propsExpenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -97,10 +104,10 @@ export const ExpenseOverview = ({
         const settlementOwnerIsCurrentUser = settlement.user_id === currentUserId;
         
         if (settlementOwnerIsCurrentUser) {
-            if (settlement.type === 'owes') { // Current user (debtor) paid settlement.name (creditor)
+            if (settlement.type === 'owes') { 
                 debtorName = currentUserDisplayName;
                 creditorName = settlement.name;
-            } else { // settlement.type === 'owed', settlement.name (debtor) paid current user (creditor)
+            } else { 
                 debtorName = settlement.name;
                 creditorName = currentUserDisplayName;
             }
@@ -108,13 +115,13 @@ export const ExpenseOverview = ({
             const ownerProfile = roommates.find(r => r.user_id === settlement.user_id);
             const ownerDisplayName = ownerProfile?.name || `User ${settlement.user_id.substring(0,5)}`;
 
-            if (settlement.type === 'owes') { // Owner (debtor) paid settlement.name (creditor)
+            if (settlement.type === 'owes') { 
                 debtorName = ownerDisplayName;
-                creditorName = settlement.name; // This name is relative to the owner. If it's current user, it's currentUserDisplayName
+                creditorName = settlement.name; 
                 if (creditorName === user?.email || creditorName === profile?.name) creditorName = currentUserDisplayName;
 
-            } else { // settlement.type === 'owed', settlement.name (debtor) paid owner (creditor)
-                debtorName = settlement.name; // This name is relative to the owner. If it's current user, it's currentUserDisplayName
+            } else { 
+                debtorName = settlement.name; 
                 if (debtorName === user?.email || debtorName === profile?.name) debtorName = currentUserDisplayName;
                 creditorName = ownerDisplayName;
             }
@@ -124,10 +131,10 @@ export const ExpenseOverview = ({
         if (!balanceMap.has(creditorName) && allParticipantNames.includes(creditorName)) balanceMap.set(creditorName, 0);
 
         if (balanceMap.has(debtorName)) {
-            balanceMap.set(debtorName, (balanceMap.get(debtorName) || 0) + settlement.amount); // Debt reduced for debtor
+            balanceMap.set(debtorName, (balanceMap.get(debtorName) || 0) + settlement.amount);
         }
         if (balanceMap.has(creditorName)) {
-            balanceMap.set(creditorName, (balanceMap.get(creditorName) || 0) - settlement.amount); // Amount received by creditor
+            balanceMap.set(creditorName, (balanceMap.get(creditorName) || 0) - settlement.amount);
         }
       }
     });
@@ -172,8 +179,10 @@ export const ExpenseOverview = ({
     try {
       await deleteExpense(expenseId);
       onExpenseUpdate(); 
+      toast({ title: "Expense Deleted", description: "The expense has been successfully deleted."});
     } catch (error) {
       console.error('Error deleting expense:', error);
+      toast({ title: "Error", description: "Could not delete the expense.", variant: "destructive"});
     }
   };
   
@@ -273,6 +282,8 @@ export const ExpenseOverview = ({
     window.open(paymentUrl, '_blank', 'noopener,noreferrer');
   };
 
+  const lastExpenseDate = propsExpenses.length > 0 ? propsExpenses.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date : null;
+
   if (propsExpenses.length === 0 && settlements.filter(s => s.status !== 'settled').length === 0 && calculations.finalBalances.every(b => Math.abs(b.balance) < 0.01)) {
     return (
       <div className="text-center py-12">
@@ -285,257 +296,36 @@ export const ExpenseOverview = ({
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-            <IndianRupee className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{calculations.totalExpenses.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">
-              {propsExpenses.length} expense{propsExpenses.length !== 1 ? 's' : ''} recorded
-            </p>
-          </CardContent>
-        </Card>
+      <SummaryCards 
+        totalExpenses={calculations.totalExpenses}
+        expenseCount={propsExpenses.length}
+        lastExpenseDate={lastExpenseDate}
+      />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{propsExpenses.length > 0 ? new Date(propsExpenses.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date).toLocaleDateString() : 'N/A'}</div>
-            <p className="text-xs text-muted-foreground">Last expense added</p>
-          </CardContent>
-        </Card>
-      </div>
+      <BalanceList
+        finalBalances={calculations.finalBalances}
+        currentUserDisplayName={currentUserDisplayName}
+        roommates={roommates}
+        settlements={settlements}
+        currentUserId={currentUserId}
+        onInitiateSettlement={initiateSettlementProcess}
+        onPayViaUpi={handlePayClick}
+      />
 
-      {/* Balances Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Current Balances</CardTitle>
-          <CardDescription>Who owes what, reflecting shared expenses and settled transactions. Manage pending settlements in the 'Settlements' tab.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {calculations.finalBalances.map((person, index) => {
-            const isViewingOwnBalance = person.name === currentUserDisplayName;
-            const roommateInfo = roommates.find(r => r.name === person.name);
-
-            const activeSettlementWithPerson = settlements.find(s => 
-                s.status !== 'settled' &&
-                ((s.name === person.name && s.user_id === currentUserId) || 
-                 (s.name === currentUserDisplayName && person.name === (roommates.find(r => r.user_id === s.user_id)?.name || s.user_id)))
-            );
-
-            let actionContent = null;
-            let additionalInfoBadge = null;
-
-            if (!isViewingOwnBalance) {
-                if (person.balance > 0.005) { // Current user owes this person (person.name)
-                    const payButton = roommateInfo?.upi_id ? (
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handlePayClick(roommateInfo.upi_id, person.balance)}
-                          className="border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700 w-full sm:w-auto"
-                        >
-                          Pay via UPI
-                          <CreditCard className="ml-2 h-3 w-3" />
-                        </Button>
-                    ) : null;
-
-                    const markAsPaidButton = (
-                        <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => initiateSettlementProcess(currentUserDisplayName, person.name, person.balance, true)} 
-                            className="border-green-400 text-green-600 hover:bg-green-50 hover:text-green-700 w-full sm:w-auto"
-                        >
-                            Mark as Paid
-                            <BadgeCheck className="ml-2 h-3 w-3" />
-                        </Button>
-                    );
-                    
-                    actionContent = (
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 mt-1 w-full sm:w-auto justify-end">
-                            {payButton}
-                            {markAsPaidButton}
-                        </div>
-                    );
-
-                    if (activeSettlementWithPerson) {
-                        additionalInfoBadge = <Badge variant="outline" className="text-xs mt-1 sm:mt-0 sm:ml-2 self-center sm:self-auto">Note: A settlement is also pending</Badge>;
-                    }
-
-                } else if (person.balance < -0.005) { // Current user is owed by this person (person.name)
-                    if (!activeSettlementWithPerson) {
-                        actionContent = (
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => initiateSettlementProcess(person.name, currentUserDisplayName, person.balance, false)} 
-                              className="border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto"
-                            >
-                              Request Payment
-                            </Button>
-                        );
-                    } else {
-                        actionContent = <Badge variant="outline" className="text-xs">Settlement in progress</Badge>;
-                    }
-                }
-            }
-
-            return (
-              <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg bg-gray-50 space-y-2 sm:space-y-0">
-                <div className="flex items-center space-x-3">
-                  <div className={`rounded-full p-2 ${person.balance > 0.005 ? 'bg-green-100' : person.balance < -0.005 ? 'bg-red-100' : 'bg-gray-100'}`}>
-                    <Users className={`h-4 w-4 ${person.balance > 0.005 ? 'text-green-600' : person.balance < -0.005 ? 'text-red-600' : 'text-gray-600'}`} />
-                  </div>
-                  <div>
-                    <p className="font-medium">{person.name}{isViewingOwnBalance ? " (You)" : ""}</p>
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row items-end sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 self-end sm:self-center w-full sm:w-auto justify-end">
-                  <Badge variant={person.balance > 0.005 ? "default" : person.balance < -0.005 ? "destructive" : "secondary"} className={`${person.balance > 0.005 ? 'bg-green-500 hover:bg-green-600' : ''} whitespace-nowrap`}>
-                    {person.balance === 0 || (person.balance < 0.005 && person.balance > -0.005) ? "Settled Up" : 
-                     person.balance > 0 ? `Is Owed ₹${person.balance.toFixed(2)}` : 
-                     `Owes ₹${Math.abs(person.balance).toFixed(2)}`}
-                  </Badge>
-                  {actionContent}
-                  {additionalInfoBadge}
-                </div>
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Category Breakdown */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Expenses by Category</CardTitle>
-            <CardDescription>Breakdown of spending categories</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {categoryData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={categoryData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {categoryData.map((_entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => [`₹${Number(value).toLocaleString('en-IN')}`, 'Amount']} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                No category data available
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Monthly Trend */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Monthly Spending Trend</CardTitle>
-            <CardDescription>Track your spending over time</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {monthlyData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis tickFormatter={(value) => `₹${value.toLocaleString('en-IN')}`} />
-                  <Tooltip formatter={(value) => [`₹${Number(value).toLocaleString('en-IN')}`, 'Amount']} />
-                  <Legend />
-                  <Bar dataKey="amount" fill="#8884d8" />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                No monthly data available
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Expenses */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Expenses</CardTitle>
-          <CardDescription>Your latest spending activity.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {propsExpenses.slice(0, 5).map((expense) => (
-              <div key={expense.id} className="flex items-center justify-between p-4 rounded-lg border">
-                <div className="flex items-center space-x-4">
-                  <div className="rounded-full bg-blue-100 p-2">
-                    <IndianRupee className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">{expense.description}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Paid by {expense.paidBy === user?.email?.split('@')[0] || expense.paidBy === profile?.name ? currentUserDisplayName : expense.paidBy} • {new Date(expense.date).toLocaleDateString()} • {expense.category}
-                      {expense.sharers && expense.sharers.length > 0 && expense.sharers.length < allParticipantNames.length ? (
-                        <span className="block text-xs">Shared with: {expense.sharers.map(s => s === user?.email?.split('@')[0] || s === profile?.name ? currentUserDisplayName : s).join(', ')}</span>
-                      ) : (
-                        <span className="block text-xs">Shared with: All</span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className="font-semibold">₹{expense.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Expense</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete "{expense.description}"? This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDeleteExpense(expense.id)}>
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </div>
-            ))}
-            {propsExpenses.length === 0 && (
-                 <div className="text-center py-8 text-muted-foreground">
-                    <p>No recent expenses to show.</p>
-                </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <ChartsSection
+        categoryData={categoryData}
+        monthlyData={monthlyData}
+        colors={COLORS}
+      />
+      
+      <RecentExpensesList
+        expenses={propsExpenses}
+        currentUserDisplayName={currentUserDisplayName}
+        allParticipantNames={allParticipantNames}
+        userEmailPrefix={user?.email?.split('@')[0]}
+        profileName={profile?.name}
+        onDeleteExpense={handleDeleteExpense}
+      />
     </div>
   );
 };
