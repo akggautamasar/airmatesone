@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -66,7 +67,7 @@ const SettlementHistory = ({ settlements, currentUserId, onUpdateStatus, onDelet
       return type === 'owes' ? `You've marked as paid to ${name}, awaiting their confirmation` : `${name} marked as paid, confirm receipt`;
     }
     if (status === 'settled') {
-      return type === 'owes' ? `You paid ${name}` : `${name} paid you`;
+      return type === 'owes' ? `You paid ${name}` : `Received from ${name}`;
     }
     return 'Unknown status';
   };

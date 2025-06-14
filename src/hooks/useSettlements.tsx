@@ -66,11 +66,11 @@ export const useSettlements = () => {
       
       if (newSettlement) {
         if (newSettlement.status === 'settled') {
-          // This case is for "Mark as Received"
-          if (newSettlement.type === 'owed') {
-            toast({ title: "Payment Received", description: `You have recorded a received payment from ${newSettlement.name}.` });
-          } else { // This case should not happen with the new logic, but as a fallback.
-            toast({ title: "Payment Recorded", description: `You have recorded a payment made to ${newSettlement.name}.` });
+          // This case is for "Mark as Received" by a creditor or "I've Paid" by a debtor being settled instantly.
+          if (newSettlement.type === 'owed') { // Current user is the creditor
+            toast({ title: "Payment Received", description: `You have recorded a received payment from ${newSettlement.name}. They will be notified.` });
+          } else { // Current user is the debtor
+            toast({ title: "Payment Recorded", description: `Your payment to ${newSettlement.name} has been recorded.` });
           }
         } else if (newSettlement.status === 'debtor_paid') {
           // This case is for "I've Paid"

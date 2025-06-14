@@ -1,4 +1,3 @@
-
 import { SupabaseClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
@@ -46,11 +45,10 @@ export const addSettlementPairToSupabase = async (
   let finalCurrentUserType: 'owes' | 'owed' = currentUserInvolves.type;
   let finalOtherPartyType: 'owes' | 'owed' = otherPartyInvolves.type;
 
-  // If a settlement is being created directly as 'settled', it's from a creditor
-  // confirming receipt for a debt that wasn't formally tracked.
-  // We enforce that the user making the call is the 'owed' party (creditor).
+  // When "Mark as Received" is clicked, it creates a settled transaction.
+  // The calling user is the creditor. We must enforce this to prevent role mix-ups.
   if (initialStatus === 'settled') {
-    console.warn('[settlementService] Enforcing creditor role for direct-to-settled creation.');
+    console.warn('[settlementService] Enforcing creditor role for current user for direct-to-settled creation.');
     finalCurrentUserType = 'owed';
     finalOtherPartyType = 'owes';
   }
