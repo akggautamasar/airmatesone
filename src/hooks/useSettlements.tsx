@@ -10,11 +10,11 @@ import { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/type
 const mapSupabaseToSettlement = (row: Tables<'settlements'>): Settlement => {
   return {
     id: row.id,
-    name: row.name,
+    name: row.name, // Name of the other party
     amount: row.amount,
     type: row.type as "owes" | "owed",
-    upiId: row.upi_id,
-    email: row.email,
+    upiId: row.upi_id, // UPI ID of the creditor
+    email: row.email, // Email of the other party
     status: row.status as "pending" | "debtor_paid" | "settled",
     settledDate: row.settled_date || undefined,
     transaction_group_id: row.transaction_group_id || undefined,
@@ -75,14 +75,19 @@ export const useSettlements = () => {
 
     const transactionGroupId = uuidv4();
     
+    // For the current user's settlement record:
+    // 'name', 'email', 'upi_id' should pertain to the otherParty.
+    // 'type' describes the current user's relation to the otherParty.
     const newSettlementEntryForDb: TablesInsert<'settlements'> = {
         user_id: user.id,
-        name: currentUserInvolves.type === 'owes' ? otherPartyInvolves.name : currentUserInvolves.name,
-        email: currentUserInvolves.type === 'owes' ? otherPartyInvolves.email : currentUserInvolves.email,
+        name: otherPartyInvolves.name, // Name of the person current user is transacting with
+        email: otherPartyInvolves.email, // Email of the other party
+        // upi_id is the creditor's UPI. 
+        // If current user owes, it's otherParty's UPI. If current user is owed, it's current user's UPI.
         upi_id: currentUserInvolves.type === 'owes' ? otherPartyInvolves.upi_id : currentUserInvolves.upi_id,
-        type: currentUserInvolves.type,
+        type: currentUserInvolves.type, // e.g. 'owes' means current user owes otherParty
         amount,
-        status: 'pending', // Explicitly 'pending'
+        status: 'pending',
         transaction_group_id: transactionGroupId,
     };
     console.log("Attempting to add settlement for current user (useSettlements):", JSON.stringify(newSettlementEntryForDb));
@@ -114,14 +119,19 @@ export const useSettlements = () => {
         }
         
         if (otherUserId) {
+            // For the other party's settlement record:
+            // 'name', 'email', 'upi_id' should pertain to the currentUser.
+            // 'type' describes the otherParty's relation to the currentUser.
             const otherPartySettlementEntryForDb: TablesInsert<'settlements'> = {
                 user_id: otherUserId,
-                name: currentUserInvolves.name,
-                email: user.email || '',
+                name: currentUserInvolves.name, // Name of the current user (who is the other party for otherUserId)
+                email: currentUserInvolves.email, // Email of the current user
+                // upi_id is the creditor's UPI.
+                // If otherParty owes (type 'owes'), it's currentUser's UPI. If otherParty is owed (type 'owed'), it's otherParty's UPI.
                 upi_id: otherPartyInvolves.type === 'owes' ? currentUserInvolves.upi_id : otherPartyInvolves.upi_id,
-                type: otherPartyInvolves.type,
+                type: otherPartyInvolves.type, // e.g. 'owes' means otherParty owes currentUser
                 amount,
-                status: 'pending', // Explicitly 'pending'
+                status: 'pending',
                 transaction_group_id: transactionGroupId,
             };
             console.log("Attempting to add settlement for other party (useSettlements):", JSON.stringify(otherPartySettlementEntryForDb));
@@ -150,7 +160,6 @@ export const useSettlements = () => {
       return;
     }
 
-    // This check is mostly for runtime robustness, TypeScript handles compile-time.
     if (!['pending', 'debtor_paid', 'settled'].includes(newStatus)) {
         console.error(`CRITICAL: Invalid status value ('${newStatus}') passed to updateSettlementStatusByGroupId. This should not happen with TypeScript.`);
         toast({ title: "Critical Error", description: "Invalid status value for update.", variant: "destructive" });
