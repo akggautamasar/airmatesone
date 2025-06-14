@@ -63,7 +63,25 @@ export const useSettlements = () => {
         initialStatus
       );
       await fetchSettlements(); // Refetch to update local state
-      toast({ title: "Settlement Recorded", description: "The settlement has been recorded." });
+      
+      if (newSettlement) {
+        if (newSettlement.status === 'settled') {
+          // This case is for "Mark as Received"
+          if (newSettlement.type === 'owed') {
+            toast({ title: "Payment Received", description: `You have recorded a received payment from ${newSettlement.name}.` });
+          } else { // This case should not happen with the new logic, but as a fallback.
+            toast({ title: "Payment Recorded", description: `You have recorded a payment made to ${newSettlement.name}.` });
+          }
+        } else if (newSettlement.status === 'debtor_paid') {
+          // This case is for "I've Paid"
+          toast({ title: "Payment Marked as Paid", description: `Your payment to ${newSettlement.name} has been marked. They will be notified to confirm.` });
+        } else {
+          toast({ title: "Settlement Recorded", description: "A new settlement has been recorded." });
+        }
+      } else {
+        toast({ title: "Settlement Recorded", description: "The settlement has been recorded." });
+      }
+
       return newSettlement;
     } catch (error: any) {
       console.error(`[useSettlements] Error adding settlement pair for user ${user.id}:`, error);

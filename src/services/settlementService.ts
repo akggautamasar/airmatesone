@@ -1,3 +1,4 @@
+
 import { SupabaseClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
@@ -38,18 +39,18 @@ export const addSettlementPairToSupabase = async (
   currentUserId: string,
   initialStatus: 'pending' | 'debtor_paid' | 'settled' = 'pending'
 ): Promise<Settlement> => {
-  console.log('[settlementService] addSettlementPair called with initialStatus:', initialStatus);
+  console.log('[settlementService] addSettlementPair called with initialStatus:', initialStatus, 'and currentUser type:', currentUserInvolves.type);
 
   const transactionGroupId = uuidv4();
 
-  // Correction logic for roles
-  let finalCurrentUserType = currentUserInvolves.type;
-  let finalOtherPartyType = otherPartyInvolves.type;
+  let finalCurrentUserType: 'owes' | 'owed' = currentUserInvolves.type;
+  let finalOtherPartyType: 'owes' | 'owed' = otherPartyInvolves.type;
 
-  // This condition detects the specific scenario from the "Mark as Received" button
-  // where a settlement is created as 'settled' but the roles are inverted.
-  if (initialStatus === 'settled' && currentUserInvolves.type === 'owes') {
-    console.warn('[settlementService] Correcting inverted roles for direct-to-settled creation.');
+  // If a settlement is being created directly as 'settled', it's from a creditor
+  // confirming receipt for a debt that wasn't formally tracked.
+  // We enforce that the user making the call is the 'owed' party (creditor).
+  if (initialStatus === 'settled') {
+    console.warn('[settlementService] Enforcing creditor role for direct-to-settled creation.');
     finalCurrentUserType = 'owed';
     finalOtherPartyType = 'owes';
   }
@@ -58,7 +59,8 @@ export const addSettlementPairToSupabase = async (
     user_id: currentUserId,
     name: otherPartyInvolves.name,
     email: otherPartyInvolves.email,
-    upi_id: currentUserInvolves.type === 'owes' ? otherPartyInvolves.upi_id : currentUserInvolves.upi_id,
+    // The UPI ID should always belong to the creditor (the 'owed' party).
+    upi_id: finalCurrentUserType === 'owed' ? currentUserInvolves.upi_id : otherPartyInvolves.upi_id,
     type: finalCurrentUserType,
     amount,
     status: initialStatus,
@@ -98,7 +100,8 @@ export const addSettlementPairToSupabase = async (
       user_id: otherUserId,
       name: currentUserInvolves.name,
       email: currentUserInvolves.email,
-      upi_id: otherPartyInvolves.type === 'owes' ? currentUserInvolves.upi_id : otherPartyInvolves.upi_id,
+      // The UPI ID should always belong to the creditor (the 'owed' party).
+      upi_id: finalCurrentUserType === 'owed' ? currentUserInvolves.upi_id : otherPartyInvolves.upi_id,
       type: finalOtherPartyType,
       amount,
       status: initialStatus,
