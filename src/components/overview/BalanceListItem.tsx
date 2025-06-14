@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,12 +40,12 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
 
   let actionContent = null;
   let statusText = null;
-  
+
   if (!isViewingOwnBalance) {
     const otherPartyName = person.name;
     const amount = person.balance;
     const otherPartyRoommateInfo = roommates.find(r => r.name === otherPartyName);
-    const otherPartyUserId = otherPartyRoommateInfo?.user_id; 
+    const otherPartyUserId = otherPartyRoommateInfo?.user_id;
     const iAmDebtor = amount > 0.005;
     const iAmCreditor = amount < -0.005;
 
@@ -72,28 +73,25 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
       };
     });
 
-    // Locate first active group with key statuses
-    // ALTER: We want to show "Mark as Received" for CREDITOR if *ANY* member in group has status 'debtor_paid'
+    // Find the first group with status 'debtor_paid' (original logic)
     const groupWithDebtorPaid = groupViews.find(g =>
       g.statuses.some(status => status === 'debtor_paid')
     );
+    // Find the first group with status 'pending'
     const groupWithPending = groupViews.find(g =>
       g.statuses.some(status => status === 'pending')
     );
-
-    // Add logging for debugging
-    if (iAmCreditor) {
-      console.log(`[BalanceListItem] Creditor view for ${currentUserDisplayName} vs ${otherPartyName}`);
-      console.log('groupViews:', groupViews);
-      console.log('groupWithDebtorPaid:', groupWithDebtorPaid);
-    }
+    // Find the first group with status 'settled'
+    const groupWithSettled = groupViews.find(g =>
+      g.statuses.every(status => status === 'settled')
+    );
 
     if (iAmDebtor) {
       // DEBTOR VIEW
       if (groupWithDebtorPaid) {
         statusText = (
           <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
-            Payment marked, awaiting {otherPartyName}'s confirmation
+            Payment marked, awaiting {otherPartyName}&apos;s confirmation
           </Badge>
         );
         actionContent = null;
@@ -122,28 +120,53 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
               onClick={() => onDebtorMarksAsPaid(currentUserDisplayName, otherPartyName, amount)}
               className="border-blue-400 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto"
             >
-              I've Paid <Send className="ml-2 h-3 w-3" />
+              I&apos;ve Paid <Send className="ml-2 h-3 w-3" />
             </Button>
           </div>
         );
       }
     } else if (iAmCreditor) {
       // CREDITOR VIEW
-      if (groupWithDebtorPaid) {
-        const groupId = groupWithDebtorPaid.groupId;
+      // We want to always show the "Mark as Received" button, unless every settlement is already settled
+      // Find any unsettled group (pending or debtor_paid)
+      const unsettledGroup = groupViews.find(g =>
+        g.statuses.some(status => status === 'pending' || status === 'debtor_paid')
+      );
+      // If there are no settlements, button should still be available for now if they are owed money
+
+      // Determine which groupId to use for "Mark as Received":
+      let targetGroupId: string | undefined = groupWithDebtorPaid?.groupId || groupWithPending?.groupId || unsettledGroup?.groupId;
+      // If there are no existing settlements, can't mark--but button will call onCreditorConfirmsReceipt with undefined
+
+      // Only do not show if settled everywhere
+      if (groupWithSettled && (!unsettledGroup && !groupWithDebtorPaid)) {
         statusText = (
+          <Badge variant="outline" className="text-xs text-green-600 border-green-300">
+            Fully settled
+          </Badge>
+        );
+        actionContent = null;
+      } else {
+        // Show the Mark as Received button always
+        statusText = groupWithDebtorPaid ? (
           <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
             Debtor marked as paid
           </Badge>
-        );
+        ) : groupWithPending ? (
+          <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">
+            Awaiting payment from {otherPartyName}
+          </Badge>
+        ) : null;
         actionContent = (
           <Button
             size="sm"
             variant="outline"
             onClick={() => {
-              // The creditor is confirming receipt and settling the group
-              if (groupId) {
-                onCreditorConfirmsReceipt(groupId, 'settled');
+              if (targetGroupId) {
+                onCreditorConfirmsReceipt(targetGroupId, 'settled');
+              } else {
+                // If no settlement group exists, could prompt user to first create a settlement (future)
+                alert('No settlement to mark as received!');
               }
             }}
             className="border-green-400 text-green-600 hover:bg-green-50 hover:text-green-700 w-full sm:w-auto"
@@ -151,15 +174,6 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
             Mark as Received <CircleCheck className="ml-2 h-3 w-3" />
           </Button>
         );
-      } else {
-        // No request payment button here
-        const isPending = Boolean(groupWithPending);
-        statusText = isPending ? (
-          <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">
-            Awaiting payment from {otherPartyName}
-          </Badge>
-        ) : null;
-        actionContent = null;
       }
     }
   }
