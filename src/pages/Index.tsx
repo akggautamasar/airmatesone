@@ -6,29 +6,38 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExpenseOverview } from "@/components/ExpenseOverview";
 import { AddExpense } from "@/components/AddExpense";
 import { RoommateManagement } from "@/components/RoommateManagement";
-import { SettlementHistory, Settlement } from "@/components/SettlementHistory"; // Import Settlement type
+import { SettlementHistory, Settlement } from "@/components/SettlementHistory";
 import { Profile } from "@/components/Profile";
 import { useExpenses } from "@/hooks/useExpenses";
+import { useSettlements } from "@/hooks/useSettlements";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 
 const Index = () => {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { expenses, addExpense, deleteExpense } = useExpenses();
+  const { expenses, addExpense, deleteExpense, loading: expensesLoading, refetch: refetchExpenses } = useExpenses();
+  const { 
+    settlements, 
+    loading: settlementsLoading, 
+    addSettlementPair, 
+    updateSettlementStatusByGroupId,
+    refetchSettlements 
+  } = useSettlements();
   const [showAddExpense, setShowAddExpense] = useState(false);
-  const [settlements, setSettlements] = useState<Settlement[]>([]); // Use imported Settlement type
 
   useEffect(() => {
-    console.log('Index page - user:', user?.email, 'loading:', loading);
-    if (!loading && !user) {
+    console.log('Index page - user:', user?.email, 'authLoading:', authLoading);
+    if (!authLoading && !user) {
       console.log('Redirecting to auth page');
       navigate("/auth");
     }
-  }, [user, loading, navigate]);
+  }, [user, authLoading, navigate]);
 
-  if (loading) {
+  const overallLoading = authLoading || expensesLoading || settlementsLoading;
+
+  if (overallLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -62,13 +71,13 @@ const Index = () => {
     description: expense.description,
     amount: expense.amount,
     paidBy: expense.paid_by,
-    date: new Date(expense.date).toLocaleDateString(), // Consider keeping as ISO string or Date object for consistency
+    date: new Date(expense.date).toISOString(),
     category: expense.category,
     sharers: expense.sharers || []
   }));
 
-  const handleAddExpense = (expense: any) => {
-    addExpense({
+  const handleAddExpenseSubmit = async (expense: any) => {
+    await addExpense({
       description: expense.description,
       amount: expense.amount,
       paid_by: expense.paidBy,
@@ -76,6 +85,16 @@ const Index = () => {
       date: new Date().toISOString(),
       sharers: expense.sharers
     });
+    setShowAddExpense(false);
+  };
+
+  const handleExpenseUpdate = () => {
+    refetchExpenses();
+    refetchSettlements();
+  };
+
+  const handleSettlementUpdate = () => {
+    refetchSettlements();
   };
 
   return (
@@ -99,9 +118,10 @@ const Index = () => {
           <TabsContent value="overview" className="space-y-6">
             <ExpenseOverview 
               expenses={formattedExpenses}
-              onExpenseUpdate={() => { /* Consider calling refetch from useExpenses here if needed */ }}
+              onExpenseUpdate={handleExpenseUpdate}
               settlements={settlements}
-              onSettlementUpdate={setSettlements}
+              onAddSettlementPair={addSettlementPair}
+              currentUserId={user.id}
             />
           </TabsContent>
 
@@ -120,7 +140,7 @@ const Index = () => {
             <AddExpense 
               open={showAddExpense}
               onClose={() => setShowAddExpense(false)}
-              onAddExpense={handleAddExpense}
+              onAddExpense={handleAddExpenseSubmit}
             />
           </TabsContent>
 
@@ -129,7 +149,11 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="settlements" className="space-y-6">
-            <SettlementHistory settlements={settlements} />
+            <SettlementHistory 
+              settlements={settlements} 
+              currentUserId={user.id}
+              onUpdateStatus={updateSettlementStatusByGroupId}
+            />
           </TabsContent>
 
           <TabsContent value="profile" className="space-y-6">

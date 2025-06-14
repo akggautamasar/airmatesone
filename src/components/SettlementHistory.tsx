@@ -2,45 +2,72 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Clock, Check, CreditCard, BadgeCheck } from "lucide-react";
+import { Clock, Check, CreditCard, BadgeCheck, Send, CheckCircle } from "lucide-react";
 
-export interface Settlement { // Added export
+export interface Settlement {
   id: string;
-  name: string; // Name of the other person involved in the settlement
+  name: string; 
   amount: number;
-  type: "owes" | "owed"; // "owes" means current user owes `name`; "owed" means `name` owes current user
-  upiId: string; // UPI ID of `name` if type is "owes"; current user's UPI if type is "owed"
-  email: string; // Email of `name`
-  status: "pending" | "settled";
+  type: "owes" | "owed"; 
+  upiId: string; 
+  email: string; 
+  status: "pending" | "debtor_paid" | "settled"; 
   settledDate?: string;
+  transaction_group_id?: string; 
+  user_id: string; 
 }
 
 interface SettlementHistoryProps {
   settlements: Settlement[];
-  // We might need a function prop here later to actually mark as paid
-  // onMarkAsPaid: (settlementId: string) => void; 
+  currentUserId: string | undefined; 
+  onUpdateStatus: (transaction_group_id: string, newStatus: "pending" | "debtor_paid" | "settled") => void;
 }
 
-const SettlementHistory = ({ settlements }: SettlementHistoryProps) => {
-  const pendingSettlements = settlements.filter(s => s.status === "pending");
+const SettlementHistory = ({ settlements, currentUserId, onUpdateStatus }: SettlementHistoryProps) => {
+  const pendingSettlements = settlements.filter(s => s.status === "pending" || s.status === "debtor_paid");
   const settledSettlements = settlements.filter(s => s.status === "settled");
 
   const handlePayClick = (upiId: string, amount: number) => {
     if (!upiId || amount <= 0) {
       console.error("Invalid UPI ID or amount for payment.");
-      // Optionally, show a toast message to the user
       return;
     }
-    // Ensure the URL format is https://quantxpay.vercel.app/<your-upi-id>/<amount>
     const paymentUrl = `https://quantxpay.vercel.app/${upiId}/${amount.toFixed(2)}`;
     window.open(paymentUrl, '_blank', 'noopener,noreferrer');
   };
 
-  const handleMarkAsPaidClick = (settlementId: string) => {
-    console.log(`Marking settlement ${settlementId} as paid.`);
-    // Here you would typically call a function to update the settlement status in your backend
-    // For example: onMarkAsPaid(settlementId);
-    // alert(`Marking settlement ${settlementId} as paid. (Placeholder action)`);
+  const getStatusColor = (status: Settlement['status']) => {
+    if (status === 'pending') return 'orange';
+    if (status === 'debtor_paid') return 'blue';
+    if (status === 'settled') return 'green';
+    return 'gray';
+  };
+
+  const getStatusText = (status: Settlement['status'], type: Settlement['type'], name: string) => {
+    if (status === 'pending') {
+      return type === 'owes' ? `You owe ${name}` : `${name} owes you`;
+    }
+    if (status === 'debtor_paid') {
+      return type === 'owes' ? `${name} is awaiting your payment confirmation` : `You've marked as paid to ${name}, awaiting their confirmation`;
+    }
+    if (status === 'settled') {
+      return type === 'owes' ? `You paid ${name}` : `${name} paid you`;
+    }
+    return 'Unknown status';
+  };
+  
+  const getActionText = (status: Settlement['status'], type: Settlement['type']) => {
+    if (type === 'owes') { // Current user owes money
+      if (status === 'pending') return "Mark as Paid";
+      // If debtor_paid and I owe, it means the other person (creditor) marked something prematurely? This state should not occur for 'owes' type for action button.
+      // Or it means *I* marked it as paid, and *their* record became debtor_paid. My view is I'm waiting for them.
+      // If my record says type: "owes" and status: "debtor_paid", it means *I* (debtor) have clicked "Mark as Paid". Now waiting for creditor.
+      if (status === 'debtor_paid') return "Awaiting Confirmation"; 
+    } else { // Current user is owed money
+      if (status === 'pending') return "Awaiting Payment"; // No action for creditor if pending
+      if (status === 'debtor_paid') return "Mark as Received"; // Debtor paid, creditor confirms
+    }
+    return null;
   };
 
   return (
@@ -63,66 +90,82 @@ const SettlementHistory = ({ settlements }: SettlementHistoryProps) => {
               <div className="text-center py-8 text-muted-foreground">
                 <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No pending settlements</p>
-                <p className="text-sm">All settlements are up to date</p>
               </div>
             ) : (
-              pendingSettlements.map((settlement) => (
-                <div key={settlement.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200 space-y-2 sm:space-y-0">
+              pendingSettlements.map((settlement) => {
+                const color = getStatusColor(settlement.status);
+                const actionButtonText = getActionText(settlement.status, settlement.type);
+
+                return (
+                <div key={settlement.id} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-${color}-50 rounded-lg border border-${color}-200 space-y-2 sm:space-y-0`}>
                   <div className="flex items-center space-x-3">
-                    <div className="bg-orange-500 rounded-full p-2 flex-shrink-0">
-                      <Clock className="h-4 w-4 text-white" />
+                    <div className={`bg-${color}-500 rounded-full p-2 flex-shrink-0`}>
+                      {settlement.status === 'pending' && <Clock className="h-4 w-4 text-white" />}
+                      {settlement.status === 'debtor_paid' && <Send className="h-4 w-4 text-white" />}
+                      {settlement.status === 'settled' && <Check className="h-4 w-4 text-white" />}
                     </div>
                     <div>
                       <p className="font-medium">
-                        {settlement.type === "owes" ? `You owe ${settlement.name}` : `${settlement.name} owes you`}
+                        {getStatusText(settlement.status, settlement.type, settlement.name)}
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        Pending payment
+                      <p className={`text-sm text-${color}-600`}>
+                        Status: {settlement.status.replace('_', ' ')}
                       </p>
                     </div>
                   </div>
                   <div className="flex flex-col items-end space-y-1 self-end sm:self-center">
-                    <p className="font-semibold text-orange-600">₹{settlement.amount.toFixed(2)}</p>
-                    {settlement.type === "owes" && settlement.upiId && (
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 mt-1 w-full sm:w-auto justify-end">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => handlePayClick(settlement.upiId, settlement.amount)}
-                          className="bg-white hover:bg-gray-50 border-orange-300 text-orange-600 hover:text-orange-700 w-full sm:w-auto"
-                        >
-                          Pay
-                          <CreditCard className="ml-2 h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleMarkAsPaidClick(settlement.id)}
-                          className="bg-white hover:bg-gray-50 border-green-400 text-green-600 hover:text-green-700 w-full sm:w-auto"
-                        >
-                          Mark as Paid
-                          <BadgeCheck className="ml-2 h-3 w-3" />
-                        </Button>
-                      </div>
-                    )}
-                    {settlement.type === "owes" && !settlement.upiId && (
+                    <p className={`font-semibold text-${color}-600`}>₹{settlement.amount.toFixed(2)}</p>
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 mt-1 w-full sm:w-auto justify-end">
+                        {settlement.type === "owes" && settlement.status === "pending" && settlement.upiId && (
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => handlePayClick(settlement.upiId, settlement.amount)}
+                                className={`bg-white hover:bg-gray-50 border-${color}-300 text-${color}-600 hover:text-${color}-700 w-full sm:w-auto`}
+                            >
+                                Pay via UPI
+                                <CreditCard className="ml-2 h-3 w-3" />
+                            </Button>
+                        )}
+
+                        {actionButtonText && settlement.transaction_group_id && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    if (settlement.type === 'owes' && settlement.status === 'pending') {
+                                        onUpdateStatus(settlement.transaction_group_id!, 'debtor_paid');
+                                    } else if (settlement.type === 'owed' && settlement.status === 'debtor_paid') {
+                                        onUpdateStatus(settlement.transaction_group_id!, 'settled');
+                                    }
+                                }}
+                                className={`bg-white hover:bg-gray-50 border-green-400 text-green-600 hover:text-green-700 w-full sm:w-auto`}
+                                disabled={actionButtonText === "Awaiting Payment" || actionButtonText === "Awaiting Confirmation"}
+                            >
+                                {actionButtonText}
+                                {actionButtonText === "Mark as Paid" && <BadgeCheck className="ml-2 h-3 w-3" />}
+                                {actionButtonText === "Mark as Received" && <CheckCircle className="ml-2 h-3 w-3" />}
+                            </Button>
+                        )}
+                         {settlement.type === "owes" && settlement.status === "pending" && !settlement.upiId && settlement.transaction_group_id && (
+                             <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onUpdateStatus(settlement.transaction_group_id!, 'debtor_paid')}
+                                className="bg-white hover:bg-gray-50 border-green-400 text-green-600 hover:text-green-700 w-full sm:w-auto"
+                             >
+                                Mark as Paid (Manual)
+                                <BadgeCheck className="ml-2 h-3 w-3" />
+                            </Button>
+                        )}
+                    </div>
+                    {settlement.type === "owes" && settlement.status === "pending" && !settlement.upiId && (
                        <p className="text-xs text-muted-foreground">UPI ID not available for direct payment</p>
                     )}
-                     {!settlement.upiId && settlement.type === "owes" && ( /* Show Mark as Paid even if no UPI for manual settlement */
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleMarkAsPaidClick(settlement.id)}
-                          className="bg-white hover:bg-gray-50 border-green-400 text-green-600 hover:text-green-700 w-full sm:w-auto mt-1"
-                        >
-                          Mark as Paid
-                          <BadgeCheck className="ml-2 h-3 w-3" />
-                        </Button>
-                     )}
-                     <p className="text-xs text-orange-500 mt-1">Pending</p>
                   </div>
                 </div>
-              ))
+              )})
             )}
           </TabsContent>
           
@@ -142,10 +185,10 @@ const SettlementHistory = ({ settlements }: SettlementHistoryProps) => {
                     </div>
                     <div>
                       <p className="font-medium">
-                        {settlement.type === "owes" ? `You paid ${settlement.name}` : `${settlement.name} paid you`}
+                        {getStatusText(settlement.status, settlement.type, settlement.name)}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {settlement.settledDate ? `Settled on ${settlement.settledDate}` : "Settled"}
+                        {settlement.settledDate ? `Settled on ${new Date(settlement.settledDate).toLocaleDateString()}` : "Settled"}
                       </p>
                     </div>
                   </div>

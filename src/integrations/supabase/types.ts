@@ -198,6 +198,7 @@ export type Database = {
           name: string
           settled_date: string | null
           status: string
+          transaction_group_id: string | null
           type: string
           updated_at: string
           upi_id: string
@@ -211,6 +212,7 @@ export type Database = {
           name: string
           settled_date?: string | null
           status?: string
+          transaction_group_id?: string | null
           type: string
           updated_at?: string
           upi_id: string
@@ -224,6 +226,7 @@ export type Database = {
           name?: string
           settled_date?: string | null
           status?: string
+          transaction_group_id?: string | null
           type?: string
           updated_at?: string
           upi_id?: string
