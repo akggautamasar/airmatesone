@@ -91,57 +91,59 @@ const Index = () => {
 
   // Function to automatically create settlements when expense is added
   const createSettlementsForExpense = async (expense: any) => {
-    const payerName = expense.paidBy === user?.email?.split('@')[0] || expense.paidBy === profile?.name 
-      ? currentUserDisplayName 
-      : expense.paidBy;
-    
-    const allParticipantNames = [currentUserDisplayName, ...roommates.map(r => r.name)];
-    const effectiveSharers = expense.sharers && expense.sharers.length > 0
-      ? expense.sharers.map((s: string) => s === user?.email?.split('@')[0] || s === profile?.name ? currentUserDisplayName : s)
-      : allParticipantNames;
+    const allUserNames = [profile?.name, user?.email?.split('@')[0]].filter(Boolean); // Current user possible names
+    const payerName = allUserNames.includes(expense.paidBy) ? currentUserDisplayName : expense.paidBy;
+
+    // Sharers: map to display names if possible, fallback to as given
+    const effectiveSharers = (expense.sharers && expense.sharers.length > 0)
+      ? expense.sharers.map((s: string) =>
+          allUserNames.includes(s) ? currentUserDisplayName : s)
+      : [currentUserDisplayName, ...roommates.map(r => r.name)];
 
     const amountPerSharer = expense.amount / effectiveSharers.length;
+    console.log(`[Index] Creating settlements for expense: payer=${payerName}, sharers=${JSON.stringify(effectiveSharers)}, amountPerSharer=${amountPerSharer}`);
 
-    console.log(`[Index] Creating settlements for expense: payer=${payerName}, sharers=${effectiveSharers.join(',')}, amountPerSharer=${amountPerSharer}`);
-
-    // Create settlements for each sharer who didn't pay (debtors)
     for (const sharerName of effectiveSharers) {
       if (sharerName !== payerName) {
-        console.log(`[Index] Creating settlement: ${sharerName} owes ${payerName} ₹${amountPerSharer}`);
-        
-        // Find the details for both parties
-        const debtorDetails = sharerName === currentUserDisplayName 
-          ? { name: currentUserDisplayName, email: user?.email || '', upi_id: profile?.upi_id || '' }
-          : roommates.find(r => r.name === sharerName);
-        
-        const creditorDetails = payerName === currentUserDisplayName 
-          ? { name: currentUserDisplayName, email: user?.email || '', upi_id: profile?.upi_id || '' }
-          : roommates.find(r => r.name === payerName);
+        // Find user/email/UPI for the debtor and creditor
+        let debtor = null;
+        let creditor = null;
 
-        if (debtorDetails && creditorDetails) {
-          console.log(`[Index] Found details - Debtor: ${debtorDetails.name} (${debtorDetails.email}), Creditor: ${creditorDetails.name} (${creditorDetails.email})`);
-          
-          // Always create settlement from current user's perspective
-          if (sharerName === currentUserDisplayName) {
-            // Current user is the debtor - they owe money
-            console.log(`[Index] Current user is debtor, creating 'owes' settlement`);
-            await addSettlementPair(
-              { ...debtorDetails, type: 'owes' as const },
-              { ...creditorDetails, type: 'owed' as const },
-              amountPerSharer
-            );
-          } else if (payerName === currentUserDisplayName) {
-            // Current user is the creditor - they are owed money
-            console.log(`[Index] Current user is creditor, creating 'owed' settlement`);
-            await addSettlementPair(
-              { ...creditorDetails, type: 'owed' as const },
-              { ...debtorDetails, type: 'owes' as const },
-              amountPerSharer
-            );
-          }
+        // Is the debtor the current user?
+        if ([currentUserDisplayName, user?.email, profile?.name].includes(sharerName)) {
+          debtor = { name: currentUserDisplayName, email: user?.email || '', upi_id: profile?.upi_id || '' };
         } else {
-          console.warn(`[Index] Could not find details for debtor: ${sharerName} or creditor: ${payerName}`);
+          debtor = roommates.find(r => r.name === sharerName);
         }
+
+        // Is the payer the current user?
+        if ([currentUserDisplayName, user?.email, profile?.name].includes(payerName)) {
+          creditor = { name: currentUserDisplayName, email: user?.email || '', upi_id: profile?.upi_id || '' };
+        } else {
+          creditor = roommates.find(r => r.name === payerName);
+        }
+        if (!debtor || !creditor) {
+          console.warn(`[Index] Could not find details for debtor:`, sharerName, 'or creditor:', payerName);
+          continue;
+        }
+
+        // Current user as debtor (owes)
+        if (debtor.email === user?.email) {
+          await addSettlementPair(
+            { ...debtor, type: 'owes' as const },
+            { ...creditor, type: 'owed' as const },
+            amountPerSharer
+          );
+        }
+        // Current user as creditor (owed)
+        else if (creditor.email === user?.email) {
+          await addSettlementPair(
+            { ...creditor, type: 'owed' as const },
+            { ...debtor, type: 'owes' as const },
+            amountPerSharer
+          );
+        }
+        // No-op if current user is not part of the transaction
       }
     }
   };

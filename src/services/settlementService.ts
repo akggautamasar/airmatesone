@@ -1,4 +1,3 @@
-
 import { SupabaseClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
@@ -35,13 +34,13 @@ export const fetchSettlementsFromSupabase = async (
 };
 
 export const addSettlementPairToSupabase = async (
-  supabase: SupabaseClient,
-  currentUserInvolves: { name: string; email: string; upi_id: string; type: 'owes' | 'owed' },
-  otherPartyInvolves: { name: string; email: string; upi_id: string; type: 'owes' | 'owed' },
-  amount: number,
-  currentUserId: string,
-  initialStatus: 'pending' | 'debtor_paid' | 'settled' = 'pending'
-): Promise<Settlement> => {
+  supabase,
+  currentUserInvolves,
+  otherPartyInvolves,
+  amount,
+  currentUserId,
+  initialStatus = "pending"
+) => {
   console.log('[settlementService] addSettlementPair called with initialStatus:', initialStatus, 'and currentUser type:', currentUserInvolves.type);
 
   const transactionGroupId = uuidv4();
@@ -56,7 +55,7 @@ export const addSettlementPairToSupabase = async (
   }
 
   // Always insert for current user first
-  const newSettlementEntryForDb: TablesInsert<'settlements'> = {
+  const newSettlementEntryForDb = {
     user_id: currentUserId,
     name: otherPartyInvolves.name,
     email: otherPartyInvolves.email,
@@ -81,8 +80,8 @@ export const addSettlementPairToSupabase = async (
   }
   if (!currentUserData) throw new Error("Failed to create settlement for current user, no data returned.");
 
-  // Now, always try to create corresponding record for the other user
-  let otherUserId: string | null = null;
+  // Now always try to create the paired record for other user
+  let otherUserId = null;
   try {
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
@@ -90,42 +89,43 @@ export const addSettlementPairToSupabase = async (
       .eq('email', otherPartyInvolves.email)
       .maybeSingle();
 
-    if (profileData && profileData.id) {
+    if (profileData && profileData.id && profileData.id !== currentUserId) {
       otherUserId = profileData.id;
-      console.log("[settlementService] Found other user id:", otherUserId, "for email:", otherPartyInvolves.email);
-    } else {
-      console.warn("[settlementService] No profile found for other user by email:", otherPartyInvolves.email, ". Will not create paired entry.");
-    }
+    } 
   } catch (e) {
     console.error("[settlementService] Exception while looking up other party profile", e);
-    otherUserId = null;
   }
-  
+
   if (otherUserId && otherUserId !== currentUserId) {
-    const otherPartySettlementEntryForDb: TablesInsert<'settlements'> = {
+    // Reverse type for paired entry
+    const otherSettlementType = finalCurrentUserType === "owed" ? "owes" : "owed";
+    const otherPartySettlementEntryForDb = {
       user_id: otherUserId,
       name: currentUserInvolves.name,
       email: currentUserInvolves.email,
       upi_id: finalCurrentUserType === 'owed' ? currentUserInvolves.upi_id : otherPartyInvolves.upi_id,
-      type: finalOtherPartyType,
+      type: otherSettlementType,
       amount,
       status: initialStatus,
       transaction_group_id: transactionGroupId,
       settled_date: initialStatus === 'settled' ? new Date().toISOString() : null,
     };
-    console.log("[settlementService] Adding paired settlement for other user:", JSON.stringify(otherPartySettlementEntryForDb));
-    const { error: otherUserError } = await supabase
+    // Only insert if does not already exist
+    const { data: exist, error: existErr } = await supabase
       .from('settlements')
-      .insert(otherPartySettlementEntryForDb);
-    if (otherUserError) {
-      console.error("[settlementService] Failed to create paired settlement for other party:", otherUserError, "Payload:", JSON.stringify(otherPartySettlementEntryForDb));
+      .select('id')
+      .eq('user_id', otherUserId)
+      .eq('transaction_group_id', transactionGroupId)
+      .maybeSingle();
+    if (!exist) {
+      const { error: pairedErr } = await supabase
+        .from('settlements')
+        .insert(otherPartySettlementEntryForDb);
+      if (pairedErr) {
+        console.error("[settlementService] Failed to create paired settlement for other party:", pairedErr, "Payload:", JSON.stringify(otherPartySettlementEntryForDb));
+      }
     }
-  } else if (otherUserId === currentUserId) {
-    console.warn(`[settlementService] Skipped paired entry: both parties have same user id (${currentUserId})`);
-  } else {
-    console.warn(`[settlementService] Could not find user id for paired settlement for email: ${otherPartyInvolves.email}`);
   }
-
   return mapSupabaseToSettlement(currentUserData);
 };
 
