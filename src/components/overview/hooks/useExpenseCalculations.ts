@@ -2,7 +2,6 @@
 import { useMemo } from 'react';
 import { User } from '@supabase/supabase-js';
 import { Settlement as DetailedSettlement } from "@/components/SettlementHistory";
-import { Tables } from '@/integrations/supabase/types'; // For Profile and Roommate types
 
 // Define the Expense type as it's used internally for calculations
 interface Expense {
@@ -15,9 +14,25 @@ interface Expense {
   sharers?: string[] | null;
 }
 
-// Assuming Roommate and ProfileData are based on Tables<'profiles'>
-type Roommate = Tables<'profiles'>;
-type ProfileData = Tables<'profiles'>;
+// Use the actual types from the hooks instead of Tables<'profiles'>
+interface Roommate {
+  id: string;
+  name: string;
+  upi_id: string;
+  email: string;
+  phone?: string;
+  balance: number;
+  user_id: string;
+}
+
+interface ProfileData {
+  id: string;
+  name: string | null;
+  upi_id: string | null;
+  email: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+}
 
 interface UseExpenseCalculationsProps {
   expenses: Expense[];
