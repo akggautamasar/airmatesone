@@ -9,7 +9,6 @@ import { RoommateManagement } from "@/components/RoommateManagement";
 import { SettlementHistory } from "@/components/SettlementHistory";
 import { Profile } from "@/components/Profile";
 import { useExpenses } from "@/hooks/useExpenses";
-import { useRoommates } from "@/hooks/useRoommates";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
@@ -18,7 +17,6 @@ const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { expenses, addExpense, deleteExpense } = useExpenses();
-  const { roommates } = useRoommates();
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [settlements, setSettlements] = useState<any[]>([]);
 
@@ -75,7 +73,7 @@ const Index = () => {
       amount: expense.amount,
       paid_by: expense.paidBy,
       category: expense.category,
-      date: new Date().toISOString()
+      date: new Date().toISOString() // Ensures date is in ISO format for the backend
     });
   };
 
@@ -122,7 +120,7 @@ const Index = () => {
               open={showAddExpense}
               onClose={() => setShowAddExpense(false)}
               onAddExpense={handleAddExpense}
-              roommates={roommates.map(r => r.name)}
+              // roommates prop removed
             />
           </TabsContent>
 
