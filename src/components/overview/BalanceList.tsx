@@ -3,8 +3,8 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, CreditCard, BadgeCheck } from "lucide-react";
-import { Settlement as DetailedSettlement } from "@/components/SettlementHistory"; // Assuming this type is needed and exported
+import { Users, CreditCard, BadgeCheck, Send, CircleCheck } from "lucide-react"; // Added Send, CircleCheck
+import { Settlement as DetailedSettlement } from "@/components/SettlementHistory";
 
 interface Roommate {
   id: string;
@@ -12,7 +12,6 @@ interface Roommate {
   email: string;
   upi_id: string;
   user_id: string;
-  // Add other fields if necessary from useRoommates hook
 }
 
 interface BalanceListProps {
@@ -21,7 +20,9 @@ interface BalanceListProps {
   roommates: Roommate[];
   settlements: DetailedSettlement[];
   currentUserId: string | undefined;
-  onInitiateSettlement: (debtorName: string, creditorName: string, amountToSettle: number, settleImmediately?: boolean) => Promise<void>;
+  onDebtorMarksAsPaid: (debtorName: string, creditorName: string, amountToSettle: number) => Promise<void>;
+  onCreditorConfirmsReceipt: (transactionGroupId: string, newStatus: "settled") => Promise<void>;
+  onCreditorRequestsPayment: (debtorName: string, creditorName: string, amountToSettle: number) => Promise<void>;
   onPayViaUpi: (upiId: string, amount: number) => void;
 }
 
@@ -31,82 +32,103 @@ export const BalanceList: React.FC<BalanceListProps> = ({
   roommates,
   settlements,
   currentUserId,
-  onInitiateSettlement,
+  onDebtorMarksAsPaid,
+  onCreditorConfirmsReceipt,
+  onCreditorRequestsPayment,
   onPayViaUpi,
 }) => {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Current Balances</CardTitle>
-        <CardDescription>Who owes what, reflecting shared expenses and settled transactions. Manage pending settlements in the 'Settlements' tab.</CardDescription>
+        <CardDescription>Who owes what. Manage or view detailed settlements in the 'Settlements' tab.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {finalBalances.map((person, index) => {
           const isViewingOwnBalance = person.name === currentUserDisplayName;
           const roommateInfo = roommates.find(r => r.name === person.name);
 
-          const activeSettlementWithPerson = settlements.find(s => 
-              s.status !== 'settled' &&
-              ((s.name === person.name && s.user_id === currentUserId) || 
-               (s.name === currentUserDisplayName && person.name === (roommates.find(r => r.user_id === s.user_id)?.name || s.user_id)))
-          );
+          // Find active settlement specific to the interaction between currentUser and person.name
+          const activeSettlementWithPerson = settlements.find(s => {
+            if (s.status === 'settled') return false; // Ignore settled ones for active actions
 
+            const currentUserIsSettlementOwner = s.user_id === currentUserId;
+            const otherUserIsSettlementOwner = (roommates.find(r => r.name === person.name)?.user_id || person.name) === s.user_id;
+
+            if (currentUserIsSettlementOwner && s.name === person.name) { // Current user's record about 'person.name'
+              return true;
+            }
+            if (otherUserIsSettlementOwner && s.name === currentUserDisplayName) { // 'person.name''s record about current user
+              return true;
+            }
+            return false;
+          });
+          
           let actionContent = null;
-          let additionalInfoBadge = null;
+          let statusText = null;
 
           if (!isViewingOwnBalance) {
-              if (person.balance > 0.005) { // Current user owes this person (person.name)
-                  const payButton = roommateInfo?.upi_id ? (
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => onPayViaUpi(roommateInfo.upi_id, person.balance)}
-                        className="border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700 w-full sm:w-auto"
-                      >
-                        Pay via UPI
-                        <CreditCard className="ml-2 h-3 w-3" />
-                      </Button>
-                  ) : null;
+            if (person.balance > 0.005) { // Current user owes this person (person.name is Creditor)
+              const creditorName = person.name;
+              const amountOwed = person.balance;
 
-                  const markAsPaidButton = (
-                      <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => onInitiateSettlement(currentUserDisplayName, person.name, person.balance, true)} 
-                          className="border-green-400 text-green-600 hover:bg-green-50 hover:text-green-700 w-full sm:w-auto"
-                      >
-                          Mark as Paid
-                          <BadgeCheck className="ml-2 h-3 w-3" />
-                      </Button>
-                  );
-                  
-                  actionContent = (
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 mt-1 w-full sm:w-auto justify-end">
-                          {payButton}
-                          {markAsPaidButton}
-                      </div>
-                  );
+              if (activeSettlementWithPerson?.status === 'debtor_paid' && activeSettlementWithPerson.type === 'owes') {
+                 // Current user (debtor) has marked as paid
+                 statusText = <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Payment marked, awaiting {creditorName}'s confirmation</Badge>;
+              } else if (activeSettlementWithPerson?.status === 'pending' && activeSettlementWithPerson.type === 'owes') {
+                // A pending settlement exists where current user owes
+                statusText = <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">Settlement pending payment to {creditorName}</Badge>;
+                // Still allow "I've Paid" if they haven't marked it for THIS balance action
+                 actionContent = (
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 mt-1 w-full sm:w-auto justify-end">
+                        {roommateInfo?.upi_id && (
+                            <Button size="sm" variant="outline" onClick={() => onPayViaUpi(roommateInfo.upi_id, amountOwed)} className="border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700 w-full sm:w-auto">
+                                Pay via UPI <CreditCard className="ml-2 h-3 w-3" />
+                            </Button>
+                        )}
+                        <Button size="sm" variant="outline" onClick={() => onDebtorMarksAsPaid(currentUserDisplayName, creditorName, amountOwed)} className="border-blue-400 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto">
+                            I've Paid <Send className="ml-2 h-3 w-3" />
+                        </Button>
+                    </div>
+                );
 
-                  if (activeSettlementWithPerson) {
-                      additionalInfoBadge = <Badge variant="outline" className="text-xs mt-1 sm:mt-0 sm:ml-2 self-center sm:self-auto">Note: A settlement is also pending</Badge>;
-                  }
-
-              } else if (person.balance < -0.005) { // Current user is owed by this person (person.name)
-                  if (!activeSettlementWithPerson) {
-                      actionContent = (
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => onInitiateSettlement(person.name, currentUserDisplayName, person.balance, false)} 
-                            className="border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto"
-                          >
-                            Request Payment
-                          </Button>
-                      );
-                  } else {
-                      actionContent = <Badge variant="outline" className="text-xs">Settlement in progress</Badge>;
-                  }
+              } else { // No active 'debtor_paid' or 'pending owes' settlement by current user for this specific balance view
+                actionContent = (
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 mt-1 w-full sm:w-auto justify-end">
+                        {roommateInfo?.upi_id && (
+                            <Button size="sm" variant="outline" onClick={() => onPayViaUpi(roommateInfo.upi_id, amountOwed)} className="border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700 w-full sm:w-auto">
+                                Pay via UPI <CreditCard className="ml-2 h-3 w-3" />
+                            </Button>
+                        )}
+                        <Button size="sm" variant="outline" onClick={() => onDebtorMarksAsPaid(currentUserDisplayName, creditorName, amountOwed)} className="border-blue-400 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto">
+                            I've Paid <Send className="ml-2 h-3 w-3" />
+                        </Button>
+                    </div>
+                );
               }
+            } else if (person.balance < -0.005) { // Current user is owed by this person (person.name is Debtor)
+              const debtorName = person.name;
+              const amountOwedToCurrentUser = Math.abs(person.balance);
+
+              if (activeSettlementWithPerson?.status === 'debtor_paid' && activeSettlementWithPerson.type === 'owed' && activeSettlementWithPerson.transaction_group_id) {
+                // Debtor (person.name) has marked as paid to current user
+                statusText = <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">{debtorName} marked as paid</Badge>;
+                actionContent = (
+                    <Button size="sm" variant="outline" onClick={() => onCreditorConfirmsReceipt(activeSettlementWithPerson.transaction_group_id!, 'settled')} className="border-green-400 text-green-600 hover:bg-green-50 hover:text-green-700 w-full sm:w-auto">
+                        Confirm Payment Received <CircleCheck className="ml-2 h-3 w-3" />
+                    </Button>
+                );
+              } else if (activeSettlementWithPerson?.status === 'pending' && activeSettlementWithPerson.type === 'owed') {
+                 statusText = <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">Awaiting payment from {debtorName}</Badge>;
+                 // Optionally, can add a "Remind" button here in future
+              } else { // No active settlement, or it's not one current user needs to act on yet (e.g. other party owes current user but hasn't paid)
+                 actionContent = (
+                    <Button size="sm" variant="outline" onClick={() => onCreditorRequestsPayment(debtorName, currentUserDisplayName, amountOwedToCurrentUser)} className="border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto">
+                        Request Payment
+                    </Button>
+                );
+              }
+            }
           }
 
           return (
@@ -117,6 +139,7 @@ export const BalanceList: React.FC<BalanceListProps> = ({
                 </div>
                 <div>
                   <p className="font-medium">{person.name}{isViewingOwnBalance ? " (You)" : ""}</p>
+                  {statusText && <div className="mt-1">{statusText}</div>}
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row items-end sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 self-end sm:self-center w-full sm:w-auto justify-end">
@@ -126,7 +149,6 @@ export const BalanceList: React.FC<BalanceListProps> = ({
                    `Owes ₹${Math.abs(person.balance).toFixed(2)}`}
                 </Badge>
                 {actionContent}
-                {additionalInfoBadge}
               </div>
             </div>
           );
@@ -135,3 +157,4 @@ export const BalanceList: React.FC<BalanceListProps> = ({
     </Card>
   );
 };
+

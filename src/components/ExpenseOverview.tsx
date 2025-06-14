@@ -37,7 +37,7 @@ interface ExpenseOverviewProps {
     amount: number
   ) => Promise<DetailedSettlement | null>;
   currentUserId: string | undefined;
-  onUpdateStatus: (transactionGroupId: string, status: string) => Promise<void>;
+  onUpdateStatus: (transactionGroupId: string, newStatus: "pending" | "debtor_paid" | "settled") => Promise<void>; // Keep this prop name for clarity
   onDeleteSettlementGroup?: (transactionGroupId: string) => Promise<void>;
 }
 
@@ -47,7 +47,7 @@ export const ExpenseOverview = ({
   settlements, 
   onAddSettlementPair, 
   currentUserId,
-  onUpdateStatus,
+  onUpdateStatus, // Renamed from onUpdateStatus to avoid conflict if we redefine it locally
   onDeleteSettlementGroup
 }: ExpenseOverviewProps) => {
   const { deleteExpense } = useExpenses();
@@ -334,7 +334,9 @@ export const ExpenseOverview = ({
         roommates={roommates}
         settlements={settlements}
         currentUserId={currentUserId}
-        onInitiateSettlement={initiateSettlementProcess}
+        onDebtorMarksAsPaid={initiateDebtorPaymentProcess}
+        onCreditorConfirmsReceipt={onUpdateStatus} // Directly pass the status update function
+        onCreditorRequestsPayment={initiateCreditorRequestProcess}
         onPayViaUpi={handlePayClick}
       />
 
