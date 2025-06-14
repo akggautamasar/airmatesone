@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, CreditCard, BadgeCheck, Send, CircleCheck } from "lucide-react"; // Added Send, CircleCheck
+import { Users, CreditCard, BadgeCheck, Send, CircleCheck } from "lucide-react";
 import { Settlement as DetailedSettlement } from "@/components/SettlementHistory";
 
 interface Roommate {
@@ -46,89 +46,79 @@ export const BalanceList: React.FC<BalanceListProps> = ({
       <CardContent className="space-y-4">
         {finalBalances.map((person, index) => {
           const isViewingOwnBalance = person.name === currentUserDisplayName;
-          const roommateInfo = roommates.find(r => r.name === person.name);
-
-          // Find active settlement specific to the interaction between currentUser and person.name
-          const activeSettlementWithPerson = settlements.find(s => {
-            if (s.status === 'settled') return false; // Ignore settled ones for active actions
-
-            const currentUserIsSettlementOwner = s.user_id === currentUserId;
-            const otherUserIsSettlementOwner = (roommates.find(r => r.name === person.name)?.user_id || person.name) === s.user_id;
-
-            if (currentUserIsSettlementOwner && s.name === person.name) { // Current user's record about 'person.name'
-              return true;
-            }
-            if (otherUserIsSettlementOwner && s.name === currentUserDisplayName) { // 'person.name''s record about current user
-              return true;
-            }
-            return false;
-          });
           
           let actionContent = null;
           let statusText = null;
 
           if (!isViewingOwnBalance) {
-            if (person.balance > 0.005) { // Current user owes this person (person.name is Creditor)
-              const creditorName = person.name;
-              const amountOwed = person.balance;
+            const otherPartyName = person.name;
+            const amount = person.balance; // Positive: current user owes otherParty. Negative: otherParty owes current user.
 
-              if (activeSettlementWithPerson?.status === 'debtor_paid' && activeSettlementWithPerson.type === 'owes') {
-                 // Current user (debtor) has marked as paid
-                 statusText = <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Payment marked, awaiting {creditorName}'s confirmation</Badge>;
-              } else if (activeSettlementWithPerson?.status === 'pending' && activeSettlementWithPerson.type === 'owes') {
-                // A pending settlement exists where current user owes
-                statusText = <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">Settlement pending payment to {creditorName}</Badge>;
-                // Still allow "I've Paid" if they haven't marked it for THIS balance action
-                 actionContent = (
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 mt-1 w-full sm:w-auto justify-end">
-                        {roommateInfo?.upi_id && (
-                            <Button size="sm" variant="outline" onClick={() => onPayViaUpi(roommateInfo.upi_id, amountOwed)} className="border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700 w-full sm:w-auto">
-                                Pay via UPI <CreditCard className="ml-2 h-3 w-3" />
+            const otherPartyRoommateInfo = roommates.find(r => r.name === otherPartyName);
+            const otherPartyUserId = otherPartyRoommateInfo?.user_id;
+
+            const relevantSettlement = settlements.find(s => {
+                if (s.status === 'settled') return false;
+                const settlementOwnerIsCurrentUser = s.user_id === currentUserId;
+                const settlementOwnerIsOtherParty = otherPartyUserId && s.user_id === otherPartyUserId;
+
+                // Case 1: Current user owns the settlement record concerning otherPartyName
+                if (settlementOwnerIsCurrentUser && s.name === otherPartyName) return true;
+                // Case 2: OtherPartyName owns the settlement record concerning currentUser
+                if (settlementOwnerIsOtherParty && s.name === currentUserDisplayName) return true;
+                
+                return false;
+            });
+
+            if (amount > 0.005) { // Current user OWES otherPartyName. Current user is DEBTOR.
+                const amountOwedByCurrentUser = amount;
+                if (relevantSettlement?.status === 'debtor_paid') {
+                    // Debtor (current user) has marked as paid. Awaiting creditor's (otherPartyName) confirmation.
+                    statusText = <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Payment marked, awaiting {otherPartyName}'s confirmation</Badge>;
+                    actionContent = null; // No further action for debtor here.
+                } else { 
+                    // Includes 'pending' or no active settlement. Debtor can act.
+                    statusText = (relevantSettlement?.status === 'pending') ? <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">Payment pending to {otherPartyName}</Badge> : null;
+                    actionContent = (
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 mt-1 w-full sm:w-auto justify-end">
+                            {otherPartyRoommateInfo?.upi_id && (
+                                <Button size="sm" variant="outline" onClick={() => onPayViaUpi(otherPartyRoommateInfo.upi_id, amountOwedByCurrentUser)} className="border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700 w-full sm:w-auto">
+                                    Pay via UPI <CreditCard className="ml-2 h-3 w-3" />
+                                </Button>
+                            )}
+                            <Button size="sm" variant="outline" onClick={() => onDebtorMarksAsPaid(currentUserDisplayName, otherPartyName, amountOwedByCurrentUser)} className="border-blue-400 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto">
+                                I've Paid <Send className="ml-2 h-3 w-3" />
                             </Button>
-                        )}
-                        <Button size="sm" variant="outline" onClick={() => onDebtorMarksAsPaid(currentUserDisplayName, creditorName, amountOwed)} className="border-blue-400 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto">
-                            I've Paid <Send className="ml-2 h-3 w-3" />
+                        </div>
+                    );
+                }
+            } else if (amount < -0.005) { // Current user IS OWED BY otherPartyName. Current user is CREDITOR.
+                const amountOwedToCurrentUser = Math.abs(amount);
+                if (relevantSettlement?.status === 'debtor_paid') {
+                    // Debtor (otherPartyName) has marked as paid. Current user (creditor) needs to confirm.
+                    statusText = <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">{otherPartyName} marked as paid</Badge>;
+                    actionContent = (
+                        <Button size="sm" variant="outline" onClick={() => onCreditorConfirmsReceipt(relevantSettlement.transaction_group_id!, 'settled')} className="border-green-400 text-green-600 hover:bg-green-50 hover:text-green-700 w-full sm:w-auto">
+                            Confirm Payment Received <CircleCheck className="ml-2 h-3 w-3" />
                         </Button>
-                    </div>
-                );
-
-              } else { // No active 'debtor_paid' or 'pending owes' settlement by current user for this specific balance view
-                actionContent = (
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 mt-1 w-full sm:w-auto justify-end">
-                        {roommateInfo?.upi_id && (
-                            <Button size="sm" variant="outline" onClick={() => onPayViaUpi(roommateInfo.upi_id, amountOwed)} className="border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700 w-full sm:w-auto">
-                                Pay via UPI <CreditCard className="ml-2 h-3 w-3" />
-                            </Button>
-                        )}
-                        <Button size="sm" variant="outline" onClick={() => onDebtorMarksAsPaid(currentUserDisplayName, creditorName, amountOwed)} className="border-blue-400 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto">
-                            I've Paid <Send className="ml-2 h-3 w-3" />
+                    );
+                } else { 
+                    // Includes 'pending' or no active settlement. Creditor can act.
+                    statusText = (relevantSettlement?.status === 'pending') ? <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">Awaiting payment from {otherPartyName}</Badge> : null;
+                    actionContent = (
+                        <Button size="sm" variant="outline" onClick={() => onCreditorRequestsPayment(otherPartyName, currentUserDisplayName, amountOwedToCurrentUser)} className="border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto">
+                            Request Payment
                         </Button>
-                    </div>
-                );
-              }
-            } else if (person.balance < -0.005) { // Current user is owed by this person (person.name is Debtor)
-              const debtorName = person.name;
-              const amountOwedToCurrentUser = Math.abs(person.balance);
-
-              if (activeSettlementWithPerson?.status === 'debtor_paid' && activeSettlementWithPerson.type === 'owed' && activeSettlementWithPerson.transaction_group_id) {
-                // Debtor (person.name) has marked as paid to current user
-                statusText = <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">{debtorName} marked as paid</Badge>;
-                actionContent = (
-                    <Button size="sm" variant="outline" onClick={() => onCreditorConfirmsReceipt(activeSettlementWithPerson.transaction_group_id!, 'settled')} className="border-green-400 text-green-600 hover:bg-green-50 hover:text-green-700 w-full sm:w-auto">
-                        Confirm Payment Received <CircleCheck className="ml-2 h-3 w-3" />
-                    </Button>
-                );
-              } else if (activeSettlementWithPerson?.status === 'pending' && activeSettlementWithPerson.type === 'owed') {
-                 statusText = <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">Awaiting payment from {debtorName}</Badge>;
-                 // Optionally, can add a "Remind" button here in future
-              } else { // No active settlement, or it's not one current user needs to act on yet (e.g. other party owes current user but hasn't paid)
-                 actionContent = (
-                    <Button size="sm" variant="outline" onClick={() => onCreditorRequestsPayment(debtorName, currentUserDisplayName, amountOwedToCurrentUser)} className="border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto">
-                        Request Payment
-                    </Button>
-                );
-              }
+                    );
+                }
+            } else {
+                // Balance is zero or negligible.
+                actionContent = null;
+                statusText = null;
             }
+          } else { // Viewing own balance row
+            actionContent = null;
+            statusText = null;
           }
 
           return (
