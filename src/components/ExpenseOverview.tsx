@@ -33,6 +33,7 @@ interface ExpenseOverviewProps {
   ) => Promise<DetailedSettlement | null>;
   currentUserId: string | undefined;
   onUpdateStatus: (transactionGroupId: string, status: string) => Promise<void>;
+  onDeleteSettlementGroup?: (transactionGroupId: string) => Promise<void>; // Added this line
 }
 
 export const ExpenseOverview = ({ 
@@ -41,7 +42,8 @@ export const ExpenseOverview = ({
   settlements, 
   onAddSettlementPair, 
   currentUserId,
-  onUpdateStatus 
+  onUpdateStatus,
+  // onDeleteSettlementGroup // Destructure if used, but not strictly necessary to fix the TS error
 }: ExpenseOverviewProps) => {
   const { deleteExpense } = useExpenses();
   const { roommates } = useRoommates();
