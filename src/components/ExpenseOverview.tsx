@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { useExpenseCalculations } from "./overview/hooks/useExpenseCalculations";
 
 import { SummaryCards } from "./overview/SummaryCards";
-import { BalanceList } from "./overview/BalanceList";
 import { ChartsSection } from "./overview/ChartsSection";
 import { RecentExpensesList } from "./overview/RecentExpensesList";
 
@@ -38,7 +38,7 @@ interface ExpenseOverviewProps {
     amount: number
   ) => Promise<DetailedSettlement | null>;
   currentUserId: string | undefined;
-  onUpdateStatus: (transactionGroupId: string, newStatus: "pending" | "debtor_paid" | "settled") => Promise<void>; // Keep this prop name for clarity
+  onUpdateStatus: (transactionGroupId: string, newStatus: "pending" | "debtor_paid" | "settled") => Promise<void>;
   onDeleteSettlementGroup?: (transactionGroupId: string) => Promise<void>;
 }
 
@@ -49,7 +49,6 @@ export const ExpenseOverview = ({
   onAddSettlementPair,
   currentUserId,
   onUpdateStatus,
-  // onDeleteSettlementGroup // Keep if used, otherwise remove
 }: ExpenseOverviewProps) => {
   const { deleteExpense } = useExpenses();
   const { roommates } = useRoommates();
@@ -89,154 +88,92 @@ export const ExpenseOverview = ({
       toast({ title: "Error", description: "Could not delete the expense.", variant: "destructive"});
     }
   };
-  
-  const initiateDebtorPaymentProcess = async (
-    _debtorNameIgnored: string, 
-    creditorName: string,
-    amountToSettle: number
-  ) => {
-    const absAmount = Math.abs(amountToSettle);
-    if (absAmount < 0.01) return;
 
-    const existingPendingSettlement = settlements.find(s => 
-      s.name === creditorName && 
-      s.type === 'owes' &&       
-      s.status === 'pending' &&  
-      s.transaction_group_id
-    );
+  // Calculate net expenses for each participant
+  const netExpenses = useMemo(() => {
+    const expenseMap = new Map<string, { paid: number; owes: number }>();
+    
+    // Initialize all participants
+    allParticipantNames.forEach(name => {
+      expenseMap.set(name, { paid: 0, owes: 0 });
+    });
 
-    let targetTransactionGroupId: string | undefined = existingPendingSettlement?.transaction_group_id;
-
-    if (!existingPendingSettlement) {
-      const debtorDetails = {
-          name: currentUserDisplayName,
-          email: user?.email || '',
-          upi_id: profile?.upi_id || ''
-      };
-      const creditorRoommate = roommates.find(r => r.name === creditorName);
-      const creditorDetails = creditorRoommate 
-          ? { name: creditorRoommate.name, email: creditorRoommate.email, upi_id: creditorRoommate.upi_id } 
-          : { name: creditorName, email: 'unknown', upi_id: ''}; 
-
-      const currentUserPerspective = { ...debtorDetails, type: 'owes' as const };
-      const otherPartyPerspective = { ...creditorDetails, type: 'owed' as const };
+    // Calculate what each person paid and owes
+    propsExpenses.forEach(expense => {
+      const payerName = expense.paidBy === user?.email?.split('@')[0] || expense.paidBy === profile?.name 
+        ? currentUserDisplayName 
+        : expense.paidBy;
       
-      console.log(`Debtor (${currentUserDisplayName}) initiating payment process to ${creditorName}. No existing pending settlement found. Creating new.`);
-      const createdSettlement = await onAddSettlementPair(currentUserPerspective, otherPartyPerspective, absAmount);
-      
-      if (createdSettlement && createdSettlement.transaction_group_id) {
-        targetTransactionGroupId = createdSettlement.transaction_group_id;
-        console.log(`New settlement pair created with transaction_group_id: ${targetTransactionGroupId} for debtor ${currentUserDisplayName} to ${creditorName}.`);
-      } else {
-        console.error("Settlement pair creation failed or did not return a transaction group ID during debtor payment process. Settlement:", createdSettlement);
-        toast({
-            title: "Error Initializing Payment",
-            description: "Could not create a settlement record. Please try again.",
-            variant: "destructive",
-        });
-        return;
+      // Add to what they paid
+      if (expenseMap.has(payerName)) {
+        const current = expenseMap.get(payerName)!;
+        expenseMap.set(payerName, { ...current, paid: current.paid + expense.amount });
       }
-    } else {
-      console.log(`Debtor (${currentUserDisplayName}) initiating payment process to ${creditorName}. Found existing pending settlement with transaction_group_id: ${targetTransactionGroupId}.`);
-    }
 
-    if (targetTransactionGroupId) {
-      console.log(`Updating transaction_group_id ${targetTransactionGroupId} to 'debtor_paid'.`);
-      await onUpdateStatus(targetTransactionGroupId, 'debtor_paid');
-      toast({
-        title: "Payment Marked as Paid",
-        description: `Your payment to ${creditorName} for ₹${absAmount.toFixed(2)} has been marked. ${creditorName} will be notified to confirm.`,
-      });
-    } else {
-      console.error("Failed to obtain transaction_group_id for updating status to debtor_paid. This indicates an issue in finding or creating settlement.");
-      toast({
-          title: "Error Marking Payment",
-          description: "Could not mark payment due to an internal error (missing transaction ID).",
-          variant: "destructive",
-      });
-    }
-    onExpenseUpdate();
-  };
+      // Calculate what each person owes for this expense
+      const effectiveSharers = expense.sharers && expense.sharers.length > 0
+        ? expense.sharers.map(s => s === user?.email?.split('@')[0] || s === profile?.name ? currentUserDisplayName : s)
+        : allParticipantNames;
 
-  const initiateCreditorRequestProcess = async (
-    debtorName: string,
-    _creditorNameIgnored: string, 
-    amountToSettle: number
-  ) => {
-    const absAmount = Math.abs(amountToSettle);
-    if (absAmount < 0.01) return;
-    
-    const existingPendingRequest = settlements.find(s => 
-      s.name === debtorName && 
-      s.type === 'owed' &&      
-      s.status === 'pending'
-    );
-
-    if (existingPendingRequest) {
-      console.log(`Creditor (${currentUserDisplayName}) attempting to request payment from ${debtorName}. Existing pending request found.`);
-      toast({
-        title: "Payment Already Requested",
-        description: `You've already requested ₹${absAmount.toFixed(2)} from ${debtorName}. It's currently marked as pending.`,
-      });
-      return; 
-    }
-    
-    console.log(`Creditor (${currentUserDisplayName}) initiating payment request to ${debtorName}. No existing pending request found. Creating new.`);
-    const creditorDetails = {
-        name: currentUserDisplayName,
-        email: user?.email || '',
-        upi_id: profile?.upi_id || ''
-    };
-    const debtorRoommate = roommates.find(r => r.name === debtorName);
-    const debtorDetails = debtorRoommate 
-        ? { name: debtorRoommate.name, email: debtorRoommate.email, upi_id: debtorRoommate.upi_id } 
-        : { name: debtorName, email: 'unknown', upi_id: ''}; 
-
-    const currentUserPerspective = { ...creditorDetails, type: 'owed' as const }; 
-    const otherPartyPerspective = { ...debtorDetails, type: 'owes' as const };  
-
-    try {
-        const createdSettlement = await onAddSettlementPair(currentUserPerspective, otherPartyPerspective, absAmount);
-        if (createdSettlement) {
-            toast({
-              title: "Payment Requested",
-              description: `A payment request for ₹${absAmount.toFixed(2)} has been sent to ${debtorName}.`,
-            });
-        } else {
-            console.error("Settlement pair creation failed for creditor request. Returned null.");
-            throw new Error("Settlement pair creation failed.");
+      const amountPerSharer = expense.amount / effectiveSharers.length;
+      effectiveSharers.forEach(sharerName => {
+        if (expenseMap.has(sharerName)) {
+          const current = expenseMap.get(sharerName)!;
+          expenseMap.set(sharerName, { ...current, owes: current.owes + amountPerSharer });
         }
-        onExpenseUpdate(); 
-    } catch (error) {
-        console.error("Error in initiateCreditorRequestProcess:", error);
-        toast({
-            title: "Error Requesting Payment",
-            description: `Could not request payment from ${debtorName}. Please try again. Details: ${error instanceof Error ? error.message : String(error)}`,
-            variant: "destructive",
-        });
-    }
-  };
-  
-  const handlePayClick = (upiId: string, amount: number) => {
-    if (!upiId || amount <= 0) {
-      console.error("Invalid UPI ID or amount for payment.");
-      toast({ title: "Payment Error", description: "Invalid UPI ID or amount.", variant: "destructive" });
-      return;
-    }
-    const paymentUrl = `https://quantxpay.vercel.app/${upiId}/${amount.toFixed(2)}`;
-    window.open(paymentUrl, '_blank', 'noopener,noreferrer');
-  };
+      });
+    });
+
+    // Apply settled settlements to reduce net amounts
+    settlements.filter(s => s.status === 'settled').forEach(settlement => {
+      let debtorName: string | undefined;
+      let creditorName: string | undefined;
+      const settlementOwnerIsCurrentUser = settlement.user_id === currentUserId;
+
+      if (settlementOwnerIsCurrentUser) {
+        if (settlement.type === 'owes') {
+          debtorName = currentUserDisplayName;
+          creditorName = settlement.name;
+        } else {
+          debtorName = settlement.name;
+          creditorName = currentUserDisplayName;
+        }
+      } else {
+        const ownerProfile = roommates.find(r => r.user_id === settlement.user_id);
+        const ownerDisplayName = ownerProfile?.name || `User ${settlement.user_id.substring(0,5)}`;
+        if (settlement.type === 'owes') {
+          debtorName = ownerDisplayName;
+          creditorName = (settlement.name === user?.email || settlement.name === profile?.name) ? currentUserDisplayName : settlement.name;
+        } else {
+          debtorName = (settlement.name === user?.email || settlement.name === profile?.name) ? currentUserDisplayName : settlement.name;
+          creditorName = ownerDisplayName;
+        }
+      }
+
+      // Reduce the debt by the settled amount
+      if (debtorName && expenseMap.has(debtorName)) {
+        const current = expenseMap.get(debtorName)!;
+        expenseMap.set(debtorName, { ...current, owes: Math.max(0, current.owes - settlement.amount) });
+      }
+    });
+
+    // Convert to array with net expenses
+    return Array.from(expenseMap.entries()).map(([name, amounts]) => ({
+      name,
+      netExpense: parseFloat((amounts.paid - amounts.owes).toFixed(2)),
+      totalPaid: amounts.paid,
+      totalOwes: amounts.owes
+    }));
+  }, [propsExpenses, allParticipantNames, currentUserDisplayName, settlements, roommates, profile, currentUserId, user]);
 
   const lastExpenseDate = propsExpenses.length > 0 ? propsExpenses.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date : null;
 
-  if (propsExpenses.length === 0 &&
-      settlements.filter(s => s.status !== 'settled').length === 0 &&
-      finalBalances.every(b => Math.abs(b.balance) < 0.01)) {
+  if (propsExpenses.length === 0 && settlements.filter(s => s.status !== 'settled').length === 0) {
     return (
       <div className="text-center py-12">
         <IndianRupee className="h-16 w-16 mx-auto text-gray-400 mb-4" />
         <h3 className="text-lg font-medium text-gray-900 mb-2">All Clear!</h3>
-        <p className="text-gray-500">No outstanding expenses or pending settlements. Add a new expense to get started.</p>
+        <p className="text-gray-500">No expenses or pending settlements. Add a new expense to get started.</p>
       </div>
     );
   }
@@ -249,17 +186,37 @@ export const ExpenseOverview = ({
         lastExpenseDate={lastExpenseDate}
       />
 
-      <BalanceList
-        finalBalances={finalBalances}
-        currentUserDisplayName={currentUserDisplayName}
-        roommates={roommates}
-        settlements={settlements}
-        currentUserId={currentUserId}
-        onDebtorMarksAsPaid={initiateDebtorPaymentProcess}
-        onCreditorConfirmsReceipt={onUpdateStatus}
-        onCreditorRequestsPayment={initiateCreditorRequestProcess}
-        onPayViaUpi={handlePayClick}
-      />
+      {/* Net Expenses Overview */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Net Expenses Overview</CardTitle>
+          <CardDescription>Each person's net contribution after all expenses and settlements</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {netExpenses.map((person, index) => (
+            <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg bg-gray-50 space-y-2 sm:space-y-0">
+              <div className="flex items-center space-x-3">
+                <div className={`rounded-full p-2 ${person.netExpense > 0 ? 'bg-green-100' : person.netExpense < 0 ? 'bg-red-100' : 'bg-gray-100'}`}>
+                  <Users className={`h-4 w-4 ${person.netExpense > 0 ? 'text-green-600' : person.netExpense < 0 ? 'text-red-600' : 'text-gray-600'}`} />
+                </div>
+                <div>
+                  <p className="font-medium">{person.name}{person.name === currentUserDisplayName ? " (You)" : ""}</p>
+                  <p className="text-sm text-gray-600">
+                    Paid: ₹{person.totalPaid.toFixed(2)} | Share: ₹{person.totalOwes.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Badge variant={person.netExpense > 0 ? "default" : person.netExpense < 0 ? "destructive" : "secondary"} className={`${person.netExpense > 0 ? 'bg-green-500 hover:bg-green-600' : ''} whitespace-nowrap`}>
+                  {person.netExpense === 0 ? "Even" :
+                    person.netExpense > 0 ? `Net Paid ₹${person.netExpense.toFixed(2)}` :
+                      `Net Owes ₹${Math.abs(person.netExpense).toFixed(2)}`}
+                </Badge>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       <ChartsSection
         categoryData={categoryData}

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +12,8 @@ import { Settlement } from "@/types";
 import { Profile } from "@/components/Profile";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useSettlements } from "@/hooks/useSettlements";
+import { useRoommates } from "@/hooks/useRoommates";
+import { useProfile } from "@/hooks/useProfile";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
@@ -20,6 +23,8 @@ const Index = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { expenses, addExpense, deleteExpense, loading: expensesLoading, refetch: refetchExpenses } = useExpenses();
+  const { roommates } = useRoommates();
+  const { profile } = useProfile();
   const { 
     settlements, 
     loading: settlementsLoading, 
@@ -70,6 +75,8 @@ const Index = () => {
     );
   }
 
+  const currentUserDisplayName = profile?.name || user?.email?.split('@')[0] || 'You';
+
   const formattedExpenses = expenses.map(expense => ({
     id: expense.id,
     description: expense.description,
@@ -82,17 +89,81 @@ const Index = () => {
   
   const hasActiveExpenses = formattedExpenses.length > 0;
 
+  // Function to automatically create settlements when expense is added
+  const createSettlementsForExpense = async (expense: any) => {
+    const payerName = expense.paidBy === user?.email?.split('@')[0] || expense.paidBy === profile?.name 
+      ? currentUserDisplayName 
+      : expense.paidBy;
+    
+    const allParticipantNames = [currentUserDisplayName, ...roommates.map(r => r.name)];
+    const effectiveSharers = expense.sharers && expense.sharers.length > 0
+      ? expense.sharers.map((s: string) => s === user?.email?.split('@')[0] || s === profile?.name ? currentUserDisplayName : s)
+      : allParticipantNames;
+
+    const amountPerSharer = expense.amount / effectiveSharers.length;
+
+    // Create settlements for each sharer who didn't pay
+    for (const sharerName of effectiveSharers) {
+      if (sharerName !== payerName) {
+        // Find the details for both parties
+        const debtorDetails = sharerName === currentUserDisplayName 
+          ? { name: currentUserDisplayName, email: user?.email || '', upi_id: profile?.upi_id || '' }
+          : roommates.find(r => r.name === sharerName);
+        
+        const creditorDetails = payerName === currentUserDisplayName 
+          ? { name: currentUserDisplayName, email: user?.email || '', upi_id: profile?.upi_id || '' }
+          : roommates.find(r => r.name === payerName);
+
+        if (debtorDetails && creditorDetails) {
+          if (sharerName === currentUserDisplayName) {
+            // Current user owes money
+            await addSettlementPair(
+              { ...debtorDetails, type: 'owes' as const },
+              { ...creditorDetails, type: 'owed' as const },
+              amountPerSharer
+            );
+          } else if (payerName === currentUserDisplayName) {
+            // Current user is owed money
+            await addSettlementPair(
+              { ...creditorDetails, type: 'owed' as const },
+              { ...debtorDetails, type: 'owes' as const },
+              amountPerSharer
+            );
+          }
+        }
+      }
+    }
+  };
+
   const handleAddExpenseSubmit = async (expense: any) => {
-    await addExpense({
-      description: expense.description,
-      amount: expense.amount,
-      paid_by: expense.paidBy,
-      category: expense.category,
-      date: new Date().toISOString(), // Consider using expense.date if provided by form
-      sharers: expense.sharers
-    });
-    setShowAddExpense(false);
-    handleExpenseUpdate(); // Refetch after adding
+    try {
+      await addExpense({
+        description: expense.description,
+        amount: expense.amount,
+        paid_by: expense.paidBy,
+        category: expense.category,
+        date: new Date().toISOString(),
+        sharers: expense.sharers
+      });
+      
+      // Automatically create settlements for this expense
+      await createSettlementsForExpense(expense);
+      
+      setShowAddExpense(false);
+      handleExpenseUpdate();
+      
+      toast({ 
+        title: "Expense Added", 
+        description: "Expense added and settlements created automatically." 
+      });
+    } catch (error) {
+      console.error('Error adding expense:', error);
+      toast({ 
+        title: "Error", 
+        description: "Failed to add expense.", 
+        variant: "destructive" 
+      });
+    }
   };
 
   const handleExpenseUpdate = () => {
@@ -105,9 +176,6 @@ const Index = () => {
     newStatus: "pending" | "debtor_paid" | "settled"
   ) => {
     await updateSettlementStatusByGroupId(transaction_group_id, newStatus);
-    // The overview balances depend on both expenses and settled transactions.
-    // We must refetch both to ensure the overview is re-calculated with the
-    // freshest data, resolving stale state issues after a settlement status changes.
     refetchSettlements();
     refetchExpenses();
   };
@@ -118,7 +186,7 @@ const Index = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user.email && user.email.split('@')[0]}!</h1>
-          <p className="text-gray-600">Manage your expenses and roommate settlements.</p>
+          <p className="text-gray-600">Manage your expenses and settlements.</p>
         </div>
         
         <Tabs defaultValue="overview" className="space-y-8">
