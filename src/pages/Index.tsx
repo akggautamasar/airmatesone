@@ -57,14 +57,14 @@ const Index = () => {
     );
   }
 
-  // Convert expenses format for compatibility - keep UUID as string
   const formattedExpenses = expenses.map(expense => ({
-    id: expense.id, // Keep as UUID string, don't convert to number
+    id: expense.id,
     description: expense.description,
     amount: expense.amount,
     paidBy: expense.paid_by,
     date: new Date(expense.date).toLocaleDateString(),
-    category: expense.category
+    category: expense.category,
+    sharers: expense.sharers || [] // Pass sharers, default to empty array if null/undefined
   }));
 
   const handleAddExpense = (expense: any) => {
@@ -73,7 +73,8 @@ const Index = () => {
       amount: expense.amount,
       paid_by: expense.paidBy,
       category: expense.category,
-      date: new Date().toISOString() // Ensures date is in ISO format for the backend
+      date: new Date().toISOString(),
+      sharers: expense.sharers // Pass the sharers array
     });
   };
 
@@ -98,7 +99,7 @@ const Index = () => {
           <TabsContent value="overview" className="space-y-6">
             <ExpenseOverview 
               expenses={formattedExpenses}
-              onExpenseUpdate={() => {}}
+              onExpenseUpdate={() => { /* Consider calling refetch from useExpenses here if needed */ }}
               settlements={settlements}
               onSettlementUpdate={setSettlements}
             />
@@ -120,7 +121,6 @@ const Index = () => {
               open={showAddExpense}
               onClose={() => setShowAddExpense(false)}
               onAddExpense={handleAddExpense}
-              // roommates prop removed
             />
           </TabsContent>
 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -12,6 +11,7 @@ interface Expense {
   date: string;
   category: string;
   user_id: string;
+  sharers?: string[] | null; // Added sharers field
 }
 
 export const useExpenses = () => {
@@ -39,8 +39,6 @@ export const useExpenses = () => {
 
       if (error) {
         console.error('fetchExpenses: Supabase error fetching expenses. Message:', error.message, 'Details:', error.details, 'Hint:', error.hint, 'Code:', error.code, 'Full Error:', error, 'Status:', status);
-        // No throw error here to allow UI to potentially show stale data or an empty list
-        // But ensure expenses are cleared if fetch truly fails bad
         setExpenses([]); 
       } else {
         console.log('fetchExpenses: Successfully fetched expenses. Raw data:', data);
@@ -61,7 +59,7 @@ export const useExpenses = () => {
     }
   };
 
-  const addExpense = async (expense: Omit<Expense, 'id' | 'user_id'>) => {
+  const addExpense = async (expense: Omit<Expense, 'id' | 'user_id' | 'date'> & { date?: string, sharers?: string[] }) => {
     if (!user) {
       toast({
         title: "Error",
@@ -72,10 +70,16 @@ export const useExpenses = () => {
     }
 
     try {
-      console.log('addExpense: Attempting to add expense for user ID:', user.id, 'Data:', expense);
+      const expensePayload = {
+        ...expense,
+        user_id: user.id,
+        date: expense.date || new Date().toISOString(), // Ensure date is ISO if not provided
+        sharers: expense.sharers || null // Ensure sharers is passed or null
+      };
+      console.log('addExpense: Attempting to add expense for user ID:', user.id, 'Data:', expensePayload);
       const { data, error } = await supabase
         .from('expenses')
-        .insert([{ ...expense, user_id: user.id }])
+        .insert([expensePayload])
         .select()
         .single();
 

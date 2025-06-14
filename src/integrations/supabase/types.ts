@@ -57,6 +57,7 @@ export type Database = {
           description: string
           id: string
           paid_by: string
+          sharers: string[] | null
           updated_at: string
           user_id: string
         }
@@ -68,6 +69,7 @@ export type Database = {
           description: string
           id?: string
           paid_by: string
+          sharers?: string[] | null
           updated_at?: string
           user_id: string
         }
@@ -79,6 +81,7 @@ export type Database = {
           description?: string
           id?: string
           paid_by?: string
+          sharers?: string[] | null
           updated_at?: string
           user_id?: string
         }

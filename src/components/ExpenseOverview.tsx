@@ -8,14 +8,16 @@ import { TrendingUp, TrendingDown, Calendar, Users, Trash2, IndianRupee } from "
 import { useExpenses } from "@/hooks/useExpenses";
 import { useRoommates } from "@/hooks/useRoommates";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 
 interface Expense {
   id: string;
   description: string;
   amount: number;
-  paidBy: string; // This should ideally be paid_by to match useExpenses hook if it's coming from there
+  paidBy: string;
   date: string;
   category: string;
+  sharers?: string[] | null;
 }
 
 interface Settlement {
@@ -33,74 +35,61 @@ interface ExpenseOverviewProps {
   onSettlementUpdate: (settlements: Settlement[]) => void;
 }
 
-export const ExpenseOverview = ({ expenses, onExpenseUpdate, settlements, onSettlementUpdate }: ExpenseOverviewProps) => {
+export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, settlements, onSettlementUpdate }: ExpenseOverviewProps) => {
   const { deleteExpense } = useExpenses();
   const { roommates } = useRoommates();
   const { user } = useAuth();
-  const [localSettlements, setLocalSettlements] = useState<Settlement[]>([]);
+  const { profile } = useProfile();
+  const [localSettlements, setLocalSettlements] = useState<Settlement[]>(settlements);
 
-  // Memoize calculations to prevent unnecessary re-renders
+  const currentUserDisplayName = useMemo(() => {
+    return profile?.name || user?.email?.split('@')[0] || 'You';
+  }, [profile, user]);
+
+  const allParticipantNames = useMemo(() => {
+    const names = new Set<string>([currentUserDisplayName]);
+    roommates.forEach(r => names.add(r.name));
+    return Array.from(names);
+  }, [currentUserDisplayName, roommates]);
+
   const calculations = useMemo(() => {
-    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const totalExpenses = propsExpenses.reduce((sum, expense) => sum + expense.amount, 0);
     
-    // Calculate balances based on expenses and roommates
     const balanceMap = new Map<string, number>();
-    
-    // Initialize all roommates and current user with 0 balance
-    const currentUserEmail = user?.email || '';
-    balanceMap.set(currentUserEmail, 0);
-    
-    roommates.forEach(roommate => {
-      balanceMap.set(roommate.email, 0);
-    });
+    allParticipantNames.forEach(name => balanceMap.set(name, 0));
 
-    // Calculate who paid what
-    const totalPeople = roommates.length + 1; // +1 for current user
-    const perPersonShare = totalExpenses > 0 && totalPeople > 0 ? totalExpenses / totalPeople : 0;
-
-    expenses.forEach(expense => {
-      // Find who paid this expense
-      const paidByEmail = expense.paidBy === 'You' || expense.paidBy === user?.email?.split('@')[0] 
-        ? currentUserEmail 
-        : roommates.find(r => r.name === expense.paidBy || r.email === expense.paidBy)?.email || expense.paidBy;
+    propsExpenses.forEach(expense => {
+      const payerName = expense.paidBy;
       
-      if (paidByEmail && balanceMap.has(paidByEmail)) {
-        balanceMap.set(paidByEmail, (balanceMap.get(paidByEmail) || 0) + expense.amount);
+      balanceMap.set(payerName, (balanceMap.get(payerName) || 0) + expense.amount);
+
+      const expenseSharers = expense.sharers && expense.sharers.length > 0 ? expense.sharers : allParticipantNames;
+      const numSharers = expenseSharers.length;
+      
+      if (numSharers > 0) {
+        const amountPerSharer = expense.amount / numSharers;
+        expenseSharers.forEach(sharerName => {
+          balanceMap.set(sharerName, (balanceMap.get(sharerName) || 0) - amountPerSharer);
+        });
       }
     });
 
-    // Calculate final balances (what each person owes/is owed)
-    const finalBalances: { name: string; email: string; balance: number }[] = [];
-    
-    balanceMap.forEach((amountPaid, email) => {
-      const balance = amountPaid - perPersonShare;
-      let name = email;
-      
-      if (email === currentUserEmail) {
-        name = 'You';
-      } else {
-        const roommate = roommates.find(r => r.email === email);
-        name = roommate?.name || email.split('@')[0];
-      }
-      
-      finalBalances.push({ name, email, balance });
+    const finalBalances: { name: string; balance: number }[] = [];
+    balanceMap.forEach((balance, name) => {
+      finalBalances.push({ name, balance });
     });
 
     return {
       totalExpenses,
-      perPersonShare,
       finalBalances
     };
-  }, [expenses, roommates, user?.email]);
+  }, [propsExpenses, allParticipantNames, currentUserDisplayName]);
 
-  // Use useEffect with proper dependencies to avoid infinite loops
   useEffect(() => {
-    if (settlements.length !== localSettlements.length) {
-      setLocalSettlements(settlements);
-    }
-  }, [settlements.length]); // Only depend on length to avoid infinite loops
+    setLocalSettlements(settlements);
+  }, [settlements]);
 
-  const categoryData = expenses.reduce((acc, expense) => {
+  const categoryData = propsExpenses.reduce((acc, expense) => {
     const existing = acc.find(item => item.name === expense.category);
     if (existing) {
       existing.value += expense.amount;
@@ -110,7 +99,7 @@ export const ExpenseOverview = ({ expenses, onExpenseUpdate, settlements, onSett
     return acc;
   }, [] as { name: string; value: number }[]);
 
-  const monthlyData = expenses.reduce((acc, expense) => {
+  const monthlyData = propsExpenses.reduce((acc, expense) => {
     const month = new Date(expense.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     const existing = acc.find(item => item.month === month);
     if (existing) {
@@ -146,7 +135,7 @@ export const ExpenseOverview = ({ expenses, onExpenseUpdate, settlements, onSett
     onSettlementUpdate(updatedSettlements);
   };
 
-  if (expenses.length === 0) {
+  if (propsExpenses.length === 0) {
     return (
       <div className="text-center py-12">
         <IndianRupee className="h-16 w-16 mx-auto text-gray-400 mb-4" />
@@ -159,7 +148,7 @@ export const ExpenseOverview = ({ expenses, onExpenseUpdate, settlements, onSett
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
@@ -168,20 +157,7 @@ export const ExpenseOverview = ({ expenses, onExpenseUpdate, settlements, onSett
           <CardContent>
             <div className="text-2xl font-bold">₹{calculations.totalExpenses.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
-              {expenses.length} expense{expenses.length !== 1 ? 's' : ''} recorded
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Per Person</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{calculations.perPersonShare.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">
-              Split among {roommates.length + 1} people
+              {propsExpenses.length} expense{propsExpenses.length !== 1 ? 's' : ''} recorded
             </p>
           </CardContent>
         </Card>
@@ -192,7 +168,7 @@ export const ExpenseOverview = ({ expenses, onExpenseUpdate, settlements, onSett
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{expenses.length > 0 ? new Date(expenses[0].date).toLocaleDateString() : 'N/A'}</div>
+            <div className="text-2xl font-bold">{propsExpenses.length > 0 ? new Date(propsExpenses[0].date).toLocaleDateString() : 'N/A'}</div>
             <p className="text-xs text-muted-foreground">Last expense added</p>
           </CardContent>
         </Card>
@@ -202,7 +178,7 @@ export const ExpenseOverview = ({ expenses, onExpenseUpdate, settlements, onSett
       <Card>
         <CardHeader>
           <CardTitle>Current Balances</CardTitle>
-          <CardDescription>Who owes what to whom</CardDescription>
+          <CardDescription>Who owes what to whom, based on shared expenses</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {calculations.finalBalances.map((person, index) => (
@@ -213,25 +189,22 @@ export const ExpenseOverview = ({ expenses, onExpenseUpdate, settlements, onSett
                 </div>
                 <div>
                   <p className="font-medium">{person.name}</p>
-                  <p className="text-sm text-muted-foreground">{person.email}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
-                <Badge variant={person.balance > 0 ? "default" : person.balance < 0 ? "destructive" : "secondary"}>
-                  {person.balance === 0 ? "Settled" : 
+                <Badge variant={person.balance > 0.005 ? "default" : person.balance < -0.005 ? "destructive" : "secondary"}>
+                  {person.balance === 0 || (person.balance < 0.005 && person.balance > -0.005) ? "Settled" : 
                    person.balance > 0 ? `Gets ₹${person.balance.toFixed(2)}` : 
                    `Owes ₹${Math.abs(person.balance).toFixed(2)}`}
                 </Badge>
-                {person.balance !== 0 && person.name !== 'You' && (
+                {(person.balance > 0.005 || person.balance < -0.005) && person.name !== currentUserDisplayName && (
                   <Button 
                     size="sm" 
                     onClick={() => {
                       if (person.balance < 0) {
-                        // They owe you money
-                        createSettlement(person.name, 'You', Math.abs(person.balance));
+                        createSettlement(person.name, currentUserDisplayName, Math.abs(person.balance));
                       } else {
-                        // You owe them money
-                        createSettlement('You', person.name, person.balance);
+                        createSettlement(currentUserDisplayName, person.name, person.balance);
                       }
                     }}
                   >
@@ -312,11 +285,11 @@ export const ExpenseOverview = ({ expenses, onExpenseUpdate, settlements, onSett
       <Card>
         <CardHeader>
           <CardTitle>Recent Expenses</CardTitle>
-          <CardDescription>Your latest spending activity</CardDescription>
+          <CardDescription>Your latest spending activity. {/** Sharers: {expense.sharers ? expense.sharers.join(', ') : 'All'} */}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {expenses.slice(0, 5).map((expense) => (
+            {propsExpenses.slice(0, 5).map((expense) => (
               <div key={expense.id} className="flex items-center justify-between p-4 rounded-lg border">
                 <div className="flex items-center space-x-4">
                   <div className="rounded-full bg-blue-100 p-2">
@@ -326,6 +299,11 @@ export const ExpenseOverview = ({ expenses, onExpenseUpdate, settlements, onSett
                     <p className="font-medium">{expense.description}</p>
                     <p className="text-sm text-muted-foreground">
                       Paid by {expense.paidBy} • {new Date(expense.date).toLocaleDateString()} • {expense.category}
+                      {expense.sharers && expense.sharers.length > 0 && expense.sharers.length < allParticipantNames.length ? (
+                        <span className="block text-xs">Shared with: {expense.sharers.join(', ')}</span>
+                      ) : (
+                        <span className="block text-xs">Shared with: All</span>
+                      )}
                     </p>
                   </div>
                 </div>
