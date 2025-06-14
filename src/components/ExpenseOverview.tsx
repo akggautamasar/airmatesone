@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { TrendingUp, TrendingDown, Calendar, Users, Trash2, IndianRupee } from "lucide-react";
+import { TrendingUp, TrendingDown, Calendar, Users, Trash2, IndianRupee, CreditCard, BadgeCheck } from "lucide-react";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useRoommates } from "@/hooks/useRoommates";
 import { useAuth } from "@/hooks/useAuth";
@@ -135,6 +135,16 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
     onSettlementUpdate(updatedSettlements);
   };
 
+  const handlePayClick = (upiId: string, amount: number) => {
+    if (!upiId || amount <= 0) {
+      console.error("Invalid UPI ID or amount for payment.");
+      // Optionally, show a toast message to the user
+      return;
+    }
+    const paymentUrl = `https://quantxpay.vercel.app/${upiId}/${amount.toFixed(2)}`;
+    window.open(paymentUrl, '_blank', 'noopener,noreferrer');
+  };
+
   if (propsExpenses.length === 0) {
     return (
       <div className="text-center py-12">
@@ -181,39 +191,66 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
           <CardDescription>Who owes what to whom, based on shared expenses</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {calculations.finalBalances.map((person, index) => (
-            <div key={index} className="flex items-center justify-between p-4 rounded-lg bg-gray-50">
-              <div className="flex items-center space-x-3">
-                <div className="rounded-full bg-blue-100 p-2">
-                  <Users className="h-4 w-4 text-blue-600" />
+          {calculations.finalBalances.map((person, index) => {
+            const isCurrentUserInvolved = person.name === currentUserDisplayName;
+            const roommateInfo = roommates.find(r => r.name === person.name);
+
+            return (
+              <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg bg-gray-50 space-y-2 sm:space-y-0">
+                <div className="flex items-center space-x-3">
+                  <div className="rounded-full bg-blue-100 p-2">
+                    <Users className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{person.name}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium">{person.name}</p>
+                <div className="flex flex-col sm:flex-row items-end sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 self-end sm:self-center w-full sm:w-auto justify-end">
+                  <Badge variant={person.balance > 0.005 ? "default" : person.balance < -0.005 ? "destructive" : "secondary"}>
+                    {person.balance === 0 || (person.balance < 0.005 && person.balance > -0.005) ? "Settled" : 
+                     person.balance > 0 ? `Gets ₹${person.balance.toFixed(2)}` : 
+                     `Owes ₹${Math.abs(person.balance).toFixed(2)}`}
+                  </Badge>
+                  
+                  {!isCurrentUserInvolved && person.balance < -0.005 && ( // Current user owes this person
+                    <>
+                      {roommateInfo?.upi_id && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handlePayClick(roommateInfo.upi_id, Math.abs(person.balance))}
+                          className="border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700 w-full sm:w-auto"
+                        >
+                          Pay
+                          <CreditCard className="ml-2 h-3 w-3" />
+                        </Button>
+                      )}
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => createSettlement(person.name, currentUserDisplayName, Math.abs(person.balance))}
+                        className="border-green-400 text-green-600 hover:bg-green-50 hover:text-green-700 w-full sm:w-auto"
+                      >
+                        Mark as Paid
+                        <BadgeCheck className="ml-2 h-3 w-3" />
+                      </Button>
+                    </>
+                  )}
+
+                  {!isCurrentUserInvolved && person.balance > 0.005 && ( // This person owes current user
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => createSettlement(currentUserDisplayName, person.name, person.balance)}
+                      className="border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto"
+                    >
+                      Request
+                    </Button>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center space-x-3">
-                <Badge variant={person.balance > 0.005 ? "default" : person.balance < -0.005 ? "destructive" : "secondary"}>
-                  {person.balance === 0 || (person.balance < 0.005 && person.balance > -0.005) ? "Settled" : 
-                   person.balance > 0 ? `Gets ₹${person.balance.toFixed(2)}` : 
-                   `Owes ₹${Math.abs(person.balance).toFixed(2)}`}
-                </Badge>
-                {(person.balance > 0.005 || person.balance < -0.005) && person.name !== currentUserDisplayName && (
-                  <Button 
-                    size="sm" 
-                    onClick={() => {
-                      if (person.balance < 0) {
-                        createSettlement(person.name, currentUserDisplayName, Math.abs(person.balance));
-                      } else {
-                        createSettlement(currentUserDisplayName, person.name, person.balance);
-                      }
-                    }}
-                  >
-                    {person.balance < 0 ? 'Request' : 'Settle'}
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
 
