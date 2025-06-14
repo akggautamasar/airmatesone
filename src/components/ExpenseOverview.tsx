@@ -21,7 +21,7 @@ interface Expense {
 }
 
 interface Settlement {
-  id: string;
+  id:string;
   amount: number;
   from: string;
   to: string;
@@ -192,7 +192,7 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
         </CardHeader>
         <CardContent className="space-y-4">
           {calculations.finalBalances.map((person, index) => {
-            const isCurrentUserInvolved = person.name === currentUserDisplayName;
+            const isViewingOwnBalance = person.name === currentUserDisplayName;
             const roommateInfo = roommates.find(r => r.name === person.name);
 
             return (
@@ -212,40 +212,48 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
                      `Owes ₹${Math.abs(person.balance).toFixed(2)}`}
                   </Badge>
                   
-                  {!isCurrentUserInvolved && person.balance < -0.005 && ( // Current user owes this person
+                  {!isViewingOwnBalance && (
                     <>
-                      {roommateInfo?.upi_id && (
+                      {/* Scenario: The person being displayed (person) IS OWED money (person.balance > 0),
+                          so the CURRENT USER might need to PAY them. */}
+                      {person.balance > 0.005 && (
+                        <>
+                          {roommateInfo?.upi_id && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handlePayClick(roommateInfo.upi_id, person.balance)}
+                              className="border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700 w-full sm:w-auto"
+                            >
+                              Pay
+                              <CreditCard className="ml-2 h-3 w-3" />
+                            </Button>
+                          )}
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => createSettlement(currentUserDisplayName, person.name, person.balance)}
+                            className="border-green-400 text-green-600 hover:bg-green-50 hover:text-green-700 w-full sm:w-auto"
+                          >
+                            Mark as Paid
+                            <BadgeCheck className="ml-2 h-3 w-3" />
+                          </Button>
+                        </>
+                      )}
+
+                      {/* Scenario: The person being displayed (person) OWES money (person.balance < 0),
+                          so the CURRENT USER might need to REQUEST from them. */}
+                      {person.balance < -0.005 && (
                         <Button 
                           size="sm" 
                           variant="outline"
-                          onClick={() => handlePayClick(roommateInfo.upi_id, Math.abs(person.balance))}
-                          className="border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700 w-full sm:w-auto"
+                          onClick={() => createSettlement(person.name, currentUserDisplayName, Math.abs(person.balance))}
+                          className="border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto"
                         >
-                          Pay
-                          <CreditCard className="ml-2 h-3 w-3" />
+                          Request
                         </Button>
                       )}
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => createSettlement(person.name, currentUserDisplayName, Math.abs(person.balance))}
-                        className="border-green-400 text-green-600 hover:bg-green-50 hover:text-green-700 w-full sm:w-auto"
-                      >
-                        Mark as Paid
-                        <BadgeCheck className="ml-2 h-3 w-3" />
-                      </Button>
                     </>
-                  )}
-
-                  {!isCurrentUserInvolved && person.balance > 0.005 && ( // This person owes current user
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => createSettlement(currentUserDisplayName, person.name, person.balance)}
-                      className="border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto"
-                    >
-                      Request
-                    </Button>
                   )}
                 </div>
               </div>
