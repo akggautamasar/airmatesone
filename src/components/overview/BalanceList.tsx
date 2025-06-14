@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -71,8 +70,6 @@ export const BalanceList: React.FC<BalanceListProps> = ({
             // Get all transaction_group_ids between these two users
             const txGroups = Array.from(new Set(relevantPairSettlements.map(s => s.transaction_group_id).filter(Boolean)));
 
-            // Now, for each transaction group, info about both perspectives (owed/owes)
-            // We'll prioritize txGroups with unsettled status
             const activeTx = txGroups.map(groupId => {
               const groupSetts = relevantPairSettlements.filter(s => s.transaction_group_id === groupId);
               return {
@@ -82,11 +79,9 @@ export const BalanceList: React.FC<BalanceListProps> = ({
               };
             });
 
-            // Pick the most recent unsettled group if any (prefer debtor_paid > pending)
             let debtorPaidGroup = activeTx.find(tx => tx.statuses.includes("debtor_paid"));
             let pendingGroup = activeTx.find(tx => tx.statuses.includes("pending"));
 
-            // We'll look at the settlements from the current user's perspective
             if (iAmDebtor) {
               if (debtorPaidGroup) {
                 // Current user has already marked as paid, awaiting creditor confirmation
@@ -127,13 +122,12 @@ export const BalanceList: React.FC<BalanceListProps> = ({
                 );
               }
             } else if (iAmCreditor) {
-              // The current user is the creditor; show confirmation if roommate marked as paid
+              // The current user is the creditor; can confirm if roommate marked as paid
               if (debtorPaidGroup) {
-                // Find the transaction_group_id and make sure current user is the creditor (owed)
                 const debtorPaidGroupId = debtorPaidGroup.groupId;
                 statusText = (
                   <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
-                    {otherPartyName} marked as paid
+                    Debtor marked as paid
                   </Badge>
                 );
                 actionContent = (
@@ -143,27 +137,19 @@ export const BalanceList: React.FC<BalanceListProps> = ({
                     onClick={() => onCreditorConfirmsReceipt(debtorPaidGroupId!, 'settled')}
                     className="border-green-400 text-green-600 hover:bg-green-50 hover:text-green-700 w-full sm:w-auto"
                   >
-                    Confirm Payment Received <CircleCheck className="ml-2 h-3 w-3" />
+                    Mark as Received <CircleCheck className="ml-2 h-3 w-3" />
                   </Button>
                 );
               } else {
-                // Default: can request payment if not already pending
+                // Remove "Request Payment" – creditor cannot request anymore
+                // Instead, show status if waiting for payment, otherwise show nothing
                 const isPending = Boolean(pendingGroup);
                 statusText = isPending ? (
                   <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">
                     Awaiting payment from {otherPartyName}
                   </Badge>
                 ) : null;
-                actionContent = (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onCreditorRequestsPayment(otherPartyName, currentUserDisplayName, absAmount)}
-                    className="border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto"
-                  >
-                    Request Payment
-                  </Button>
-                );
+                actionContent = null; // No request payment button
               }
             } else {
               actionContent = null;
