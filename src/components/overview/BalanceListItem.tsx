@@ -87,6 +87,29 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
     // Check if balance is essentially zero (settled up)
     const isBalanceSettled = Math.abs(amount) < 0.005;
 
+    // Calculate total settled amount between these two users
+    const settledTransactions = relevantPairSettlements.filter(s => s.status === 'settled');
+    const totalSettledForCurrentUser = settledTransactions
+      .filter(s => s.user_id === currentUserId)
+      .reduce((sum, s) => {
+        // If current user owes, add amount; if owed, subtract amount
+        return sum + (s.type === 'owes' ? s.amount : -s.amount);
+      }, 0);
+
+    const totalSettledForOtherUser = settledTransactions
+      .filter(s => s.user_id === otherPartyUserId)
+      .reduce((sum, s) => {
+        // If other user owes current user, subtract; if other user is owed by current user, add
+        return sum + (s.type === 'owes' ? -s.amount : s.amount);
+      }, 0);
+
+    // Net settled amount from current user's perspective
+    const netSettledAmount = totalSettledForCurrentUser + totalSettledForOtherUser;
+
+    // Check if the current balance has been effectively settled by recent settlements
+    // If the balance is close to the negative of settled amounts, it means it's been settled
+    const isEffectivelySettled = isBalanceSettled || Math.abs(amount + netSettledAmount) < 0.005;
+
     // Helper to initiate and settle if no group exists
     const handleCreditorMarkAsReceived = async () => {
       if (unsettledGroup && unsettledGroup.groupId) {
@@ -113,8 +136,8 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
           </Badge>
         );
         actionContent = null;
-      } else if (isBalanceSettled) {
-        // If balance is settled, show settled status
+      } else if (isEffectivelySettled) {
+        // If balance is effectively settled, show settled status
         statusText = (
           <Badge variant="outline" className="text-xs text-green-600 border-green-300">
             Settled up
@@ -153,7 +176,7 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
       }
     } else if (iAmCreditor) {
       // CREDITOR VIEW
-      if (isBalanceSettled) {
+      if (isEffectivelySettled) {
         statusText = (
           <Badge variant="outline" className="text-xs text-green-600 border-green-300">
             Settled up
