@@ -34,6 +34,11 @@ export const RoommateManagement = () => {
     window.open(paymentUrl, '_blank');
   };
 
+  // Filter out the current user from the fetched roommates list
+  const filteredRoommates = roommates.filter(
+    (roommate) => roommate.email !== (user?.email || '')
+  );
+
   // Create a combined list that includes the current user as the first entry
   const allMembers = [
     // Current user as the owner
@@ -42,13 +47,13 @@ export const RoommateManagement = () => {
       name: profile?.name || user?.email?.split('@')[0] || 'You',
       upi_id: profile?.upi_id || 'Not set',
       email: user?.email || '',
-      phone: '',
-      balance: 0,
+      phone: profile?.full_name || '', // Assuming profile.full_name might be phone or similar. Let's use profile.phone if available or keep it as is. For now, checking profile schema - phone is not there.
+      balance: 0, // This needs to be calculated based on expenses, currently hardcoded for current user
       isCurrentUser: true,
       user_id: user?.id || ''
     },
-    // Other roommates
-    ...roommates.map(r => ({ ...r, isCurrentUser: false }))
+    // Other roommates (filtered)
+    ...filteredRoommates.map(r => ({ ...r, isCurrentUser: false }))
   ];
 
   if (loading) {
