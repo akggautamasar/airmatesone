@@ -51,6 +51,14 @@ const handlePayClick = (upiId: string, amount: number) => {
     window.open(paymentUrl, '_blank', 'noopener,noreferrer');
 };
 
+// -------------- FIX: Add handleStatusUpdate function --------
+const handleStatusUpdate = (newStatus: "pending" | "debtor_paid" | "settled") => {
+  if (settlement.transaction_group_id) {
+    onUpdateStatus(settlement.transaction_group_id, newStatus);
+  }
+};
+// ------------------------------------------------------------
+
 export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDeleteTrigger }: SettlementItemProps) => {
     const color = getStatusColor(settlement.status);
     const actionButtonText = getActionText(settlement.status, settlement.type);
