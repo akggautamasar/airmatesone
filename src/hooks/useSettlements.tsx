@@ -45,7 +45,8 @@ export const useSettlements = () => {
   const addSettlementPair = async (
     currentUserInvolves: { name: string; email: string; upi_id: string; type: 'owes' | 'owed' },
     otherPartyInvolves: { name: string; email: string; upi_id: string; type: 'owes' | 'owed' },
-    amount: number
+    amount: number,
+    initialStatus: 'pending' | 'debtor_paid' | 'settled' = 'pending'
   ): Promise<Settlement | null> => {
     if (!user) {
       toast({ title: "Error", description: "You must be logged in.", variant: "destructive" });
@@ -58,10 +59,11 @@ export const useSettlements = () => {
         currentUserInvolves,
         otherPartyInvolves,
         amount,
-        user.id
+        user.id,
+        initialStatus
       );
       await fetchSettlements(); // Refetch to update local state
-      toast({ title: "Settlement Initiated", description: "The settlement has been recorded." });
+      toast({ title: "Settlement Recorded", description: "The settlement has been recorded." });
       return newSettlement;
     } catch (error: any) {
       console.error(`[useSettlements] Error adding settlement pair for user ${user.id}:`, error);
@@ -119,4 +121,3 @@ export const useSettlements = () => {
 
   return { settlements, loading, addSettlementPair, updateSettlementStatusByGroupId, deleteSettlementGroup, refetchSettlements: fetchSettlements };
 };
-

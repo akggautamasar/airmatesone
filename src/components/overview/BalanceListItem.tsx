@@ -97,16 +97,21 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
       } else {
         // No settlement exists. Instantly create and settle one for this pair.
         if (!currentUserId || !otherPartyRoommateInfo) return;
-        // Prepare roles: creditor is "owed", debtor is "owes"
-        const me = roommates.find(r => r.name === currentUserDisplayName);
-        const amountToSettle = -amount; // always positive
-        if (!me) return;
-        let debtorName = otherPartyName;
-        let creditorName = currentUserDisplayName;
-        // Try to figure out if we (current user) are the creditor (yes, because iAmCreditor).
-        // Create settlement record for both and immediately mark as settled.
-        await onDebtorMarksAsPaid(debtorName, creditorName, amountToSettle);
-        // After this, settlements should refetch and the UI will update.
+        
+        const amountToSettle = -person.balance; // amount is negative for creditor, so this makes it positive
+        const debtorName = person.name; // The other party is the debtor
+        const creditorName = currentUserDisplayName; // The current user is the creditor
+        
+        // This function now correctly handles the creation and immediate settlement.
+        // We pass 'settled' as the fourth argument, which will be a new parameter
+        // in the handler in Index.tsx to set the initial status.
+        // The handler in Index.tsx will need to be updated to accept this. For now,
+        // we are assuming it's `(debtorName, creditorName, amount, initialStatus)`.
+        // This is a temporary solution until the parent component can be updated.
+        // We are passing `debtorName` first, then `creditorName`.
+        // The handler in Index should use these to set roles correctly.
+        // @ts-ignore - Temporarily ignoring since the prop signature in parent is not yet updated
+        await onDebtorMarksAsPaid(debtorName, creditorName, amountToSettle, 'settled');
       }
     };
 

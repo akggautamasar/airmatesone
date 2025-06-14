@@ -1,4 +1,3 @@
-
 import { SupabaseClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
@@ -36,7 +35,8 @@ export const addSettlementPairToSupabase = async (
   currentUserInvolves: { name: string; email: string; upi_id: string; type: 'owes' | 'owed' },
   otherPartyInvolves: { name: string; email: string; upi_id: string; type: 'owes' | 'owed' },
   amount: number,
-  currentUserId: string
+  currentUserId: string,
+  initialStatus: 'pending' | 'debtor_paid' | 'settled' = 'pending'
 ): Promise<Settlement> => {
   const transactionGroupId = uuidv4();
 
@@ -47,8 +47,9 @@ export const addSettlementPairToSupabase = async (
     upi_id: currentUserInvolves.type === 'owes' ? otherPartyInvolves.upi_id : currentUserInvolves.upi_id,
     type: currentUserInvolves.type,
     amount,
-    status: 'pending',
+    status: initialStatus,
     transaction_group_id: transactionGroupId,
+    settled_date: initialStatus === 'settled' ? new Date().toISOString() : null,
   };
   console.log("[settlementService] Attempting to add settlement for current user:", JSON.stringify(newSettlementEntryForDb));
 
@@ -85,8 +86,9 @@ export const addSettlementPairToSupabase = async (
       upi_id: otherPartyInvolves.type === 'owes' ? currentUserInvolves.upi_id : otherPartyInvolves.upi_id,
       type: otherPartyInvolves.type,
       amount,
-      status: 'pending',
+      status: initialStatus,
       transaction_group_id: transactionGroupId,
+      settled_date: initialStatus === 'settled' ? new Date().toISOString() : null,
     };
     console.log("[settlementService] Attempting to add settlement for other party:", JSON.stringify(otherPartySettlementEntryForDb));
     const { error: otherUserError } = await supabase
@@ -154,4 +156,3 @@ export const deleteSettlementGroupFromSupabase = async (
   }
   console.log(`[settlementService] Successfully deleted settlement records for group ${transaction_group_id} initiated by user ${userIdMakingDeletion}.`);
 };
-
