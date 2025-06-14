@@ -30,15 +30,15 @@ export const useExpenses = () => {
       setLoading(true);
       console.log('Fetching expenses for user:', user.email);
       
-      // Query expenses table and filter by user_id
+      // Query expenses table. RLS policy will ensure only relevant expenses are returned.
       const { data, error } = await supabase
         .from('expenses')
         .select('*')
-        .eq('user_id', user.id)
+        // Removed .eq('user_id', user.id) to rely on RLS
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Supabase error:', error);
+        console.error('Supabase error fetching expenses:', error);
         throw error;
       }
       
@@ -62,12 +62,13 @@ export const useExpenses = () => {
     try {
       const { data, error } = await supabase
         .from('expenses')
-        .insert([{ ...expense, user_id: user.id }])
+        .insert([{ ...expense, user_id: user.id }]) // RLS for insert: auth.uid() = user_id
         .select()
         .single();
 
       if (error) throw error;
-      setExpenses(prev => [data, ...prev]);
+      // setExpenses(prev => [data, ...prev]); // Refetch to get full list per RLS
+      await fetchExpenses(); // Refetch to ensure list is up-to-date with RLS
       
       toast({
         title: "Expense Added",
@@ -88,10 +89,11 @@ export const useExpenses = () => {
       const { error } = await supabase
         .from('expenses')
         .delete()
-        .eq('id', expenseId);
+        .eq('id', expenseId); // RLS for delete: auth.uid() = user_id
 
       if (error) throw error;
-      setExpenses(prev => prev.filter(expense => expense.id !== expenseId));
+      // setExpenses(prev => prev.filter(expense => expense.id !== expenseId)); // Refetch
+      await fetchExpenses(); // Refetch to ensure list is up-to-date
       
       toast({
         title: "Expense Deleted",
@@ -110,6 +112,10 @@ export const useExpenses = () => {
   useEffect(() => {
     if (user) {
       fetchExpenses();
+    } else {
+      // Clear expenses if user logs out
+      setExpenses([]);
+      setLoading(false);
     }
   }, [user]);
 
@@ -121,3 +127,4 @@ export const useExpenses = () => {
     refetch: fetchExpenses
   };
 };
+

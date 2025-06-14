@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -30,15 +29,16 @@ export const useRoommates = () => {
       setLoading(true);
       console.log('Fetching roommates for user:', user.email);
       
-      // Query roommates table directly - get roommates added by this user
+      // Query roommates table. RLS policy will ensure only relevant roommates are returned.
       const { data, error } = await supabase
         .from('roommates')
         .select('*')
-        .eq('user_id', user.id)
+        // Removed .eq('user_id', user.id) to rely on RLS:
+        // auth.uid() = user_id OR roommates.email = public.get_current_user_email()
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Supabase error:', error);
+        console.error('Supabase error fetching roommates:', error);
         throw error;
       }
       
@@ -95,7 +95,7 @@ export const useRoommates = () => {
       const { data: existingRoommate, error: checkError } = await supabase
         .from('roommates')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', user.id) // Check based on creator to avoid duplicates by same creator
         .eq('email', roommate.email)
         .maybeSingle();
 
@@ -107,7 +107,7 @@ export const useRoommates = () => {
       if (existingRoommate) {
         toast({
           title: "Error",
-          description: "This roommate has already been added",
+          description: "This roommate has already been added by you", // Clarified message
           variant: "destructive",
         });
         return;
@@ -130,7 +130,8 @@ export const useRoommates = () => {
       }
 
       console.log('Successfully added roommate:', data);
-      setRoommates(prev => [data, ...prev]);
+      // setRoommates(prev => [data, ...prev]); // Refetch instead to get full list per RLS
+      await fetchRoommates(); // Refetch to ensure list is up-to-date with RLS
       
       toast({
         title: "Roommate Added",
@@ -153,19 +154,21 @@ export const useRoommates = () => {
       const { error } = await supabase
         .from('roommates')
         .delete()
-        .eq('id', roommateId);
+        .eq('id', roommateId); // RLS policy for delete is "USING (auth.uid() = user_id)"
+                               // This means only the creator can delete.
 
       if (error) {
         console.error('Supabase delete error:', error);
         throw error;
       }
       
-      const deletedRoommate = roommates.find(r => r.id === roommateId);
-      setRoommates(prev => prev.filter(roommate => roommate.id !== roommateId));
+      // const deletedRoommate = roommates.find(r => r.id === roommateId); // Not needed if refetching
+      // setRoommates(prev => prev.filter(roommate => roommate.id !== roommateId));
+      await fetchRoommates(); // Refetch to ensure list is up-to-date
       
       toast({
         title: "Roommate Removed",
-        description: `${deletedRoommate?.name} has been removed from your group`,
+        description: `Roommate has been removed from your group`, // Generic message as name might not be in current list
       });
     } catch (error: any) {
       console.error('Error deleting roommate:', error);
@@ -233,6 +236,10 @@ export const useRoommates = () => {
   useEffect(() => {
     if (user) {
       fetchRoommates();
+    } else {
+      // Clear roommates if user logs out
+      setRoommates([]);
+      setLoading(false);
     }
   }, [user]);
 
