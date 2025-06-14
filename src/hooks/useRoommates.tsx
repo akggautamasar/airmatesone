@@ -91,12 +91,40 @@ export const useRoommates = () => {
         return;
       }
 
-      // Check if roommate already exists for this user
+      // Check if the target roommate email exists as a registered user in profiles
+      const { data: targetUserAccount, error: lookupError } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .eq('email', roommate.email)
+        .maybeSingle();
+
+      if (lookupError) {
+        console.error('Error looking up user in profiles:', lookupError);
+        toast({
+          title: "Error",
+          description: "Could not verify roommate's account status. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!targetUserAccount) {
+        toast({
+          title: "User Not Found",
+          description: `No registered user found with email ${roommate.email}. Please ask them to create an account first.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log('Target user account found:', targetUserAccount);
+
+      // Check if roommate already exists for this user (creator)
       const { data: existingRoommate, error: checkError } = await supabase
         .from('roommates')
         .select('id')
-        .eq('user_id', user.id) // Check based on creator to avoid duplicates by same creator
-        .eq('email', roommate.email)
+        .eq('user_id', user.id) // Check based on creator
+        .eq('email', roommate.email) // Email of the roommate to be added
         .maybeSingle();
 
       if (checkError) {
@@ -107,7 +135,7 @@ export const useRoommates = () => {
       if (existingRoommate) {
         toast({
           title: "Error",
-          description: "This roommate has already been added by you", // Clarified message
+          description: "This roommate (by email) has already been added by you.",
           variant: "destructive",
         });
         return;
@@ -118,7 +146,7 @@ export const useRoommates = () => {
         .from('roommates')
         .insert([{ 
           ...roommate, 
-          user_id: user.id, 
+          user_id: user.id, // user_id is the creator of this roommate entry
           balance: 0 
         }])
         .select()
@@ -130,8 +158,7 @@ export const useRoommates = () => {
       }
 
       console.log('Successfully added roommate:', data);
-      // setRoommates(prev => [data, ...prev]); // Refetch instead to get full list per RLS
-      await fetchRoommates(); // Refetch to ensure list is up-to-date with RLS
+      await fetchRoommates(); 
       
       toast({
         title: "Roommate Added",
@@ -175,6 +202,43 @@ export const useRoommates = () => {
       toast({
         title: "Error",
         description: `Failed to delete roommate: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteAllMyRoommates = async () => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to perform this action.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      console.log('Deleting all roommates for user:', user.id);
+      const { error } = await supabase
+        .from('roommates')
+        .delete()
+        .eq('user_id', user.id); // Delete all roommates CREATED BY the current user
+
+      if (error) {
+        console.error('Supabase delete all roommates error:', error);
+        throw error;
+      }
+      
+      await fetchRoommates(); // Refetch to update the list
+      
+      toast({
+        title: "All Roommates Removed",
+        description: `All roommates you added have been removed.`,
+      });
+    } catch (error: any) {
+      console.error('Error deleting all roommates:', error);
+      toast({
+        title: "Error",
+        description: `Failed to remove all roommates: ${error.message}`,
         variant: "destructive",
       });
     }
@@ -248,6 +312,7 @@ export const useRoommates = () => {
     loading,
     addRoommate,
     deleteRoommate,
+    deleteAllMyRoommates,
     sendEmailRequest,
     refetch: fetchRoommates
   };

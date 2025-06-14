@@ -4,13 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Users, Plus, IndianRupee, Phone, Trash2, Mail, Crown } from "lucide-react";
+import { Users, Plus, IndianRupee, Phone, Trash2, Mail, Crown, AlertTriangle } from "lucide-react";
 import { useRoommates } from "@/hooks/useRoommates";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
 
 export const RoommateManagement = () => {
-  const { roommates, loading, addRoommate, deleteRoommate, sendEmailRequest } = useRoommates();
+  const { roommates, loading, addRoommate, deleteRoommate, deleteAllMyRoommates, sendEmailRequest } = useRoommates();
   const { profile } = useProfile();
   const { user } = useAuth();
   const [newRoommate, setNewRoommate] = useState({
@@ -69,7 +69,7 @@ export const RoommateManagement = () => {
             <span>Add New Roommate</span>
           </CardTitle>
           <CardDescription>
-            Add a roommate to your expense sharing group
+            Add a roommate to your expense sharing group. They must have an existing account on AirMates.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -93,11 +93,11 @@ export const RoommateManagement = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email (Must be registered)</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="email@example.com"
+                placeholder="registered.email@example.com"
                 value={newRoommate.email}
                 onChange={(e) => setNewRoommate({...newRoommate, email: e.target.value})}
               />
@@ -127,12 +127,45 @@ export const RoommateManagement = () => {
       {/* Roommates List */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Users className="h-5 w-5" />
-            <span>Group Members ({allMembers.length})</span>
-          </CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center space-x-2">
+              <Users className="h-5 w-5" />
+              <span>Group Members ({allMembers.length})</span>
+            </CardTitle>
+            {/* Only show "Remove All" if there are roommates added by the current user */}
+            {roommates.filter(r => r.user_id === user?.id).length > 0 && (
+               <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Remove All My Roommates
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center">
+                      <AlertTriangle className="h-5 w-5 mr-2 text-red-500" />
+                      Confirm Removal
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to remove all roommates you've added? This action will remove them from your list and cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={deleteAllMyRoommates}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Yes, Remove All
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
           <CardDescription>
-            Manage your roommate group and settle expenses
+            Manage your roommate group and settle expenses. Roommates you add are specific to your list.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -209,7 +242,8 @@ export const RoommateManagement = () => {
                       </>
                     )}
                     
-                    {!member.isCurrentUser && (
+                    {/* Only allow deleting roommates that were added by the current user */}
+                    {!member.isCurrentUser && member.user_id === user?.id && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="outline" size="sm">
