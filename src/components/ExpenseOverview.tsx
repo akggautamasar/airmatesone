@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { TrendingUp, TrendingDown, Calendar, Users, Trash2, IndianRupee, CreditCard, BadgeCheck } from "lucide-react";
+import { Calendar, Users, Trash2, IndianRupee, CreditCard, BadgeCheck } from "lucide-react";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useRoommates } from "@/hooks/useRoommates";
 import { useAuth } from "@/hooks/useAuth";
@@ -89,77 +89,50 @@ export const ExpenseOverview = ({
       }
     });
     
-    // Adjust balances based on *active* settlements (pending or debtor_paid)
-    // Settled transactions should no longer affect current balances.
-    settlements.filter(s => s.status === 'pending' || s.status === 'debtor_paid').forEach(settlement => {
-      // This logic assumes `settlements` are from the current user's perspective
-      // A positive balance means user is owed, negative means user owes
-      // If current user owes `settlement.name` (type: "owes"), their balance should decrease (more negative) by settlement.amount
-      // If `settlement.name` owes current user (type: "owed"), their balance should increase (more positive) by settlement.amount
-      // This interpretation seems reversed from typical balance sheets. Let's fix.
-      // My previous balanceMap logic: positive means net creditor, negative means net debtor.
-      // If I (currentUserDisplayName) `owe` `settlement.name` `settlement.amount`:
-      //   My balance (which is negative, e.g. -100) should become less negative if this settlement is processing.
-      //   No, this is about initial calculation. The settlements adjust this initial calculation.
-      //   If a settlement is created "User A owes User B 50", this means User A's debt of 50 is now being handled.
-      //   The balanceMap ALREADY reflects who owes whom from expenses.
-      //   Settlements are transactions that attempt to clear these balances.
-      //   If a settlement is PENDING `A owes B 50`:
-      //     A's balance in balanceMap might be -50 (owes 50). The pending settlement doesn't change this fact yet.
-      //     B's balance in balanceMap might be +50 (owed 50).
-      //   When the settlement becomes `settled`:
-      //     A's balance should move towards 0 (e.g. -50 + 50 = 0).
-      //     B's balance should move towards 0 (e.g. +50 - 50 = 0).
-      //   So, the `localSettlements` in the original code was for *newly created* settlements in *this session*.
-      //   The `settlements` prop now comes from the DB.
-      //   The balances shown should be *after* considering *settled* transactions.
-
-      // Correct logic for `calculations.finalBalances`:
-      // Start with balances from expenses.
-      // Then, for each *settled* transaction, adjust the balances.
+    settlements.forEach(settlement => {
       if (settlement.status === 'settled') {
         let debtorName: string, creditorName: string;
-        if (settlement.type === 'owes') { // current user (settlement.user_id) paid settlement.name
-            debtorName = currentUserDisplayName; // This is tricky; settlement.user_id is who OWNS the record
-                                               // We need to know who the debtor and creditor are for THIS transaction_group_id
-                                               // Let's find the pair of settlements for this transaction_group_id
-            const pair = settlements.filter(s => s.transaction_group_id === settlement.transaction_group_id);
-            const owesRecord = pair.find(p => p.type === 'owes'); // The one who owed
-            const owedRecord = pair.find(p => p.type === 'owed'); // The one who was owed
-
-            if (owesRecord && owedRecord) {
-                // The 'name' in the 'owes' record is the creditor. The 'name' in the 'owed' record is the debtor.
-                // This is confusing. Let's simplify:
-                // If settlement.type is 'owes', it means settlement.user_id (owner of THIS record) OWED settlement.name.
-                // So, settlement.user_id is the debtor. settlement.name is the creditor.
-                // We need to map settlement.user_id back to a display name.
-                const debtorProfile = roommates.find(r => r.user_id === settlement.user_id) || (settlement.user_id === currentUserId ? profile : null);
-                const debtorDisplayName = debtorProfile?.name || settlement.user_id === currentUserId ? currentUserDisplayName : `User ${settlement.user_id.substring(0,5)}`;
-
-
-                debtorName = debtorDisplayName;
-                creditorName = settlement.name; // Person who was paid
-
-                balanceMap.set(debtorName, (balanceMap.get(debtorName) || 0) + settlement.amount); // Debt reduced
-                balanceMap.set(creditorName, (balanceMap.get(creditorName) || 0) - settlement.amount); // Amount received
+        const settlementOwnerIsCurrentUser = settlement.user_id === currentUserId;
+        
+        if (settlementOwnerIsCurrentUser) {
+            if (settlement.type === 'owes') { // Current user (debtor) paid settlement.name (creditor)
+                debtorName = currentUserDisplayName;
+                creditorName = settlement.name;
+            } else { // settlement.type === 'owed', settlement.name (debtor) paid current user (creditor)
+                debtorName = settlement.name;
+                creditorName = currentUserDisplayName;
             }
-        } else { // settlement.type is 'owed', meaning settlement.name OWED settlement.user_id
-            const creditorProfile = roommates.find(r => r.user_id === settlement.user_id) || (settlement.user_id === currentUserId ? profile : null);
-            const creditorDisplayName = creditorProfile?.name || settlement.user_id === currentUserId ? currentUserDisplayName : `User ${settlement.user_id.substring(0,5)}`;
+        } else {
+            const ownerProfile = roommates.find(r => r.user_id === settlement.user_id);
+            const ownerDisplayName = ownerProfile?.name || `User ${settlement.user_id.substring(0,5)}`;
 
-            debtorName = settlement.name; // Person who paid
-            creditorName = creditorDisplayName;
+            if (settlement.type === 'owes') { // Owner (debtor) paid settlement.name (creditor)
+                debtorName = ownerDisplayName;
+                creditorName = settlement.name; // This name is relative to the owner. If it's current user, it's currentUserDisplayName
+                if (creditorName === user?.email || creditorName === profile?.name) creditorName = currentUserDisplayName;
 
-            balanceMap.set(debtorName, (balanceMap.get(debtorName) || 0) + settlement.amount); // Debt reduced
-            balanceMap.set(creditorName, (balanceMap.get(creditorName) || 0) - settlement.amount); // Amount received
+            } else { // settlement.type === 'owed', settlement.name (debtor) paid owner (creditor)
+                debtorName = settlement.name; // This name is relative to the owner. If it's current user, it's currentUserDisplayName
+                if (debtorName === user?.email || debtorName === profile?.name) debtorName = currentUserDisplayName;
+                creditorName = ownerDisplayName;
+            }
+        }
+        
+        if (!balanceMap.has(debtorName) && allParticipantNames.includes(debtorName)) balanceMap.set(debtorName, 0);
+        if (!balanceMap.has(creditorName) && allParticipantNames.includes(creditorName)) balanceMap.set(creditorName, 0);
+
+        if (balanceMap.has(debtorName)) {
+            balanceMap.set(debtorName, (balanceMap.get(debtorName) || 0) + settlement.amount); // Debt reduced for debtor
+        }
+        if (balanceMap.has(creditorName)) {
+            balanceMap.set(creditorName, (balanceMap.get(creditorName) || 0) - settlement.amount); // Amount received by creditor
         }
       }
     });
 
-
     const finalBalances: { name: string; balance: number }[] = [];
     balanceMap.forEach((balance, name) => {
-      finalBalances.push({ name, balance: parseFloat(balance.toFixed(2)) }); // Ensure 2 decimal places precision
+      finalBalances.push({ name, balance: parseFloat(balance.toFixed(2)) });
     });
 
     return {
@@ -168,8 +141,7 @@ export const ExpenseOverview = ({
     };
   }, [propsExpenses, allParticipantNames, currentUserDisplayName, settlements, roommates, profile, currentUserId, user]);
 
-
-  const categoryData = propsExpenses.reduce((acc, expense) => {
+  const categoryData = useMemo(() => propsExpenses.reduce((acc, expense) => {
     const existing = acc.find(item => item.name === expense.category);
     if (existing) {
       existing.value += expense.amount;
@@ -177,9 +149,9 @@ export const ExpenseOverview = ({
       acc.push({ name: expense.category, value: expense.amount });
     }
     return acc;
-  }, [] as { name: string; value: number }[]);
+  }, [] as { name: string; value: number }[]), [propsExpenses]);
 
-  const monthlyData = propsExpenses.reduce((acc, expense) => {
+  const monthlyData = useMemo(() => propsExpenses.reduce((acc, expense) => {
     const dateObj = new Date(expense.date); 
     const month = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : "Invalid Date";
 
@@ -190,14 +162,14 @@ export const ExpenseOverview = ({
       acc.push({ month, amount: expense.amount });
     }
     return acc;
-  }, [] as { month: string; amount: number }[]);
+  }, [] as { month: string; amount: number }[]), [propsExpenses]);
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
   const handleDeleteExpense = async (expenseId: string) => {
     try {
-      await deleteExpense(expenseId); // This comes from useExpenses, not a prop
-      onExpenseUpdate(); // Prop function to notify parent (Index.tsx)
+      await deleteExpense(expenseId);
+      onExpenseUpdate(); 
     } catch (error) {
       console.error('Error deleting expense:', error);
     }
@@ -233,8 +205,16 @@ export const ExpenseOverview = ({
         creditorDetails = currentUserProfileDetails;
         debtorDetails = debtorRoommate ? { name: debtorRoommate.name, email: debtorRoommate.email, upi_id: debtorRoommate.upi_id } : { name: debtorName, email: 'unknown', upi_id: ''};
     } else {
-        debtorDetails = debtorRoommate ? { name: debtorRoommate.name, email: debtorRoommate.email, upi_id: debtorRoommate.upi_id } : { name: debtorName, email: 'unknown', upi_id: ''};
-        creditorDetails = creditorRoommate ? { name: creditorRoommate.name, email: creditorRoommate.email, upi_id: creditorRoommate.upi_id } : { name: creditorName, email: 'unknown', upi_id: ''};
+        if (!debtorRoommate || !creditorRoommate) {
+            toast({
+                title: "Settlement Error",
+                description: `Cannot initiate settlement between ${debtorName} and ${creditorName} as one or both are not registered roommates with full details.`,
+                variant: "destructive",
+            });
+            return;
+        }
+        debtorDetails = { name: debtorRoommate.name, email: debtorRoommate.email, upi_id: debtorRoommate.upi_id };
+        creditorDetails = { name: creditorRoommate.name, email: creditorRoommate.email, upi_id: creditorRoommate.upi_id };
     }
     
     let currentUserPerspective, otherPartyPerspective;
@@ -246,7 +226,12 @@ export const ExpenseOverview = ({
         currentUserPerspective = { ...creditorDetails, type: 'owed' as const };
         otherPartyPerspective = { ...debtorDetails, type: 'owes' as const };
     } else {
-        console.warn("Settlement initiation between two other parties not fully supported by this UI path.");
+        console.warn("Settlement initiation between two other parties not fully supported by this UI path in ExpenseOverview. Ensure onAddSettlementPair can handle this or adjust UI flow.");
+        toast({
+            title: "Mediation Not Supported",
+            description: "Directly settling between two other roommates from this screen is not fully supported yet. Please manage such settlements individually or via Settlement History if applicable.",
+            variant: "warning"
+         });
         return; 
     }
     
@@ -267,33 +252,31 @@ export const ExpenseOverview = ({
           variant: "destructive",
         });
       }
-    } else if (createdSettlement && !settleImmediately) { // This means it's a pending settlement
+    } else if (createdSettlement && !settleImmediately) {
         toast({
           title: "Settlement Initiated",
           description: `A settlement process has been initiated with ${creditorName === currentUserDisplayName ? debtorName : creditorName}. Check Settlement History.`,
         });
     }
-    // onExpenseUpdate calls refetchExpenses and refetchSettlements.
-    // updateSettlementStatusByGroupId in useSettlements also calls fetchSettlements (refetch).
-    // So calling onExpenseUpdate here ensures everything is refreshed.
     onExpenseUpdate(); 
   };
 
   const handlePayClick = (upiId: string, amount: number) => {
     if (!upiId || amount <= 0) {
       console.error("Invalid UPI ID or amount for payment.");
+      toast({ title: "Payment Error", description: "Invalid UPI ID or amount.", variant: "destructive" });
       return;
     }
     const paymentUrl = `https://quantxpay.vercel.app/${upiId}/${amount.toFixed(2)}`;
     window.open(paymentUrl, '_blank', 'noopener,noreferrer');
   };
 
-  if (propsExpenses.length === 0 && settlements.length === 0) {
+  if (propsExpenses.length === 0 && settlements.filter(s => s.status !== 'settled').length === 0 && calculations.finalBalances.every(b => Math.abs(b.balance) < 0.01)) {
     return (
       <div className="text-center py-12">
         <IndianRupee className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No expenses or settlements yet</h3>
-        <p className="text-gray-500">Start by adding your first expense to see insights here.</p>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">All Clear!</h3>
+        <p className="text-gray-500">No outstanding expenses or pending settlements. Add a new expense to get started.</p>
       </div>
     );
   }
@@ -331,65 +314,76 @@ export const ExpenseOverview = ({
       <Card>
         <CardHeader>
           <CardTitle>Current Balances</CardTitle>
-          <CardDescription>Who owes what to whom, based on shared expenses and *settled* transactions.</CardDescription>
+          <CardDescription>Who owes what, reflecting shared expenses and settled transactions. Manage pending settlements in the 'Settlements' tab.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {calculations.finalBalances.map((person, index) => {
             const isViewingOwnBalance = person.name === currentUserDisplayName;
-            const roommateInfo = roommates.find(r => r.name === person.name); // For UPI ID
+            const roommateInfo = roommates.find(r => r.name === person.name);
 
-            // Determine if there's an active (pending/debtor_paid) settlement involving this person and current user
             const activeSettlementWithPerson = settlements.find(s => 
                 s.status !== 'settled' &&
-                ((s.name === person.name && s.user_id === currentUserId) || // current user's record about 'person'
-                 (s.name === currentUserDisplayName && person.name === roommates.find(r => r.user_id === s.user_id)?.name )) // 'person's record about current user
+                ((s.name === person.name && s.user_id === currentUserId) || 
+                 (s.name === currentUserDisplayName && person.name === (roommates.find(r => r.user_id === s.user_id)?.name || s.user_id))) // check against person's name or their original id if not in roommates
             );
 
-            let actionButton = null;
-            if (!isViewingOwnBalance && !activeSettlementWithPerson) {
-                if (person.balance < -0.005) { // This person owes money (to current user or pool)
-                    actionButton = (
+            let actionContent = null;
+            let additionalInfoBadge = null;
+
+            if (!isViewingOwnBalance) {
+                if (person.balance > 0.005) { // Current user owes this person (person.name)
+                    const payButton = roommateInfo?.upi_id ? (
                         <Button 
                           size="sm" 
                           variant="outline"
-                          // For "Request Payment", settleImmediately should be false (default)
-                          onClick={() => initiateSettlementProcess(person.name, currentUserDisplayName, person.balance)} 
-                          className="border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto"
+                          onClick={() => handlePayClick(roommateInfo.upi_id, person.balance)}
+                          className="border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700 w-full sm:w-auto"
                         >
-                          Request Payment
+                          Pay via UPI
+                          <CreditCard className="ml-2 h-3 w-3" />
+                        </Button>
+                    ) : null;
+
+                    const markAsPaidButton = (
+                        <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => initiateSettlementProcess(currentUserDisplayName, person.name, person.balance, true)} 
+                            className="border-green-400 text-green-600 hover:bg-green-50 hover:text-green-700 w-full sm:w-auto"
+                        >
+                            Mark as Paid
+                            <BadgeCheck className="ml-2 h-3 w-3" />
                         </Button>
                     );
-                } else if (person.balance > 0.005) { // This person is owed money (by current user or pool)
-                    actionButton = (
+                    
+                    actionContent = (
                         <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 mt-1 w-full sm:w-auto justify-end">
-                            {roommateInfo?.upi_id && (
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => handlePayClick(roommateInfo.upi_id, person.balance)}
-                                  className="border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700 w-full sm:w-auto"
-                                >
-                                  Pay via UPI
-                                  <CreditCard className="ml-2 h-3 w-3" />
-                                </Button>
-                            )}
-                            <Button 
-                                size="sm" 
-                                variant="outline"
-                                // For "Mark as Paid", settleImmediately is true
-                                onClick={() => initiateSettlementProcess(currentUserDisplayName, person.name, person.balance, true)} 
-                                className="border-green-400 text-green-600 hover:bg-green-50 hover:text-green-700 w-full sm:w-auto"
-                            >
-                                Mark as Paid
-                                <BadgeCheck className="ml-2 h-3 w-3" />
-                            </Button>
+                            {payButton}
+                            {markAsPaidButton}
                         </div>
                     );
-                }
-            } else if (activeSettlementWithPerson) {
-                 actionButton = <Badge variant="outline" className="text-xs">Settlement in progress</Badge>;
-            }
 
+                    if (activeSettlementWithPerson) {
+                        additionalInfoBadge = <Badge variant="outline" className="text-xs mt-1 sm:mt-0 sm:ml-2 self-center sm:self-auto">Note: A settlement is also pending</Badge>;
+                    }
+
+                } else if (person.balance < -0.005) { // Current user is owed by this person (person.name)
+                    if (!activeSettlementWithPerson) {
+                        actionContent = (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => initiateSettlementProcess(person.name, currentUserDisplayName, person.balance, false)} 
+                              className="border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto"
+                            >
+                              Request Payment
+                            </Button>
+                        );
+                    } else {
+                        actionContent = <Badge variant="outline" className="text-xs">Settlement in progress</Badge>;
+                    }
+                }
+            }
 
             return (
               <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg bg-gray-50 space-y-2 sm:space-y-0">
@@ -402,12 +396,13 @@ export const ExpenseOverview = ({
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row items-end sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 self-end sm:self-center w-full sm:w-auto justify-end">
-                  <Badge variant={person.balance > 0.005 ? "default" : person.balance < -0.005 ? "destructive" : "secondary"} className={`${person.balance > 0.005 ? 'bg-green-500 hover:bg-green-600' : ''}`}>
+                  <Badge variant={person.balance > 0.005 ? "default" : person.balance < -0.005 ? "destructive" : "secondary"} className={`${person.balance > 0.005 ? 'bg-green-500 hover:bg-green-600' : ''} whitespace-nowrap`}>
                     {person.balance === 0 || (person.balance < 0.005 && person.balance > -0.005) ? "Settled Up" : 
                      person.balance > 0 ? `Is Owed ₹${person.balance.toFixed(2)}` : 
                      `Owes ₹${Math.abs(person.balance).toFixed(2)}`}
                   </Badge>
-                  {actionButton}
+                  {actionContent}
+                  {additionalInfoBadge}
                 </div>
               </div>
             );
@@ -437,7 +432,7 @@ export const ExpenseOverview = ({
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {categoryData.map((entry, index) => (
+                    {categoryData.map((_entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -531,6 +526,11 @@ export const ExpenseOverview = ({
                 </div>
               </div>
             ))}
+            {propsExpenses.length === 0 && (
+                 <div className="text-center py-8 text-muted-foreground">
+                    <p>No recent expenses to show.</p>
+                </div>
+            )}
           </div>
         </CardContent>
       </Card>
