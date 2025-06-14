@@ -192,5 +192,35 @@ export const useSettlements = () => {
     }
   };
 
-  return { settlements, loading, addSettlementPair, updateSettlementStatusByGroupId, refetchSettlements: fetchSettlements };
+  const deleteSettlementGroup = async (transaction_group_id: string) => {
+    if (!user) {
+      toast({ title: "Error", description: "You must be logged in.", variant: "destructive" });
+      return;
+    }
+    if (!transaction_group_id) {
+      toast({ title: "Error", description: "Cannot delete settlement without a group ID.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      console.log(`Attempting to delete settlement group ${transaction_group_id} (useSettlements).`);
+      const { error } = await supabase
+        .from('settlements')
+        .delete()
+        .eq('transaction_group_id', transaction_group_id);
+
+      if (error) {
+        console.error(`Error deleting settlement group (useSettlements) ${transaction_group_id}:`, error);
+        throw error;
+      }
+
+      await fetchSettlements();
+      toast({ title: "Settlement Deleted", description: "The settlement group has been removed." });
+    } catch (error: any) {
+      console.error(`Catch error deleting settlement group (useSettlements) ${transaction_group_id}:`, error);
+      toast({ title: "Error", description: `Failed to delete settlement: ${error.message}`, variant: "destructive" });
+    }
+  };
+
+  return { settlements, loading, addSettlementPair, updateSettlementStatusByGroupId, deleteSettlementGroup, refetchSettlements: fetchSettlements };
 };

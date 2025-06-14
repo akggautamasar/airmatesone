@@ -13,7 +13,7 @@ import { useSettlements } from "@/hooks/useSettlements";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast"; // Import useToast
+import { useToast } from "@/components/ui/use-toast";
 
 const Index = () => {
   const { user, loading: authLoading } = useAuth();
@@ -24,10 +24,11 @@ const Index = () => {
     loading: settlementsLoading, 
     addSettlementPair, 
     updateSettlementStatusByGroupId,
+    deleteSettlementGroup,
     refetchSettlements 
   } = useSettlements();
   const [showAddExpense, setShowAddExpense] = useState(false);
-  const { toast } = useToast(); // Initialize toast
+  const { toast } = useToast();
 
   useEffect(() => {
     console.log('Index page - user:', user?.email, 'authLoading:', authLoading);
@@ -124,7 +125,8 @@ const Index = () => {
               settlements={settlements}
               onAddSettlementPair={addSettlementPair}
               currentUserId={user.id}
-              onUpdateStatus={updateSettlementStatusByGroupId} // Added this prop
+              onUpdateStatus={updateSettlementStatusByGroupId} 
+              onDeleteSettlementGroup={deleteSettlementGroup}
             />
           </TabsContent>
 
@@ -156,6 +158,7 @@ const Index = () => {
               settlements={settlements} 
               currentUserId={user.id}
               onUpdateStatus={updateSettlementStatusByGroupId}
+              onDeleteSettlementGroup={deleteSettlementGroup}
             />
           </TabsContent>
 
