@@ -60,6 +60,7 @@ const SettlementHistory = ({ settlements, currentUserId, onUpdateStatus, onDelet
   };
 
   const getStatusText = (status: Settlement['status'], type: Settlement['type'], name: string) => {
+    console.log(`[SettlementHistory] getStatusText called with status: ${status}, type: ${type}, name: ${name}`);
     if (status === 'pending') {
       return type === 'owes' ? `You owe ${name}` : `${name} owes you`;
     }

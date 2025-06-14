@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -105,12 +104,26 @@ export const useSettlements = () => {
     
     console.log(`[useSettlements] User ${user.id} initiating update for transaction_group_id: ${transaction_group_id} to newStatus: ${newStatus} via service.`);
     try {
-      await updateSettlementStatusInSupabase(supabase, transaction_group_id, newStatus, user.id);
+      const updatedRecords = await updateSettlementStatusInSupabase(supabase, transaction_group_id, newStatus, user.id);
       
       console.log(`[useSettlements] Calling fetchSettlements() for user ${user.id} after update of transaction_group_id ${transaction_group_id}.`);
       await fetchSettlements(); // Refetch settlements for the current user to update local state
       
-      toast({ title: "Settlement Updated", description: `The settlement status has been changed to ${newStatus}.` });
+      if (newStatus === 'settled' && updatedRecords && updatedRecords.length > 0) {
+        const userSettlement = updatedRecords.find(r => r.user_id === user.id);
+        if (userSettlement) {
+          if (userSettlement.type === 'owed') { // Current user is creditor
+            toast({ title: "Payment Received", description: `You have confirmed receipt of payment from ${userSettlement.name}.` });
+          } else { // Current user is debtor
+            toast({ title: "Settlement Confirmed", description: `Your payment to ${userSettlement.name} has been confirmed.` });
+          }
+        } else {
+          // Fallback if the user's record wasn't returned for some reason
+          toast({ title: "Settlement Settled", description: "The transaction is now marked as settled." });
+        }
+      } else {
+        toast({ title: "Settlement Updated", description: `The settlement status has been changed to ${newStatus}.` });
+      }
     } catch (error: any) {
       console.error(`[useSettlements] Catch block error during update settlement status for group ${transaction_group_id} to status '${newStatus}'. User: ${user.id}. Error:`, error);
       toast({ title: "Error", description: `An unexpected error occurred while updating settlement: ${error.message}`, variant: "destructive" });
