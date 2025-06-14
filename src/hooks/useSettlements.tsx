@@ -27,7 +27,8 @@ export const useSettlements = () => {
       console.log(`[useSettlements] Calling service to fetch settlements for user: ${user.id}`);
       const fetchedSettlements = await fetchSettlementsFromSupabase(supabase, user.id);
       setSettlements(fetchedSettlements);
-      console.log(`[useSettlements] Successfully fetched ${fetchedSettlements.length} settlements for user ${user.id} via service.`);
+      // ADDED DEBUG: Log all settlements just loaded for this user
+      console.log(`[useSettlements] After fetch: settlements for user ${user.id}`, fetchedSettlements.map(s=>({id:s.id, name:s.name, type:s.type, status:s.status, tgId:s.transaction_group_id, creditor:s.type==='owed'?s.name:s.email })));
     } catch (error) {
       console.error(`[useSettlements] Error fetching settlements for user ${user.id} via service:`, error);
       toast({ title: "Error", description: "Failed to fetch settlements.", variant: "destructive" });

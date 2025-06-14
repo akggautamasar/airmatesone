@@ -27,6 +27,8 @@ export interface SettlementHistoryProps {
 const SettlementHistory = ({ settlements, onUpdateStatus, onDeleteSettlementGroup, hasActiveExpenses }: SettlementHistoryProps) => {
   const [settlementToDelete, setSettlementToDelete] = useState<Settlement | null>(null);
   
+  console.log("SettlementHistory: settlements for current module", settlements.map(s=>({id:s.id, with:s.name, type:s.type, status:s.status, amt:s.amount})));
+  
   console.log('SettlementHistory: All settlements received:', settlements);
   console.log('SettlementHistory: Settlement details:', settlements.map(s => ({
     id: s.id,
