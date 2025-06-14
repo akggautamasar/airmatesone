@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -73,21 +72,46 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
       };
     });
 
-    // Find the first group with status 'debtor_paid' (original logic)
+    // Find the first group with status 'debtor_paid', 'pending', or 'settled'
     const groupWithDebtorPaid = groupViews.find(g =>
       g.statuses.some(status => status === 'debtor_paid')
     );
-    // Find the first group with status 'pending'
     const groupWithPending = groupViews.find(g =>
       g.statuses.some(status => status === 'pending')
     );
-    // Find the first group with status 'settled'
     const groupWithSettled = groupViews.find(g =>
       g.statuses.every(status => status === 'settled')
     );
+    const unsettledGroup = groupViews.find(g =>
+      g.statuses.some(status => status === 'pending' || status === 'debtor_paid')
+    );
+    // Find a groupId in order of priority: debtor_paid → pending → unsettled
+    let targetGroupId: string | undefined = groupWithDebtorPaid?.groupId || groupWithPending?.groupId || unsettledGroup?.groupId;
+    const hasAnyGroup = Boolean(targetGroupId);
+
+    // Helper to initiate and settle if no group exists
+    const handleCreditorMarkAsReceived = async () => {
+      if (hasAnyGroup && targetGroupId) {
+        // There is an existing group to settle
+        await onCreditorConfirmsReceipt(targetGroupId, 'settled');
+      } else {
+        // No settlement exists. Instantly create and settle one for this pair.
+        if (!currentUserId || !otherPartyRoommateInfo) return;
+        // Prepare roles: creditor is "owed", debtor is "owes"
+        const me = roommates.find(r => r.name === currentUserDisplayName);
+        const amountToSettle = -amount; // always positive
+        if (!me) return;
+        let debtorName = otherPartyName;
+        let creditorName = currentUserDisplayName;
+        // Try to figure out if we (current user) are the creditor (yes, because iAmCreditor).
+        // Create settlement record for both and immediately mark as settled.
+        await onDebtorMarksAsPaid(debtorName, creditorName, amountToSettle);
+        // After this, settlements should refetch and the UI will update.
+      }
+    };
 
     if (iAmDebtor) {
-      // DEBTOR VIEW
+      // DEBTOR VIEW (unchanged from previous logic)
       if (groupWithDebtorPaid) {
         statusText = (
           <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
@@ -127,19 +151,9 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
       }
     } else if (iAmCreditor) {
       // CREDITOR VIEW
-      // We want to always show the "Mark as Received" button, unless every settlement is already settled
-      // Find any unsettled group (pending or debtor_paid)
-      const unsettledGroup = groupViews.find(g =>
-        g.statuses.some(status => status === 'pending' || status === 'debtor_paid')
-      );
-      // If there are no settlements, button should still be available for now if they are owed money
-
-      // Determine which groupId to use for "Mark as Received":
-      let targetGroupId: string | undefined = groupWithDebtorPaid?.groupId || groupWithPending?.groupId || unsettledGroup?.groupId;
-      // If there are no existing settlements, can't mark--but button will call onCreditorConfirmsReceipt with undefined
-
-      // Only do not show if settled everywhere
-      if (groupWithSettled && (!unsettledGroup && !groupWithDebtorPaid)) {
+      // Show the Mark as Received button ALWAYS, unless fully settled up (all settlements settled and balance is 0)
+      const fullySettled = (person.balance === 0 || (person.balance < 0.005 && person.balance > -0.005)) || (groupWithSettled && !unsettledGroup && !groupWithDebtorPaid && !groupWithPending);
+      if (fullySettled) {
         statusText = (
           <Badge variant="outline" className="text-xs text-green-600 border-green-300">
             Fully settled
@@ -147,7 +161,7 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
         );
         actionContent = null;
       } else {
-        // Show the Mark as Received button always
+        // Show the Mark as Received button always!
         statusText = groupWithDebtorPaid ? (
           <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
             Debtor marked as paid
@@ -161,14 +175,7 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => {
-              if (targetGroupId) {
-                onCreditorConfirmsReceipt(targetGroupId, 'settled');
-              } else {
-                // If no settlement group exists, could prompt user to first create a settlement (future)
-                alert('No settlement to mark as received!');
-              }
-            }}
+            onClick={handleCreditorMarkAsReceived}
             className="border-green-400 text-green-600 hover:bg-green-50 hover:text-green-700 w-full sm:w-auto"
           >
             Mark as Received <CircleCheck className="ml-2 h-3 w-3" />
