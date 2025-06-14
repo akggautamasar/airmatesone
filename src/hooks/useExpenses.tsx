@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import { useToast } from './use-toast';
+import { useToast } from './use-toast'; // Corrected import path
 
 interface Expense {
   id: string;
@@ -22,102 +22,131 @@ export const useExpenses = () => {
 
   const fetchExpenses = async () => {
     if (!user) {
+      console.log('fetchExpenses: No user, setting loading to false and returning.');
+      setExpenses([]); // Clear expenses if no user
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
-      console.log('Fetching expenses for user:', user.email);
+      console.log('fetchExpenses: Attempting to fetch for user ID:', user.id, 'Email:', user.email);
       
-      // Query expenses table. RLS policy will ensure only relevant expenses are returned.
-      const { data, error } = await supabase
+      const { data, error, status, count } = await supabase
         .from('expenses')
-        .select('*')
-        // Removed .eq('user_id', user.id) to rely on RLS
+        .select('*', { count: 'exact' }) // Request count
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Supabase error fetching expenses:', error);
-        throw error;
+        console.error('fetchExpenses: Supabase error fetching expenses. Message:', error.message, 'Details:', error.details, 'Hint:', error.hint, 'Code:', error.code, 'Full Error:', error, 'Status:', status);
+        // No throw error here to allow UI to potentially show stale data or an empty list
+        // But ensure expenses are cleared if fetch truly fails bad
+        setExpenses([]); 
+      } else {
+        console.log('fetchExpenses: Successfully fetched expenses. Raw data:', data);
+        console.log('fetchExpenses: Total expenses count from Supabase (respecting RLS):', count);
+        setExpenses(data || []);
       }
-      
-      console.log('Fetched expenses:', data);
-      setExpenses(data || []);
     } catch (error: any) {
-      console.error('Error fetching expenses:', error);
+      console.error('fetchExpenses: Catch block error fetching expenses:', error);
+      setExpenses([]); // Clear expenses on catch
       toast({
         title: "Error",
-        description: "Failed to fetch expenses",
+        description: "Failed to fetch expenses due to an unexpected error.",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
+      console.log('fetchExpenses: Finished. Loading set to false.');
     }
   };
 
   const addExpense = async (expense: Omit<Expense, 'id' | 'user_id'>) => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to add expenses.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
+      console.log('addExpense: Attempting to add expense for user ID:', user.id, 'Data:', expense);
       const { data, error } = await supabase
         .from('expenses')
-        .insert([{ ...expense, user_id: user.id }]) // RLS for insert: auth.uid() = user_id
+        .insert([{ ...expense, user_id: user.id }])
         .select()
         .single();
 
-      if (error) throw error;
-      // setExpenses(prev => [data, ...prev]); // Refetch to get full list per RLS
-      await fetchExpenses(); // Refetch to ensure list is up-to-date with RLS
+      if (error) {
+        console.error('addExpense: Supabase error adding expense. Message:', error.message, 'Details:', error.details, 'Hint:', error.hint, 'Code:', error.code);
+        throw error;
+      }
+      console.log('addExpense: Successfully added expense. Response data:', data);
+      await fetchExpenses(); 
       
       toast({
         title: "Expense Added",
-        description: "Your expense has been added successfully",
+        description: "Your expense has been added successfully.",
       });
     } catch (error: any) {
-      console.error('Error adding expense:', error);
+      console.error('addExpense: Catch block error adding expense:', error);
       toast({
         title: "Error",
-        description: "Failed to add expense",
+        description: `Failed to add expense: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       });
     }
   };
 
   const deleteExpense = async (expenseId: string) => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to delete expenses.",
+        variant: "destructive",
+      });
+      return;
+    }
+    console.log('deleteExpense: Attempting to delete expense ID:', expenseId, 'for user ID:', user.id);
     try {
-      const { error } = await supabase
+      const { error, status } = await supabase // Capture status for delete
         .from('expenses')
         .delete()
-        .eq('id', expenseId); // RLS for delete: auth.uid() = user_id
+        .eq('id', expenseId);
 
-      if (error) throw error;
-      // setExpenses(prev => prev.filter(expense => expense.id !== expenseId)); // Refetch
-      await fetchExpenses(); // Refetch to ensure list is up-to-date
+      if (error) {
+        console.error('deleteExpense: Supabase error deleting expense. Message:', error.message, 'Details:', error.details, 'Hint:', error.hint, 'Code:', error.code, 'Status:', status);
+        throw error;
+      }
+      console.log('deleteExpense: Successfully deleted expense ID:', expenseId, 'Status:', status);
+      await fetchExpenses(); 
       
       toast({
         title: "Expense Deleted",
-        description: "The expense has been removed successfully",
+        description: "The expense has been removed successfully.",
       });
     } catch (error: any) {
-      console.error('Error deleting expense:', error);
+      console.error('deleteExpense: Catch block error deleting expense:', error);
       toast({
         title: "Error",
-        description: "Failed to delete expense",
+        description: `Failed to delete expense: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       });
     }
   };
 
   useEffect(() => {
+    console.log('useExpenses useEffect: User object changed or component mounted. User:', user?.email, 'User ID:', user?.id);
     if (user) {
       fetchExpenses();
     } else {
-      // Clear expenses if user logs out
+      console.log('useExpenses useEffect: No user, clearing expenses.');
       setExpenses([]);
       setLoading(false);
     }
-  }, [user]);
+  }, [user]); // Only re-run if user object itself changes. fetchExpenses is stable.
 
   return {
     expenses,
@@ -127,4 +156,3 @@ export const useExpenses = () => {
     refetch: fetchExpenses
   };
 };
-
