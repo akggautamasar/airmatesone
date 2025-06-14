@@ -30,11 +30,11 @@ export const useRoommates = () => {
       setLoading(true);
       console.log('Fetching roommates for user:', user.email);
       
-      // Query roommates table directly - no joins with users table
+      // Query roommates table directly - get roommates added by this user
       const { data, error } = await supabase
         .from('roommates')
         .select('*')
-        .or(`user_id.eq.${user.id},email.eq.${user.email}`)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -80,6 +80,17 @@ export const useRoommates = () => {
         return;
       }
 
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(roommate.email)) {
+        toast({
+          title: "Error",
+          description: "Please enter a valid email address",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Check if roommate already exists for this user
       const { data: existingRoommate, error: checkError } = await supabase
         .from('roommates')
@@ -102,6 +113,7 @@ export const useRoommates = () => {
         return;
       }
 
+      // Insert the new roommate
       const { data, error } = await supabase
         .from('roommates')
         .insert([{ 

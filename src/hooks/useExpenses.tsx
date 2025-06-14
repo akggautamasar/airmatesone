@@ -30,10 +30,11 @@ export const useExpenses = () => {
       setLoading(true);
       console.log('Fetching expenses for user:', user.email);
       
-      // Query expenses table directly without joins to users table
+      // Query expenses table and filter by user_id
       const { data, error } = await supabase
         .from('expenses')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
