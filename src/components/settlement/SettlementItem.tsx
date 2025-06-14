@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -103,13 +104,14 @@ export const SettlementItem = ({ settlement, isPendingTab, onUpdateStatus, onDel
                     <CreditCard className="ml-2 h-3 w-3" />
                 </Button>
             )}
-          {/* Show Mark as Paid for debtor with pending, whether or not UPI is present */}
+          {/* Show Mark as Paid for debtor with pending, and now MARKS AS SETTLED */}
           {isPendingTab && settlement.type === "owes" && settlement.status === "pending" && settlement.transaction_group_id && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
-                  handleStatusUpdate('debtor_paid');
+                  // Change here: go to 'settled', not 'debtor_paid'
+                  handleStatusUpdate('settled');
               }}
               className="bg-white hover:bg-gray-50 border-green-400 text-green-600 hover:text-green-700 w-full sm:w-auto"
             >
