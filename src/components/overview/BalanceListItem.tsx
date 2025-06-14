@@ -73,15 +73,12 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
       };
     });
 
-    // Find groups with different statuses
+    // Find groups with different statuses - only consider non-settled groups as active
     const groupWithDebtorPaid = groupViews.find(g =>
       g.statuses.some(status => status === 'debtor_paid')
     );
     const groupWithPending = groupViews.find(g =>
       g.statuses.some(status => status === 'pending')
-    );
-    const groupWithSettled = groupViews.find(g =>
-      g.statuses.every(status => status === 'settled')
     );
     const unsettledGroup = groupViews.find(g =>
       g.statuses.some(status => status === 'pending' || status === 'debtor_paid')
@@ -89,27 +86,20 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
 
     // Check if balance is essentially zero (settled up)
     const isBalanceSettled = Math.abs(amount) < 0.005;
-    
-    // Check if there are any settled transactions that would cover this balance
-    const hasSettledTransactions = groupWithSettled || relevantPairSettlements.some(s => s.status === 'settled');
-    
-    // Consider fully settled if balance is near zero OR if there are settled transactions and no unsettled ones
-    const isFullySettled = isBalanceSettled || (hasSettledTransactions && !unsettledGroup);
 
     // Helper to initiate and settle if no group exists
     const handleCreditorMarkAsReceived = async () => {
       if (unsettledGroup && unsettledGroup.groupId) {
         await onCreditorConfirmsReceipt(unsettledGroup.groupId, 'settled');
       } else {
-        // No settlement exists. Instantly create and settle one for this pair.
+        // No pending settlement exists. Create and instantly settle one for this pair.
         if (!currentUserId || !otherPartyRoommateInfo) return;
         
         const amountToSettle = -person.balance; // amount is negative for creditor, so this makes it positive
         const debtorName = person.name; // The other party is the debtor
         const creditorName = currentUserDisplayName; // The current user is the creditor
         
-        // The handler correctly determines roles based on who is passed as the debtor.
-        // Current user is the creditor, so the other party is the debtor.
+        // Create a settlement that's instantly marked as settled
         await onDebtorMarksAsPaid(debtorName, creditorName, amountToSettle, 'settled');
       }
     };
@@ -123,11 +113,11 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
           </Badge>
         );
         actionContent = null;
-      } else if (isFullySettled) {
+      } else if (isBalanceSettled) {
         // If balance is settled, show settled status
         statusText = (
           <Badge variant="outline" className="text-xs text-green-600 border-green-300">
-            Fully settled
+            Settled up
           </Badge>
         );
         actionContent = null;
@@ -163,15 +153,15 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
       }
     } else if (iAmCreditor) {
       // CREDITOR VIEW
-      if (isFullySettled) {
+      if (isBalanceSettled) {
         statusText = (
           <Badge variant="outline" className="text-xs text-green-600 border-green-300">
-            Fully settled
+            Settled up
           </Badge>
         );
         actionContent = null;
       } else {
-        // Show the Mark as Received button
+        // There's an outstanding balance, show appropriate status and action
         statusText = groupWithDebtorPaid ? (
           <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
             Debtor marked as paid
