@@ -48,7 +48,7 @@ export const ExpenseOverview = ({
   onAddSettlementPair, 
   currentUserId,
   onUpdateStatus,
-  // onDeleteSettlementGroup is available but not directly used by ExpenseOverview itself post-refactor
+  onDeleteSettlementGroup
 }: ExpenseOverviewProps) => {
   const { deleteExpense } = useExpenses();
   const { roommates } = useRoommates();
@@ -63,86 +63,103 @@ export const ExpenseOverview = ({
   const allParticipantNames = useMemo(() => {
     const names = new Set<string>([currentUserDisplayName]);
     roommates.forEach(r => names.add(r.name));
-    propsExpenses.forEach(e => {
-        const payerDisplayName = e.paidBy === user?.email?.split('@')[0] || e.paidBy === profile?.name ? currentUserDisplayName : e.paidBy;
-        if (payerDisplayName !== currentUserDisplayName && !roommates.find(rm => rm.name === payerDisplayName)) names.add(payerDisplayName);
-    });
-    propsExpenses.forEach(e => e.sharers?.forEach(s => {
-        const sharerDisplayName = s === user?.email?.split('@')[0] || s === profile?.name ? currentUserDisplayName : s;
-        if (sharerDisplayName !== currentUserDisplayName && !roommates.find(rm => rm.name === sharerDisplayName)) names.add(sharerDisplayName);
-    }));
+    // Include participants from expenses only if expenses exist
+    if (propsExpenses.length > 0) {
+        propsExpenses.forEach(e => {
+            const payerDisplayName = e.paidBy === user?.email?.split('@')[0] || e.paidBy === profile?.name ? currentUserDisplayName : e.paidBy;
+            if (payerDisplayName !== currentUserDisplayName && !roommates.find(rm => rm.name === payerDisplayName)) names.add(payerDisplayName);
+        });
+        propsExpenses.forEach(e => e.sharers?.forEach(s => {
+            const sharerDisplayName = s === user?.email?.split('@')[0] || s === profile?.name ? currentUserDisplayName : s;
+            if (sharerDisplayName !== currentUserDisplayName && !roommates.find(rm => rm.name === sharerDisplayName)) names.add(sharerDisplayName);
+        }));
+    }
     return Array.from(names);
   }, [currentUserDisplayName, roommates, propsExpenses, user, profile]);
 
   const calculations = useMemo(() => {
     const totalExpenses = propsExpenses.reduce((sum, expense) => sum + expense.amount, 0);
     
-    const balanceMap = new Map<string, number>();
-    allParticipantNames.forEach(name => balanceMap.set(name, 0));
+    let finalBalances: { name: string; balance: number }[] = [];
 
-    propsExpenses.forEach(expense => {
-      const payerName = expense.paidBy === user?.email?.split('@')[0] || expense.paidBy === profile?.name ? currentUserDisplayName : expense.paidBy;
-      balanceMap.set(payerName, (balanceMap.get(payerName) || 0) + expense.amount);
-      
-      const effectiveSharers = expense.sharers && expense.sharers.length > 0 
-        ? expense.sharers.map(s => s === user?.email?.split('@')[0] || s === profile?.name ? currentUserDisplayName : s)
-        : allParticipantNames;
+    if (propsExpenses.length === 0) {
+      // If there are no expenses, all balances are considered 0 for display purposes.
+      // This ensures "Current Balances" shows "Settled Up" for everyone.
+      allParticipantNames.forEach(name => {
+        finalBalances.push({ name, balance: 0 });
+      });
+    } else {
+      const balanceMap = new Map<string, number>();
+      allParticipantNames.forEach(name => balanceMap.set(name, 0));
 
-      const numSharers = effectiveSharers.length;
-      
-      if (numSharers > 0) {
-        const amountPerSharer = expense.amount / numSharers;
-        effectiveSharers.forEach(sharerName => {
-          balanceMap.set(sharerName, (balanceMap.get(sharerName) || 0) - amountPerSharer);
-        });
-      }
-    });
-    
-    settlements.forEach(settlement => {
-      if (settlement.status === 'settled') {
-        let debtorName: string, creditorName: string;
-        const settlementOwnerIsCurrentUser = settlement.user_id === currentUserId;
+      propsExpenses.forEach(expense => {
+        const payerName = expense.paidBy === user?.email?.split('@')[0] || expense.paidBy === profile?.name ? currentUserDisplayName : expense.paidBy;
+        balanceMap.set(payerName, (balanceMap.get(payerName) || 0) + expense.amount);
         
-        if (settlementOwnerIsCurrentUser) {
-            if (settlement.type === 'owes') { 
-                debtorName = currentUserDisplayName;
-                creditorName = settlement.name;
-            } else { 
-                debtorName = settlement.name;
-                creditorName = currentUserDisplayName;
-            }
-        } else {
-            const ownerProfile = roommates.find(r => r.user_id === settlement.user_id);
-            const ownerDisplayName = ownerProfile?.name || `User ${settlement.user_id.substring(0,5)}`;
+        const effectiveSharers = expense.sharers && expense.sharers.length > 0 
+          ? expense.sharers.map(s => s === user?.email?.split('@')[0] || s === profile?.name ? currentUserDisplayName : s)
+          : allParticipantNames;
 
-            if (settlement.type === 'owes') { 
-                debtorName = ownerDisplayName;
-                creditorName = settlement.name; 
-                if (creditorName === user?.email || creditorName === profile?.name) creditorName = currentUserDisplayName;
-
-            } else { 
-                debtorName = settlement.name; 
-                if (debtorName === user?.email || debtorName === profile?.name) debtorName = currentUserDisplayName;
-                creditorName = ownerDisplayName;
-            }
-        }
+        const numSharers = effectiveSharers.length;
         
-        if (!balanceMap.has(debtorName) && allParticipantNames.includes(debtorName)) balanceMap.set(debtorName, 0);
-        if (!balanceMap.has(creditorName) && allParticipantNames.includes(creditorName)) balanceMap.set(creditorName, 0);
-
-        if (balanceMap.has(debtorName)) {
-            balanceMap.set(debtorName, (balanceMap.get(debtorName) || 0) + settlement.amount);
+        if (numSharers > 0) {
+          const amountPerSharer = expense.amount / numSharers;
+          effectiveSharers.forEach(sharerName => {
+            balanceMap.set(sharerName, (balanceMap.get(sharerName) || 0) - amountPerSharer);
+          });
         }
-        if (balanceMap.has(creditorName)) {
-            balanceMap.set(creditorName, (balanceMap.get(creditorName) || 0) - settlement.amount);
-        }
-      }
-    });
+      });
+      
+      // Apply settled transactions to the balances derived from expenses
+      settlements.forEach(settlement => {
+        if (settlement.status === 'settled') {
+          let debtorName: string, creditorName: string;
+          const settlementOwnerIsCurrentUser = settlement.user_id === currentUserId;
+          
+          if (settlementOwnerIsCurrentUser) {
+              if (settlement.type === 'owes') { 
+                  debtorName = currentUserDisplayName;
+                  creditorName = settlement.name;
+              } else { 
+                  debtorName = settlement.name;
+                  creditorName = currentUserDisplayName;
+              }
+          } else {
+              const ownerProfile = roommates.find(r => r.user_id === settlement.user_id);
+              const ownerDisplayName = ownerProfile?.name || `User ${settlement.user_id.substring(0,5)}`;
 
-    const finalBalances: { name: string; balance: number }[] = [];
-    balanceMap.forEach((balance, name) => {
-      finalBalances.push({ name, balance: parseFloat(balance.toFixed(2)) });
-    });
+              if (settlement.type === 'owes') { 
+                  debtorName = ownerDisplayName;
+                  creditorName = settlement.name; 
+                  if (creditorName === user?.email || creditorName === profile?.name) creditorName = currentUserDisplayName;
+
+              } else { 
+                  debtorName = settlement.name; 
+                  if (debtorName === user?.email || debtorName === profile?.name) debtorName = currentUserDisplayName;
+                  creditorName = ownerDisplayName;
+              }
+          }
+          
+          // Ensure participants from settlements are in balanceMap if not already from expenses/roommates
+          // This part is tricky if allParticipantNames doesn't include them and propsExpenses is empty
+          // However, with the new logic, if propsExpenses is empty, this block is skipped.
+          // If propsExpenses is not empty, allParticipantNames should ideally cover these.
+          if (!balanceMap.has(debtorName) && allParticipantNames.includes(debtorName)) balanceMap.set(debtorName, 0);
+          if (!balanceMap.has(creditorName) && allParticipantNames.includes(creditorName)) balanceMap.set(creditorName, 0);
+
+          if (balanceMap.has(debtorName)) {
+              balanceMap.set(debtorName, (balanceMap.get(debtorName) || 0) + settlement.amount);
+          }
+          if (balanceMap.has(creditorName)) {
+              balanceMap.set(creditorName, (balanceMap.get(creditorName) || 0) - settlement.amount);
+          }
+        }
+      });
+
+      balanceMap.forEach((balance, name) => {
+        finalBalances.push({ name, balance: parseFloat(balance.toFixed(2)) });
+      });
+    }
 
     return {
       totalExpenses,
@@ -284,7 +301,12 @@ export const ExpenseOverview = ({
 
   const lastExpenseDate = propsExpenses.length > 0 ? propsExpenses.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date : null;
 
-  if (propsExpenses.length === 0 && settlements.filter(s => s.status !== 'settled').length === 0 && calculations.finalBalances.every(b => Math.abs(b.balance) < 0.01)) {
+  // Condition for "All Clear!" message:
+  // No expenses, no pending/active settlements, and calculated final balances are all effectively zero.
+  // With the new logic, if propsExpenses.length === 0, calculations.finalBalances will be all zeros.
+  if (propsExpenses.length === 0 && 
+      settlements.filter(s => s.status !== 'settled').length === 0 && 
+      calculations.finalBalances.every(b => Math.abs(b.balance) < 0.01)) {
     return (
       <div className="text-center py-12">
         <IndianRupee className="h-16 w-16 mx-auto text-gray-400 mb-4" />
