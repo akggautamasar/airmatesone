@@ -36,6 +36,7 @@ export const useSettlements = () => {
     }
     try {
       setLoading(true);
+      console.log(`[useSettlements] Fetching settlements for user: ${user.id}`);
       const { data, error } = await supabase
         .from('settlements')
         .select('*')
@@ -43,15 +44,16 @@ export const useSettlements = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching settlements:', error);
+        console.error(`[useSettlements] Error fetching settlements for user ${user.id}:`, error);
         toast({ title: "Error", description: "Failed to fetch settlements.", variant: "destructive" });
         setSettlements([]);
       } else {
         const mappedSettlements = data.map(mapSupabaseToSettlement);
         setSettlements(mappedSettlements || []);
+        console.log(`[useSettlements] Successfully fetched ${mappedSettlements.length} settlements for user ${user.id}.`);
       }
     } catch (error) {
-      console.error('Catch error fetching settlements:', error);
+      console.error(`[useSettlements] Catch error fetching settlements for user ${user.id}:`, error);
       toast({ title: "Error", description: "An unexpected error occurred while fetching settlements.", variant: "destructive" });
       setSettlements([]);
     } finally {
@@ -157,14 +159,17 @@ export const useSettlements = () => {
   const updateSettlementStatusByGroupId = async (transaction_group_id: string, newStatus: "pending" | "debtor_paid" | "settled") => {
     if (!user) {
       toast({ title: "Error", description: "You must be logged in.", variant: "destructive" });
+      console.warn("[useSettlements] updateSettlementStatusByGroupId called while user is not logged in.");
       return;
     }
 
     if (!['pending', 'debtor_paid', 'settled'].includes(newStatus)) {
-        console.error(`CRITICAL: Invalid status value ('${newStatus}') passed to updateSettlementStatusByGroupId. This should not happen with TypeScript.`);
+        console.error(`[useSettlements] CRITICAL: Invalid status value ('${newStatus}') passed to updateSettlementStatusByGroupId for transaction_group_id: ${transaction_group_id}. User: ${user.id}`);
         toast({ title: "Critical Error", description: "Invalid status value for update.", variant: "destructive" });
         return;
     }
+
+    console.log(`[useSettlements] User ${user.id} initiating update for transaction_group_id: ${transaction_group_id} to newStatus: ${newStatus}`);
 
     try {
       const updatePayloadForDb: TablesUpdate<'settlements'> = { 
@@ -172,23 +177,44 @@ export const useSettlements = () => {
         settled_date: newStatus === 'settled' ? new Date().toISOString() : null,
       };
       
-      console.log(`Attempting to update settlement group ${transaction_group_id} to status '${newStatus}'. Payload (useSettlements):`, JSON.stringify(updatePayloadForDb));
+      console.log(`[useSettlements] Update payload for DB for transaction_group_id ${transaction_group_id}:`, JSON.stringify(updatePayloadForDb));
 
-      const { error } = await supabase
+      // Perform the update
+      const { data: updatedRecords, error: updateError } = await supabase
         .from('settlements')
         .update(updatePayloadForDb)
-        .eq('transaction_group_id', transaction_group_id);
+        .eq('transaction_group_id', transaction_group_id)
+        .select(); // Crucially, .select() to get back the records that were updated AND user has RLS SELECT permission for
 
-      if (error) {
-        console.error(`Error updating settlement status by group (useSettlements) for group ${transaction_group_id} to status '${newStatus}':`, error, "Payload:", JSON.stringify(updatePayloadForDb));
-        throw error;
+      if (updateError) {
+        console.error(`[useSettlements] Supabase Error updating settlement status for group ${transaction_group_id} to status '${newStatus}'. User: ${user.id}. Error:`, updateError);
+        toast({ title: "Update Error", description: `Failed to update settlement: ${updateError.message}`, variant: "destructive" });
+        return; // Stop if update failed
       }
       
-      await fetchSettlements(); 
-      toast({ title: "Settlement Updated", description: `Settlement status changed to ${newStatus}.` });
+      console.log(`[useSettlements] Supabase update successful for transaction_group_id ${transaction_group_id}. Records returned by .select() (should be current user's record(s) affected by the update):`, updatedRecords);
+
+      if (updatedRecords && updatedRecords.length > 0) {
+          const currentUserRecord = updatedRecords.find(r => r.user_id === user.id && r.transaction_group_id === transaction_group_id);
+          if (currentUserRecord) {
+              console.log(`[useSettlements] Current user's (${user.id}) record post-update for transaction_group_id ${transaction_group_id}: status is ${currentUserRecord.status}`);
+              if (currentUserRecord.status !== newStatus) {
+                  console.warn(`[useSettlements] DISCREPANCY! Current user's record status in DB (${currentUserRecord.status}) does not match intended newStatus (${newStatus}) for transaction_group_id ${transaction_group_id}. This could indicate RLS issues preventing the update on the user's own record or an issue with the .select() clause reflecting the change immediately for this user's view.`);
+              }
+          } else {
+              console.warn(`[useSettlements] Current user's record for transaction_group_id ${transaction_group_id} not found in updatedRecords array. Length of updatedRecords: ${updatedRecords.length}. This is unexpected if the current user was part of the transaction group and their record was intended to be updated.`);
+          }
+      } else {
+          console.warn(`[useSettlements] No records returned by .select() after update for transaction_group_id ${transaction_group_id}. This might happen if RLS SELECT policy filtered them out (e.g., user has no record in this group or SELECT RLS is too restrictive), or if no records matched the update condition (unlikely if TGID exists and was part of the update).`);
+      }
+      
+      console.log(`[useSettlements] Calling fetchSettlements() for user ${user.id} after update of transaction_group_id ${transaction_group_id}.`);
+      await fetchSettlements(); // Refetch settlements for the current user to update local state
+      
+      toast({ title: "Settlement Updated", description: `The settlement status has been changed to ${newStatus}.` });
     } catch (error: any) {
-      console.error(`Catch error updating settlement status by group (useSettlements) for group ${transaction_group_id} to status '${newStatus}':`, error);
-      toast({ title: "Error", description: `Failed to update settlement: ${error.message}`, variant: "destructive" });
+      console.error(`[useSettlements] Catch block error during update settlement status for group ${transaction_group_id} to status '${newStatus}'. User: ${user.id}. Error:`, error);
+      toast({ title: "Error", description: `An unexpected error occurred while updating settlement: ${error.message}`, variant: "destructive" });
     }
   };
 
