@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Clock, Check, CreditCard, BadgeCheck, Send, CheckCircle } from "lucide-react";
+import { Clock, Check, CreditCard, BadgeCheck, Send, CheckCircle, UserCheck } from "lucide-react";
 
 export interface Settlement {
   id: string;
@@ -48,7 +48,8 @@ const SettlementHistory = ({ settlements, currentUserId, onUpdateStatus }: Settl
       return type === 'owes' ? `You owe ${name}` : `${name} owes you`;
     }
     if (status === 'debtor_paid') {
-      return type === 'owes' ? `${name} is awaiting your payment confirmation` : `You've marked as paid to ${name}, awaiting their confirmation`;
+      // This state means the debtor has paid, and creditor needs to confirm.
+      return type === 'owes' ? `You've marked as paid to ${name}, awaiting their confirmation` : `${name} marked as paid, confirm receipt`;
     }
     if (status === 'settled') {
       return type === 'owes' ? `You paid ${name}` : `${name} paid you`;
@@ -58,14 +59,12 @@ const SettlementHistory = ({ settlements, currentUserId, onUpdateStatus }: Settl
   
   const getActionText = (status: Settlement['status'], type: Settlement['type']) => {
     if (type === 'owes') { // Current user owes money
-      if (status === 'pending') return "Mark as Paid";
-      // If debtor_paid and I owe, it means the other person (creditor) marked something prematurely? This state should not occur for 'owes' type for action button.
-      // Or it means *I* marked it as paid, and *their* record became debtor_paid. My view is I'm waiting for them.
-      // If my record says type: "owes" and status: "debtor_paid", it means *I* (debtor) have clicked "Mark as Paid". Now waiting for creditor.
+      if (status === 'pending') return "Mark as Paid & Finalize"; // Changed text
+      // If debtor_paid, it means current user (debtor) already acted, waiting for creditor. No action for debtor here.
       if (status === 'debtor_paid') return "Awaiting Confirmation"; 
     } else { // Current user is owed money
       if (status === 'pending') return "Awaiting Payment"; // No action for creditor if pending
-      if (status === 'debtor_paid') return "Mark as Received"; // Debtor paid, creditor confirms
+      if (status === 'debtor_paid') return "Confirm & Settle"; // Debtor paid, creditor confirms to 'settled'
     }
     return null;
   };
@@ -102,7 +101,7 @@ const SettlementHistory = ({ settlements, currentUserId, onUpdateStatus }: Settl
                     <div className={`bg-${color}-500 rounded-full p-2 flex-shrink-0`}>
                       {settlement.status === 'pending' && <Clock className="h-4 w-4 text-white" />}
                       {settlement.status === 'debtor_paid' && <Send className="h-4 w-4 text-white" />}
-                      {settlement.status === 'settled' && <Check className="h-4 w-4 text-white" />}
+                      {/* Removed settled icon here as it's for pending tab */}
                     </div>
                     <div>
                       <p className="font-medium">
@@ -135,28 +134,31 @@ const SettlementHistory = ({ settlements, currentUserId, onUpdateStatus }: Settl
                                 size="sm"
                                 onClick={() => {
                                     if (settlement.type === 'owes' && settlement.status === 'pending') {
-                                        onUpdateStatus(settlement.transaction_group_id!, 'debtor_paid');
+                                        // Debtor marks as paid, directly settle
+                                        onUpdateStatus(settlement.transaction_group_id!, 'settled'); 
                                     } else if (settlement.type === 'owed' && settlement.status === 'debtor_paid') {
+                                        // Creditor confirms receipt, settle
                                         onUpdateStatus(settlement.transaction_group_id!, 'settled');
                                     }
+                                    // Note: if type is 'owes' and status is 'debtor_paid', actionButtonText is "Awaiting Confirmation", button is disabled.
                                 }}
                                 className={`bg-white hover:bg-gray-50 border-green-400 text-green-600 hover:text-green-700 w-full sm:w-auto`}
                                 disabled={actionButtonText === "Awaiting Payment" || actionButtonText === "Awaiting Confirmation"}
                             >
                                 {actionButtonText}
-                                {actionButtonText === "Mark as Paid" && <BadgeCheck className="ml-2 h-3 w-3" />}
-                                {actionButtonText === "Mark as Received" && <CheckCircle className="ml-2 h-3 w-3" />}
+                                {actionButtonText === "Mark as Paid & Finalize" && <UserCheck className="ml-2 h-3 w-3" />} 
+                                {actionButtonText === "Confirm & Settle" && <CheckCircle className="ml-2 h-3 w-3" />}
                             </Button>
                         )}
                          {settlement.type === "owes" && settlement.status === "pending" && !settlement.upiId && settlement.transaction_group_id && (
                              <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => onUpdateStatus(settlement.transaction_group_id!, 'debtor_paid')}
+                                onClick={() => onUpdateStatus(settlement.transaction_group_id!, 'settled')} // Directly settle
                                 className="bg-white hover:bg-gray-50 border-green-400 text-green-600 hover:text-green-700 w-full sm:w-auto"
                              >
-                                Mark as Paid (Manual)
-                                <BadgeCheck className="ml-2 h-3 w-3" />
+                                Mark as Paid & Finalize (Manual) 
+                                <UserCheck className="ml-2 h-3 w-3" />
                             </Button>
                         )}
                     </div>
