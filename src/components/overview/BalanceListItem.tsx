@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -74,12 +73,20 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
     });
 
     // Locate first active group with key statuses
+    // ALTER: We want to show "Mark as Received" for CREDITOR if *ANY* member in group has status 'debtor_paid'
     const groupWithDebtorPaid = groupViews.find(g =>
-      g.statuses.includes('debtor_paid')
+      g.statuses.some(status => status === 'debtor_paid')
     );
     const groupWithPending = groupViews.find(g =>
-      g.statuses.includes('pending')
+      g.statuses.some(status => status === 'pending')
     );
+
+    // Add logging for debugging
+    if (iAmCreditor) {
+      console.log(`[BalanceListItem] Creditor view for ${currentUserDisplayName} vs ${otherPartyName}`);
+      console.log('groupViews:', groupViews);
+      console.log('groupWithDebtorPaid:', groupWithDebtorPaid);
+    }
 
     if (iAmDebtor) {
       // DEBTOR VIEW
@@ -133,7 +140,12 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => onCreditorConfirmsReceipt(groupId!, 'settled')}
+            onClick={() => {
+              // The creditor is confirming receipt and settling the group
+              if (groupId) {
+                onCreditorConfirmsReceipt(groupId, 'settled');
+              }
+            }}
             className="border-green-400 text-green-600 hover:bg-green-50 hover:text-green-700 w-full sm:w-auto"
           >
             Mark as Received <CircleCheck className="ml-2 h-3 w-3" />
