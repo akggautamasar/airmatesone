@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -85,7 +86,9 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
     const unsettledGroup = groupViews.find(g =>
       g.statuses.some(status => status === 'pending' || status === 'debtor_paid')
     );
-    const hasAnyGroup = Boolean(unsettledGroup);
+
+    // Check if balance is essentially zero (settled up)
+    const isBalanceSettled = Math.abs(amount) < 0.005;
 
     // Helper to initiate and settle if no group exists
     const handleCreditorMarkAsReceived = async () => {
@@ -106,11 +109,19 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
     };
 
     if (iAmDebtor) {
-      // DEBTOR VIEW (unchanged from previous logic)
+      // DEBTOR VIEW
       if (groupWithDebtorPaid) {
         statusText = (
           <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
             Payment marked, awaiting {otherPartyName}&apos;s confirmation
+          </Badge>
+        );
+        actionContent = null;
+      } else if (isBalanceSettled) {
+        // If balance is settled, show settled status
+        statusText = (
+          <Badge variant="outline" className="text-xs text-green-600 border-green-300">
+            Fully settled
           </Badge>
         );
         actionContent = null;
@@ -146,11 +157,10 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
       }
     } else if (iAmCreditor) {
       // CREDITOR VIEW
-      // Show the Mark as Received button ALWAYS, unless fully settled up
-      const isFullySettled = (person.balance > -0.005 && person.balance < 0.005);
-      const hasUnsettledGroup = unsettledGroup || groupWithDebtorPaid || groupWithPending;
+      // Check if the balance is settled OR if there's a settled group with no unsettled transactions
+      const isFullySettled = isBalanceSettled || (groupWithSettled && !unsettledGroup);
 
-      if (isFullySettled && !hasUnsettledGroup) {
+      if (isFullySettled) {
         statusText = (
           <Badge variant="outline" className="text-xs text-green-600 border-green-300">
             Fully settled
@@ -158,7 +168,7 @@ export const BalanceListItem: React.FC<BalanceListItemProps> = ({
         );
         actionContent = null;
       } else {
-        // Show the Mark as Received button always!
+        // Show the Mark as Received button
         statusText = groupWithDebtorPaid ? (
           <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
             Debtor marked as paid
