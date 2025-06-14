@@ -9,7 +9,8 @@ import { useExpenses } from "@/hooks/useExpenses";
 import { useRoommates } from "@/hooks/useRoommates";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-import { Settlement as DetailedSettlement } from "@/components/SettlementHistory"; // Import standardized Settlement type
+import { Settlement as DetailedSettlement } from "@/components/SettlementHistory";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Expense {
   id: string;
@@ -31,15 +32,22 @@ interface ExpenseOverviewProps {
     amount: number
   ) => Promise<DetailedSettlement | null>;
   currentUserId: string | undefined;
+  onUpdateStatus: (transactionGroupId: string, status: string) => Promise<void>;
 }
 
-export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, settlements, onAddSettlementPair, currentUserId }: ExpenseOverviewProps) => {
+export const ExpenseOverview = ({ 
+  expenses: propsExpenses, 
+  onExpenseUpdate, 
+  settlements, 
+  onAddSettlementPair, 
+  currentUserId,
+  onUpdateStatus 
+}: ExpenseOverviewProps) => {
   const { deleteExpense } = useExpenses();
   const { roommates } = useRoommates();
-  const { user } = useAuth(); // user.id is currentUserId, user.email
-  const { profile } = useProfile(); // profile.name, profile.upi_id for current user
-
-  // No localSettlements needed, using settlements from props (from useSettlements hook)
+  const { user } = useAuth();
+  const { profile } = useProfile();
+  const { toast } = useToast();
 
   const currentUserDisplayName = useMemo(() => {
     return profile?.name || user?.email?.split('@')[0] || 'You';
@@ -195,9 +203,14 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
     }
   };
   
-  const initiateSettlementProcess = async (debtorName: string, creditorName: string, amountToSettle: number) => {
+  const initiateSettlementProcess = async (
+    debtorName: string, 
+    creditorName: string, 
+    amountToSettle: number,
+    settleImmediately: boolean = false
+  ) => {
     const absAmount = Math.abs(amountToSettle);
-    if (absAmount < 0.01) return; // Don't settle negligible amounts
+    if (absAmount < 0.01) return;
 
     const currentUserIsDebtor = debtorName === currentUserDisplayName;
     const currentUserIsCreditor = creditorName === currentUserDisplayName;
@@ -219,15 +232,11 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
     } else if (currentUserIsCreditor) {
         creditorDetails = currentUserProfileDetails;
         debtorDetails = debtorRoommate ? { name: debtorRoommate.name, email: debtorRoommate.email, upi_id: debtorRoommate.upi_id } : { name: debtorName, email: 'unknown', upi_id: ''};
-    } else { // Current user is neither, initiating between two other roommates (not directly supported by UI yet but good for future)
+    } else {
         debtorDetails = debtorRoommate ? { name: debtorRoommate.name, email: debtorRoommate.email, upi_id: debtorRoommate.upi_id } : { name: debtorName, email: 'unknown', upi_id: ''};
         creditorDetails = creditorRoommate ? { name: creditorRoommate.name, email: creditorRoommate.email, upi_id: creditorRoommate.upi_id } : { name: creditorName, email: 'unknown', upi_id: ''};
     }
     
-    // Arguments for addSettlementPair:
-    // currentUserInvolves: { name, email, upi_id, type: 'owes' | 'owed' } -> perspective of current user
-    // otherPartyInvolves: { name, email, upi_id, type: 'owes' | 'owed' } -> perspective of other party
-
     let currentUserPerspective, otherPartyPerspective;
 
     if (currentUserIsDebtor) {
@@ -237,14 +246,37 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
         currentUserPerspective = { ...creditorDetails, type: 'owed' as const };
         otherPartyPerspective = { ...debtorDetails, type: 'owes' as const };
     } else {
-        // This case (current user not involved) isn't handled by current UI, but for completeness:
-        // We'd need to decide whose perspective to use for `currentUserInvolves` or adapt `addSettlementPair`
         console.warn("Settlement initiation between two other parties not fully supported by this UI path.");
         return; 
     }
     
-    await onAddSettlementPair(currentUserPerspective, otherPartyPerspective, absAmount);
-    // onExpenseUpdate(); // To refresh balances after settlement potentially changes them
+    const createdSettlement = await onAddSettlementPair(currentUserPerspective, otherPartyPerspective, absAmount);
+    
+    if (createdSettlement && settleImmediately && createdSettlement.transaction_group_id) {
+      try {
+        await onUpdateStatus(createdSettlement.transaction_group_id, 'settled');
+        toast({
+          title: "Balance Settled",
+          description: `The balance with ${creditorName === currentUserDisplayName ? debtorName : creditorName} has been marked as settled.`,
+        });
+      } catch (error) {
+        console.error("Error directly settling balance:", error);
+        toast({
+          title: "Settlement Error",
+          description: "Could not immediately mark the balance as settled. Please check Settlement History.",
+          variant: "destructive",
+        });
+      }
+    } else if (createdSettlement && !settleImmediately) { // This means it's a pending settlement
+        toast({
+          title: "Settlement Initiated",
+          description: `A settlement process has been initiated with ${creditorName === currentUserDisplayName ? debtorName : creditorName}. Check Settlement History.`,
+        });
+    }
+    // onExpenseUpdate calls refetchExpenses and refetchSettlements.
+    // updateSettlementStatusByGroupId in useSettlements also calls fetchSettlements (refetch).
+    // So calling onExpenseUpdate here ensures everything is refreshed.
+    onExpenseUpdate(); 
   };
 
   const handlePayClick = (upiId: string, amount: number) => {
@@ -314,19 +346,20 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
             );
 
             let actionButton = null;
-            if (!isViewingOwnBalance && !activeSettlementWithPerson) { // Only show settlement buttons if no active settlement
-                if (person.balance < -0.005) { // This person owes money (to the pool, effectively to current user if current user is net creditor)
+            if (!isViewingOwnBalance && !activeSettlementWithPerson) {
+                if (person.balance < -0.005) { // This person owes money (to current user or pool)
                     actionButton = (
                         <Button 
                           size="sm" 
                           variant="outline"
-                          onClick={() => initiateSettlementProcess(person.name, currentUserDisplayName, person.balance)}
+                          // For "Request Payment", settleImmediately should be false (default)
+                          onClick={() => initiateSettlementProcess(person.name, currentUserDisplayName, person.balance)} 
                           className="border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto"
                         >
                           Request Payment
                         </Button>
                     );
-                } else if (person.balance > 0.005) { // This person is owed money (by the pool, effectively by current user if current user is net debtor)
+                } else if (person.balance > 0.005) { // This person is owed money (by current user or pool)
                     actionButton = (
                         <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 mt-1 w-full sm:w-auto justify-end">
                             {roommateInfo?.upi_id && (
@@ -343,7 +376,8 @@ export const ExpenseOverview = ({ expenses: propsExpenses, onExpenseUpdate, sett
                             <Button 
                                 size="sm" 
                                 variant="outline"
-                                onClick={() => initiateSettlementProcess(currentUserDisplayName, person.name, person.balance)}
+                                // For "Mark as Paid", settleImmediately is true
+                                onClick={() => initiateSettlementProcess(currentUserDisplayName, person.name, person.balance, true)} 
                                 className="border-green-400 text-green-600 hover:bg-green-50 hover:text-green-700 w-full sm:w-auto"
                             >
                                 Mark as Paid
