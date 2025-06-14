@@ -56,35 +56,47 @@ export const BalanceList: React.FC<BalanceListProps> = ({
             const otherPartyRoommateInfo = roommates.find(r => r.name === otherPartyName);
             const otherPartyUserId = otherPartyRoommateInfo?.user_id;
 
-            // For this balance row: who is creditor and who is debtor?
             const iAmDebtor = amount > 0.005;
             const iAmCreditor = amount < -0.005;
             const absAmount = Math.abs(amount);
 
-            // Find settlements between current user and other roommate, both directions, grouped by transaction_group_id
-            const relevantPairSettlements = settlements.filter(s =>
-              (s.user_id === currentUserId && s.name === otherPartyName) ||
-              (s.user_id === otherPartyUserId && s.name === currentUserDisplayName)
+            // Find all settlements between the two users (both directions)
+            const relevantPairSettlements = settlements.filter(
+              s =>
+                (s.user_id === currentUserId && s.name === otherPartyName) ||
+                (s.user_id === otherPartyUserId && s.name === currentUserDisplayName)
             );
 
-            // Get all transaction_group_ids between these two users
-            const txGroups = Array.from(new Set(relevantPairSettlements.map(s => s.transaction_group_id).filter(Boolean)));
+            // Group by transaction_group_id
+            const txGroups = Array.from(
+              new Set(
+                relevantPairSettlements.map(s => s.transaction_group_id).filter(Boolean)
+              )
+            );
 
-            const activeTx = txGroups.map(groupId => {
-              const groupSetts = relevantPairSettlements.filter(s => s.transaction_group_id === groupId);
+            // For each group, collect all statuses
+            const groupViews = txGroups.map(groupId => {
+              const members = relevantPairSettlements.filter(
+                s => s.transaction_group_id === groupId
+              );
               return {
                 groupId,
-                statuses: groupSetts.map(g => g.status),
-                pairs: groupSetts,
+                statuses: members.map(g => g.status),
+                pairs: members,
               };
             });
 
-            let debtorPaidGroup = activeTx.find(tx => tx.statuses.includes("debtor_paid"));
-            let pendingGroup = activeTx.find(tx => tx.statuses.includes("pending"));
+            // Locate first active group with key statuses
+            const groupWithDebtorPaid = groupViews.find(g =>
+              g.statuses.includes('debtor_paid')
+            );
+            const groupWithPending = groupViews.find(g =>
+              g.statuses.includes('pending')
+            );
 
             if (iAmDebtor) {
-              if (debtorPaidGroup) {
-                // Current user has already marked as paid, awaiting creditor confirmation
+              // DEBTOR VIEW
+              if (groupWithDebtorPaid) {
                 statusText = (
                   <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
                     Payment marked, awaiting {otherPartyName}'s confirmation
@@ -92,7 +104,7 @@ export const BalanceList: React.FC<BalanceListProps> = ({
                 );
                 actionContent = null;
               } else {
-                const isPending = Boolean(pendingGroup);
+                const isPending = Boolean(groupWithPending);
                 statusText = isPending ? (
                   <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">
                     Payment pending to {otherPartyName}
@@ -122,9 +134,10 @@ export const BalanceList: React.FC<BalanceListProps> = ({
                 );
               }
             } else if (iAmCreditor) {
-              // The current user is the creditor; can confirm if roommate marked as paid
-              if (debtorPaidGroup) {
-                const debtorPaidGroupId = debtorPaidGroup.groupId;
+              // CREDITOR VIEW
+              if (groupWithDebtorPaid) {
+                // After debtor marks as paid, now show "Mark as Received"
+                const groupId = groupWithDebtorPaid.groupId;
                 statusText = (
                   <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
                     Debtor marked as paid
@@ -134,22 +147,21 @@ export const BalanceList: React.FC<BalanceListProps> = ({
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => onCreditorConfirmsReceipt(debtorPaidGroupId!, 'settled')}
+                    onClick={() => onCreditorConfirmsReceipt(groupId!, 'settled')}
                     className="border-green-400 text-green-600 hover:bg-green-50 hover:text-green-700 w-full sm:w-auto"
                   >
                     Mark as Received <CircleCheck className="ml-2 h-3 w-3" />
                   </Button>
                 );
               } else {
-                // Remove "Request Payment" – creditor cannot request anymore
-                // Instead, show status if waiting for payment, otherwise show nothing
-                const isPending = Boolean(pendingGroup);
+                // No request payment button, just status
+                const isPending = Boolean(groupWithPending);
                 statusText = isPending ? (
                   <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">
                     Awaiting payment from {otherPartyName}
                   </Badge>
                 ) : null;
-                actionContent = null; // No request payment button
+                actionContent = null;
               }
             } else {
               actionContent = null;
@@ -160,6 +172,7 @@ export const BalanceList: React.FC<BalanceListProps> = ({
             statusText = null;
           }
 
+          // When fully settled, badge/status should show as "Settled Up"
           return (
             <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg bg-gray-50 space-y-2 sm:space-y-0">
               <div className="flex items-center space-x-3">
