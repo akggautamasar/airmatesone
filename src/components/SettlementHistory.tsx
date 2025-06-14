@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,17 +28,31 @@ const SettlementHistory = ({ settlements, onUpdateStatus, onDeleteSettlementGrou
   const [settlementToDelete, setSettlementToDelete] = useState<Settlement | null>(null);
   
   console.log('SettlementHistory: All settlements received:', settlements);
+  console.log('SettlementHistory: Settlement details:', settlements.map(s => ({
+    id: s.id,
+    name: s.name,
+    type: s.type,
+    status: s.status,
+    amount: s.amount,
+    transaction_group_id: s.transaction_group_id
+  })));
   
   const pendingSettlements = settlements.filter(s => {
     const isPending = s.status === "pending" || s.status === "debtor_paid";
-    console.log(`Settlement ${s.id}: status=${s.status}, type=${s.type}, name=${s.name}, isPending=${isPending}`);
+    console.log(`Settlement ${s.id}: status=${s.status}, type=${s.type}, name=${s.name}, isPending=${isPending}, transaction_group_id=${s.transaction_group_id}`);
     return isPending;
   });
   
-  const settledSettlements = settlements.filter(s => s.status === "settled");
+  const settledSettlements = settlements.filter(s => {
+    const isSettled = s.status === "settled";
+    console.log(`Settlement ${s.id}: status=${s.status}, type=${s.type}, name=${s.name}, isSettled=${isSettled}`);
+    return isSettled;
+  });
 
   console.log('SettlementHistory: Pending settlements count:', pendingSettlements.length);
+  console.log('SettlementHistory: Pending settlements:', pendingSettlements);
   console.log('SettlementHistory: Settled settlements count:', settledSettlements.length);
+  console.log('SettlementHistory: Settled settlements:', settledSettlements);
 
   const getStatusText = (status: Settlement['status'], type: Settlement['type'], name: string) => {
     if (status === 'pending') {
@@ -75,6 +88,8 @@ const SettlementHistory = ({ settlements, onUpdateStatus, onDeleteSettlementGrou
                 <div className="text-center py-8 text-muted-foreground">
                   <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>No pending settlements.</p>
+                  <p className="text-xs mt-2">Debug: Total settlements received: {settlements.length}</p>
+                  <p className="text-xs">Settlements with pending/debtor_paid status: {settlements.filter(s => s.status === "pending" || s.status === "debtor_paid").length}</p>
                 </div>
               ) : (
                 <>
@@ -91,7 +106,7 @@ const SettlementHistory = ({ settlements, onUpdateStatus, onDeleteSettlementGrou
                   )}
                   <div className="space-y-4">
                    {pendingSettlements.map((s) => {
-                    console.log(`Rendering pending settlement: ${s.id}, type: ${s.type}, status: ${s.status}, name: ${s.name}`);
+                    console.log(`Rendering pending settlement: ${s.id}, type: ${s.type}, status: ${s.status}, name: ${s.name}, amount: ${s.amount}`);
                     return (
                       <SettlementItem
                         key={s.id}
@@ -113,17 +128,24 @@ const SettlementHistory = ({ settlements, onUpdateStatus, onDeleteSettlementGrou
                   <Check className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>No settled transactions yet</p>
                   <p className="text-sm">Completed settlements will appear here</p>
+                  <p className="text-xs mt-2">Debug: Total settlements received: {settlements.length}</p>
+                  <p className="text-xs">Settlements with settled status: {settlements.filter(s => s.status === "settled").length}</p>
                 </div>
               ) : (
-                settledSettlements.map((s) => (
-                  <SettlementItem
-                    key={s.id}
-                    settlement={s}
-                    isPendingTab={false}
-                    onUpdateStatus={onUpdateStatus}
-                    onDeleteTrigger={setSettlementToDelete}
-                  />
-                ))
+                <div className="space-y-4">
+                  {settledSettlements.map((s) => {
+                    console.log(`Rendering settled settlement: ${s.id}, type: ${s.type}, status: ${s.status}, name: ${s.name}, amount: ${s.amount}`);
+                    return (
+                      <SettlementItem
+                        key={s.id}
+                        settlement={s}
+                        isPendingTab={false}
+                        onUpdateStatus={onUpdateStatus}
+                        onDeleteTrigger={setSettlementToDelete}
+                      />
+                    );
+                  })}
+                </div>
               )}
             </TabsContent>
           </Tabs>

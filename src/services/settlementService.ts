@@ -1,3 +1,4 @@
+
 import { SupabaseClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
@@ -25,7 +26,10 @@ export const fetchSettlementsFromSupabase = async (
     console.error(`[settlementService] Error fetching settlements for user ${userId}:`, error);
     throw error;
   }
+  
+  console.log(`[settlementService] Raw data from Supabase:`, data);
   const mappedSettlements = data.map(mapSupabaseToSettlement);
+  console.log(`[settlementService] Mapped settlements:`, mappedSettlements);
   console.log(`[settlementService] Successfully fetched ${mappedSettlements.length} settlements for user ${userId}.`);
   return mappedSettlements || [];
 };

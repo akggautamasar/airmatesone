@@ -4,7 +4,8 @@ import { Tables } from '@/integrations/supabase/types';
 
 // Helper function to map Supabase row to frontend Settlement type
 export const mapSupabaseToSettlement = (row: Tables<'settlements'>): Settlement => {
-  return {
+  console.log(`[settlementUtils] Mapping Supabase row to Settlement:`, row);
+  const mapped = {
     id: row.id,
     name: row.name, // Name of the other party
     amount: row.amount,
@@ -16,4 +17,6 @@ export const mapSupabaseToSettlement = (row: Tables<'settlements'>): Settlement 
     transaction_group_id: row.transaction_group_id || undefined,
     user_id: row.user_id,
   };
+  console.log(`[settlementUtils] Mapped settlement:`, mapped);
+  return mapped;
 };
