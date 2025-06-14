@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -107,9 +106,9 @@ const Index = () => {
   ) => {
     await updateSettlementStatusByGroupId(transaction_group_id, newStatus);
     // The overview balances depend on both expenses and settled transactions.
-    // While settlements don't alter expense data, refetching expenses ensures
-    // the overview component is re-evaluated with the freshest data, resolving
-    // potential stale state issues after a settlement status changes.
+    // We must refetch both to ensure the overview is re-calculated with the
+    // freshest data, resolving stale state issues after a settlement status changes.
+    refetchSettlements();
     refetchExpenses();
   };
 
