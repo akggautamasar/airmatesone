@@ -215,42 +215,71 @@ export const ExpenseOverview = ({
     const absAmount = Math.abs(amountToSettle);
     if (absAmount < 0.01) return;
 
-    const debtorDetails = {
-        name: currentUserDisplayName,
-        email: user?.email || '',
-        upi_id: profile?.upi_id || ''
-    };
-    const creditorRoommate = roommates.find(r => r.name === creditorName);
-    const creditorDetails = creditorRoommate 
-        ? { name: creditorRoommate.name, email: creditorRoommate.email, upi_id: creditorRoommate.upi_id } 
-        : { name: creditorName, email: 'unknown', upi_id: ''}; // Fallback if creditor is not a registered roommate
+    // 'settlements' prop contains only the current user's (debtor's) settlement records.
+    // Find an existing 'pending' settlement initiated by the current user (debtor) to this creditor.
+    const existingPendingSettlement = settlements.find(s => 
+      s.name === creditorName && // Other party is the creditor
+      s.type === 'owes' &&       // Current user owes them
+      s.status === 'pending' &&  // It's currently pending
+      s.transaction_group_id
+      // Optional: && Math.abs(s.amount - absAmount) < 0.01 // if matching amount is desired
+    );
 
-    const currentUserPerspective = { ...debtorDetails, type: 'owes' as const };
-    const otherPartyPerspective = { ...creditorDetails, type: 'owed' as const };
+    let targetTransactionGroupId: string | undefined = existingPendingSettlement?.transaction_group_id;
 
-    try {
-        const createdSettlement = await onAddSettlementPair(currentUserPerspective, otherPartyPerspective, absAmount);
-        if (createdSettlement && createdSettlement.transaction_group_id) {
-            await onUpdateStatus(createdSettlement.transaction_group_id, 'debtor_paid');
-            toast({
-              title: "Payment Marked as Paid",
-              description: `Your payment to ${creditorName} for ₹${absAmount.toFixed(2)} has been marked. ${creditorName} will be notified to confirm.`,
-            });
-        } else {
-            // This case might occur if onAddSettlementPair returns null or a settlement without a transaction_group_id
-             // which implies an issue in the hook or DB interaction not creating the pair correctly.
-            console.error("Settlement pair creation failed or did not return a transaction group ID. Settlement:", createdSettlement);
-            throw new Error("Settlement pair creation failed or did not return a transaction group ID.");
-        }
-        onExpenseUpdate(); 
-    } catch (error) {
-        console.error("Error in initiateDebtorPaymentProcess:", error);
+    if (!existingPendingSettlement) {
+      // No existing 'pending' settlement from debtor to creditor, so create one.
+      // onAddSettlementPair will create a new pair with status 'pending'.
+      const debtorDetails = {
+          name: currentUserDisplayName,
+          email: user?.email || '',
+          upi_id: profile?.upi_id || ''
+      };
+      const creditorRoommate = roommates.find(r => r.name === creditorName);
+      const creditorDetails = creditorRoommate 
+          ? { name: creditorRoommate.name, email: creditorRoommate.email, upi_id: creditorRoommate.upi_id } 
+          : { name: creditorName, email: 'unknown', upi_id: ''}; 
+
+      const currentUserPerspective = { ...debtorDetails, type: 'owes' as const };
+      const otherPartyPerspective = { ...creditorDetails, type: 'owed' as const };
+      
+      console.log(`Debtor (${currentUserDisplayName}) initiating payment process to ${creditorName}. No existing pending settlement found. Creating new.`);
+      const createdSettlement = await onAddSettlementPair(currentUserPerspective, otherPartyPerspective, absAmount);
+      
+      if (createdSettlement && createdSettlement.transaction_group_id) {
+        targetTransactionGroupId = createdSettlement.transaction_group_id;
+        console.log(`New settlement pair created with transaction_group_id: ${targetTransactionGroupId} for debtor ${currentUserDisplayName} to ${creditorName}.`);
+      } else {
+        console.error("Settlement pair creation failed or did not return a transaction group ID during debtor payment process. Settlement:", createdSettlement);
         toast({
-            title: "Error Marking Payment",
-            description: `Could not mark payment to ${creditorName}. Please try again. Details: ${error instanceof Error ? error.message : String(error)}`,
+            title: "Error Initializing Payment",
+            description: "Could not create a settlement record. Please try again.",
             variant: "destructive",
         });
+        return;
+      }
+    } else {
+      console.log(`Debtor (${currentUserDisplayName}) initiating payment process to ${creditorName}. Found existing pending settlement with transaction_group_id: ${targetTransactionGroupId}.`);
     }
+
+    // Now, update the status of the target settlement group to 'debtor_paid'
+    if (targetTransactionGroupId) {
+      console.log(`Updating transaction_group_id ${targetTransactionGroupId} to 'debtor_paid'.`);
+      await onUpdateStatus(targetTransactionGroupId, 'debtor_paid');
+      toast({
+        title: "Payment Marked as Paid",
+        description: `Your payment to ${creditorName} for ₹${absAmount.toFixed(2)} has been marked. ${creditorName} will be notified to confirm.`,
+      });
+    } else {
+      // This case should ideally not be reached if logic above is correct
+      console.error("Failed to obtain transaction_group_id for updating status to debtor_paid. This indicates an issue in finding or creating settlement.");
+      toast({
+          title: "Error Marking Payment",
+          description: "Could not mark payment due to an internal error (missing transaction ID).",
+          variant: "destructive",
+      });
+    }
+    onExpenseUpdate(); // Refetch data
   };
 
   const initiateCreditorRequestProcess = async (
@@ -261,6 +290,25 @@ export const ExpenseOverview = ({
     const absAmount = Math.abs(amountToSettle);
     if (absAmount < 0.01) return;
     
+    // 'settlements' prop contains only the current user's (creditor's) settlement records.
+    // Check if current user (creditor) already has a 'pending' settlement TO this debtor.
+    const existingPendingRequest = settlements.find(s => 
+      s.name === debtorName && // Other party is the debtor
+      s.type === 'owed' &&      // Current user is owed by them (creditor's perspective)
+      s.status === 'pending'
+      // Optional: && Math.abs(s.amount - absAmount) < 0.01 // if matching amount is desired
+    );
+
+    if (existingPendingRequest) {
+      console.log(`Creditor (${currentUserDisplayName}) attempting to request payment from ${debtorName}. Existing pending request found.`);
+      toast({
+        title: "Payment Already Requested",
+        description: `You've already requested ₹${absAmount.toFixed(2)} from ${debtorName}. It's currently marked as pending.`,
+      });
+      return; // Do not create a duplicate pending request
+    }
+    
+    console.log(`Creditor (${currentUserDisplayName}) initiating payment request to ${debtorName}. No existing pending request found. Creating new.`);
     const creditorDetails = {
         name: currentUserDisplayName,
         email: user?.email || '',
@@ -269,22 +317,21 @@ export const ExpenseOverview = ({
     const debtorRoommate = roommates.find(r => r.name === debtorName);
     const debtorDetails = debtorRoommate 
         ? { name: debtorRoommate.name, email: debtorRoommate.email, upi_id: debtorRoommate.upi_id } 
-        : { name: debtorName, email: 'unknown', upi_id: ''}; // Fallback if debtor is not a registered roommate
+        : { name: debtorName, email: 'unknown', upi_id: ''}; 
 
-    const currentUserPerspective = { ...creditorDetails, type: 'owed' as const };
-    const otherPartyPerspective = { ...debtorDetails, type: 'owes' as const };
+    const currentUserPerspective = { ...creditorDetails, type: 'owed' as const }; // Creditor is owed
+    const otherPartyPerspective = { ...debtorDetails, type: 'owes' as const };   // Debtor owes
 
     try {
+        // onAddSettlementPair should create settlements with 'pending' status by default
         const createdSettlement = await onAddSettlementPair(currentUserPerspective, otherPartyPerspective, absAmount);
         if (createdSettlement) {
-            // onAddSettlementPair should create settlements with 'pending' status by default
             toast({
               title: "Payment Requested",
               description: `A payment request for ₹${absAmount.toFixed(2)} has been sent to ${debtorName}.`,
             });
         } else {
-            // This case might occur if onAddSettlementPair returns null.
-            console.error("Settlement pair creation failed. Returned null.");
+            console.error("Settlement pair creation failed for creditor request. Returned null.");
             throw new Error("Settlement pair creation failed.");
         }
         onExpenseUpdate(); 
@@ -337,11 +384,11 @@ export const ExpenseOverview = ({
         finalBalances={calculations.finalBalances}
         currentUserDisplayName={currentUserDisplayName}
         roommates={roommates}
-        settlements={settlements}
+        settlements={settlements} // This is current user's settlements
         currentUserId={currentUserId}
-        onDebtorMarksAsPaid={initiateDebtorPaymentProcess}
+        onDebtorMarksAsPaid={initiateDebtorPaymentProcess} // Updated
         onCreditorConfirmsReceipt={onUpdateStatus} 
-        onCreditorRequestsPayment={initiateCreditorRequestProcess}
+        onCreditorRequestsPayment={initiateCreditorRequestProcess} // Updated
         onPayViaUpi={handlePayClick}
       />
 
