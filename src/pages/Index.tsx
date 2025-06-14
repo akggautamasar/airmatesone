@@ -6,7 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExpenseOverview } from "@/components/ExpenseOverview";
 import { AddExpense } from "@/components/AddExpense";
 import { RoommateManagement } from "@/components/RoommateManagement";
-import { SettlementHistory, Settlement } from "@/components/SettlementHistory";
+import { SettlementHistory } from "@/components/SettlementHistory";
+import { Settlement } from "@/types";
 import { Profile } from "@/components/Profile";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useSettlements } from "@/hooks/useSettlements";
@@ -160,7 +161,6 @@ const Index = () => {
           <TabsContent value="settlements" className="space-y-6">
             <SettlementHistory 
               settlements={settlements} 
-              currentUserId={user.id}
               onUpdateStatus={updateSettlementStatusByGroupId}
               onDeleteSettlementGroup={deleteSettlementGroup}
               hasActiveExpenses={hasActiveExpenses}

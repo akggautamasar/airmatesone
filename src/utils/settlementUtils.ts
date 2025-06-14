@@ -1,5 +1,5 @@
 
-import { Settlement } from '@/components/SettlementHistory';
+import { Settlement } from '@/types';
 import { Tables } from '@/integrations/supabase/types';
 
 // Helper function to map Supabase row to frontend Settlement type
