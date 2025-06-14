@@ -113,7 +113,7 @@ export const useSettlements = () => {
         const userSettlement = updatedRecords.find(r => r.user_id === user.id);
         if (userSettlement) {
           if (userSettlement.type === 'owed') { // Current user is creditor
-            toast({ title: "Payment Received", description: `You have confirmed receipt of payment from ${userSettlement.name}.` });
+            toast({ title: "Payment Received", description: `You have recorded a received payment from ${userSettlement.name}. They will be notified.` });
           } else { // Current user is debtor
             toast({ title: "Settlement Confirmed", description: `Your payment to ${userSettlement.name} has been confirmed.` });
           }

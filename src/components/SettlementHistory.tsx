@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -60,7 +59,6 @@ const SettlementHistory = ({ settlements, currentUserId, onUpdateStatus, onDelet
   };
 
   const getStatusText = (status: Settlement['status'], type: Settlement['type'], name: string) => {
-    console.log(`[SettlementHistory] getStatusText called with status: ${status}, type: ${type}, name: ${name}`);
     if (status === 'pending') {
       return type === 'owes' ? `You owe ${name}` : `${name} owes you`;
     }
