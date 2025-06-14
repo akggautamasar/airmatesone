@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { Settlement as DetailedSettlement } from "@/components/SettlementHistory";
 import { useToast } from "@/components/ui/use-toast";
+import { useExpenseCalculations } from "./overview/hooks/useExpenseCalculations";
 
 import { SummaryCards } from "./overview/SummaryCards";
 import { BalanceList } from "./overview/BalanceList";
@@ -41,14 +42,14 @@ interface ExpenseOverviewProps {
   onDeleteSettlementGroup?: (transactionGroupId: string) => Promise<void>;
 }
 
-export const ExpenseOverview = ({ 
-  expenses: propsExpenses, 
-  onExpenseUpdate, 
-  settlements, 
-  onAddSettlementPair, 
+export const ExpenseOverview = ({
+  expenses: propsExpenses,
+  onExpenseUpdate,
+  settlements,
+  onAddSettlementPair,
   currentUserId,
   onUpdateStatus,
-  onDeleteSettlementGroup
+  // onDeleteSettlementGroup // Keep if used, otherwise remove
 }: ExpenseOverviewProps) => {
   const { deleteExpense } = useExpenses();
   const { roommates } = useRoommates();
@@ -60,139 +61,21 @@ export const ExpenseOverview = ({
     return profile?.name || user?.email?.split('@')[0] || 'You';
   }, [profile, user]);
 
-  const allParticipantNames = useMemo(() => {
-    const names = new Set<string>([currentUserDisplayName]);
-    roommates.forEach(r => names.add(r.name));
-    if (propsExpenses.length > 0) {
-        propsExpenses.forEach(e => {
-            const payerDisplayName = e.paidBy === user?.email?.split('@')[0] || e.paidBy === profile?.name ? currentUserDisplayName : e.paidBy;
-            if (payerDisplayName !== currentUserDisplayName && !roommates.find(rm => rm.name === payerDisplayName)) names.add(payerDisplayName);
-        });
-        propsExpenses.forEach(e => e.sharers?.forEach(s => {
-            const sharerDisplayName = s === user?.email?.split('@')[0] || s === profile?.name ? currentUserDisplayName : s;
-            if (sharerDisplayName !== currentUserDisplayName && !roommates.find(rm => rm.name === sharerDisplayName)) names.add(sharerDisplayName);
-        }));
-    }
-    return Array.from(names);
-  }, [currentUserDisplayName, roommates, propsExpenses, user, profile]);
-
-  const calculations = useMemo(() => {
-    const totalExpensesValue = propsExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-    let finalBalancesArray: { name: string; balance: number }[] = [];
-
-    if (propsExpenses.length === 0) {
-        // No expenses: all participant balances are zero for the overview.
-        finalBalancesArray = allParticipantNames.map(name => ({ name, balance: 0 }));
-    } else {
-        // Expenses exist: calculate balances from expenses and apply *settled* settlements.
-        const balanceMap = new Map<string, number>();
-        allParticipantNames.forEach(name => balanceMap.set(name, 0));
-
-        // Process expenses
-        propsExpenses.forEach(expense => {
-            const payerName = expense.paidBy === user?.email?.split('@')[0] || expense.paidBy === profile?.name ? currentUserDisplayName : expense.paidBy;
-            if (balanceMap.has(payerName)) { // Ensure payer is in the map
-                 balanceMap.set(payerName, (balanceMap.get(payerName) || 0) + expense.amount);
-            } else if (allParticipantNames.includes(payerName)) { // Payer might not be a roommate but part of allParticipantNames
-                 balanceMap.set(payerName, expense.amount);
-            }
-
-
-            const effectiveSharers = expense.sharers && expense.sharers.length > 0
-              ? expense.sharers.map(s => s === user?.email?.split('@')[0] || s === profile?.name ? currentUserDisplayName : s)
-              : allParticipantNames;
-
-            const numSharers = effectiveSharers.length;
-
-            if (numSharers > 0) {
-              const amountPerSharer = expense.amount / numSharers;
-              effectiveSharers.forEach(sharerName => {
-                 if (balanceMap.has(sharerName)) { // Ensure sharer is in the map
-                    balanceMap.set(sharerName, (balanceMap.get(sharerName) || 0) - amountPerSharer);
-                 } else if (allParticipantNames.includes(sharerName)) { // Sharer might not be a roommate
-                    balanceMap.set(sharerName, -amountPerSharer);
-                 }
-              });
-            }
-        });
-
-        // Apply *settled* transactions to adjust expense-driven balances
-        settlements.forEach(settlement => {
-            if (settlement.status === 'settled') {
-              let debtorName: string | undefined;
-              let creditorName: string | undefined;
-              const settlementOwnerIsCurrentUser = settlement.user_id === currentUserId;
-
-              if (settlementOwnerIsCurrentUser) {
-                  if (settlement.type === 'owes') {
-                      debtorName = currentUserDisplayName;
-                      creditorName = settlement.name;
-                  } else {
-                      debtorName = settlement.name;
-                      creditorName = currentUserDisplayName;
-                  }
-              } else {
-                  const ownerProfile = roommates.find(r => r.user_id === settlement.user_id);
-                  const ownerDisplayName = ownerProfile?.name || `User ${settlement.user_id.substring(0,5)}`;
-                  if (settlement.type === 'owes') {
-                      debtorName = ownerDisplayName;
-                      creditorName = (settlement.name === user?.email || settlement.name === profile?.name) ? currentUserDisplayName : settlement.name;
-                  } else {
-                      debtorName = (settlement.name === user?.email || settlement.name === profile?.name) ? currentUserDisplayName : settlement.name;
-                      creditorName = ownerDisplayName;
-                  }
-              }
-              
-              // Ensure names from settlements are part of allParticipantNames before adjusting map
-              // And ensure they are in balanceMap (which should be true if they are in allParticipantNames)
-              if (debtorName && allParticipantNames.includes(debtorName) && balanceMap.has(debtorName)) {
-                  balanceMap.set(debtorName, (balanceMap.get(debtorName) || 0) + settlement.amount);
-              }
-              if (creditorName && allParticipantNames.includes(creditorName) && balanceMap.has(creditorName)) {
-                  balanceMap.set(creditorName, (balanceMap.get(creditorName) || 0) - settlement.amount);
-              }
-            }
-        });
-
-        allParticipantNames.forEach(name => { // Ensure all participants have an entry, even if 0
-            if (balanceMap.has(name)) {
-                 finalBalancesArray.push({ name, balance: parseFloat(balanceMap.get(name)!.toFixed(2)) });
-            } else {
-                 finalBalancesArray.push({ name, balance: 0 });
-            }
-        });
-         // Sort to ensure consistent order if needed, or remove if order doesn't matter / set by allParticipantNames
-        finalBalancesArray.sort((a, b) => allParticipantNames.indexOf(a.name) - allParticipantNames.indexOf(b.name));
-    }
-
-    return {
-      totalExpenses: totalExpensesValue,
-      finalBalances: finalBalancesArray
-    };
-  }, [propsExpenses, allParticipantNames, currentUserDisplayName, settlements, roommates, profile, currentUserId, user]);
-
-  const categoryData = useMemo(() => propsExpenses.reduce((acc, expense) => {
-    const existing = acc.find(item => item.name === expense.category);
-    if (existing) {
-      existing.value += expense.amount;
-    } else {
-      acc.push({ name: expense.category, value: expense.amount });
-    }
-    return acc;
-  }, [] as { name: string; value: number }[]), [propsExpenses]);
-
-  const monthlyData = useMemo(() => propsExpenses.reduce((acc, expense) => {
-    const dateObj = new Date(expense.date); 
-    const month = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : "Invalid Date";
-
-    const existing = acc.find(item => item.month === month);
-    if (existing) {
-      existing.amount += expense.amount;
-    } else {
-      acc.push({ month, amount: expense.amount });
-    }
-    return acc;
-  }, [] as { month: string; amount: number }[]), [propsExpenses]);
+  const {
+    allParticipantNames,
+    totalExpenses,
+    finalBalances,
+    categoryData,
+    monthlyData,
+  } = useExpenseCalculations({
+    expenses: propsExpenses,
+    currentUserDisplayName,
+    settlements,
+    roommates,
+    profile,
+    currentUserId,
+    user,
+  });
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
@@ -208,28 +91,23 @@ export const ExpenseOverview = ({
   };
   
   const initiateDebtorPaymentProcess = async (
-    _debtorNameIgnored: string, // This will be currentUserDisplayName, passed from BalanceList
-    creditorName: string, 
+    _debtorNameIgnored: string, 
+    creditorName: string,
     amountToSettle: number
   ) => {
     const absAmount = Math.abs(amountToSettle);
     if (absAmount < 0.01) return;
 
-    // 'settlements' prop contains only the current user's (debtor's) settlement records.
-    // Find an existing 'pending' settlement initiated by the current user (debtor) to this creditor.
     const existingPendingSettlement = settlements.find(s => 
-      s.name === creditorName && // Other party is the creditor
-      s.type === 'owes' &&       // Current user owes them
-      s.status === 'pending' &&  // It's currently pending
+      s.name === creditorName && 
+      s.type === 'owes' &&       
+      s.status === 'pending' &&  
       s.transaction_group_id
-      // Optional: && Math.abs(s.amount - absAmount) < 0.01 // if matching amount is desired
     );
 
     let targetTransactionGroupId: string | undefined = existingPendingSettlement?.transaction_group_id;
 
     if (!existingPendingSettlement) {
-      // No existing 'pending' settlement from debtor to creditor, so create one.
-      // onAddSettlementPair will create a new pair with status 'pending'.
       const debtorDetails = {
           name: currentUserDisplayName,
           email: user?.email || '',
@@ -262,7 +140,6 @@ export const ExpenseOverview = ({
       console.log(`Debtor (${currentUserDisplayName}) initiating payment process to ${creditorName}. Found existing pending settlement with transaction_group_id: ${targetTransactionGroupId}.`);
     }
 
-    // Now, update the status of the target settlement group to 'debtor_paid'
     if (targetTransactionGroupId) {
       console.log(`Updating transaction_group_id ${targetTransactionGroupId} to 'debtor_paid'.`);
       await onUpdateStatus(targetTransactionGroupId, 'debtor_paid');
@@ -271,7 +148,6 @@ export const ExpenseOverview = ({
         description: `Your payment to ${creditorName} for ₹${absAmount.toFixed(2)} has been marked. ${creditorName} will be notified to confirm.`,
       });
     } else {
-      // This case should ideally not be reached if logic above is correct
       console.error("Failed to obtain transaction_group_id for updating status to debtor_paid. This indicates an issue in finding or creating settlement.");
       toast({
           title: "Error Marking Payment",
@@ -279,24 +155,21 @@ export const ExpenseOverview = ({
           variant: "destructive",
       });
     }
-    onExpenseUpdate(); // Refetch data
+    onExpenseUpdate();
   };
 
   const initiateCreditorRequestProcess = async (
     debtorName: string,
-    _creditorNameIgnored: string, // This will be currentUserDisplayName
+    _creditorNameIgnored: string, 
     amountToSettle: number
   ) => {
     const absAmount = Math.abs(amountToSettle);
     if (absAmount < 0.01) return;
     
-    // 'settlements' prop contains only the current user's (creditor's) settlement records.
-    // Check if current user (creditor) already has a 'pending' settlement TO this debtor.
     const existingPendingRequest = settlements.find(s => 
-      s.name === debtorName && // Other party is the debtor
-      s.type === 'owed' &&      // Current user is owed by them (creditor's perspective)
+      s.name === debtorName && 
+      s.type === 'owed' &&      
       s.status === 'pending'
-      // Optional: && Math.abs(s.amount - absAmount) < 0.01 // if matching amount is desired
     );
 
     if (existingPendingRequest) {
@@ -305,7 +178,7 @@ export const ExpenseOverview = ({
         title: "Payment Already Requested",
         description: `You've already requested ₹${absAmount.toFixed(2)} from ${debtorName}. It's currently marked as pending.`,
       });
-      return; // Do not create a duplicate pending request
+      return; 
     }
     
     console.log(`Creditor (${currentUserDisplayName}) initiating payment request to ${debtorName}. No existing pending request found. Creating new.`);
@@ -319,11 +192,10 @@ export const ExpenseOverview = ({
         ? { name: debtorRoommate.name, email: debtorRoommate.email, upi_id: debtorRoommate.upi_id } 
         : { name: debtorName, email: 'unknown', upi_id: ''}; 
 
-    const currentUserPerspective = { ...creditorDetails, type: 'owed' as const }; // Creditor is owed
-    const otherPartyPerspective = { ...debtorDetails, type: 'owes' as const };   // Debtor owes
+    const currentUserPerspective = { ...creditorDetails, type: 'owed' as const }; 
+    const otherPartyPerspective = { ...debtorDetails, type: 'owes' as const };  
 
     try {
-        // onAddSettlementPair should create settlements with 'pending' status by default
         const createdSettlement = await onAddSettlementPair(currentUserPerspective, otherPartyPerspective, absAmount);
         if (createdSettlement) {
             toast({
@@ -357,12 +229,9 @@ export const ExpenseOverview = ({
 
   const lastExpenseDate = propsExpenses.length > 0 ? propsExpenses.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date : null;
 
-  // Condition for "All Clear!" message:
-  // No expenses, no pending/active settlements, and calculated final balances are all effectively zero.
-  // With the new logic, if propsExpenses.length === 0, calculations.finalBalances will be all zeros.
-  if (propsExpenses.length === 0 && 
-      settlements.filter(s => s.status !== 'settled').length === 0 && 
-      calculations.finalBalances.every(b => Math.abs(b.balance) < 0.01)) {
+  if (propsExpenses.length === 0 &&
+      settlements.filter(s => s.status !== 'settled').length === 0 &&
+      finalBalances.every(b => Math.abs(b.balance) < 0.01)) {
     return (
       <div className="text-center py-12">
         <IndianRupee className="h-16 w-16 mx-auto text-gray-400 mb-4" />
@@ -374,21 +243,21 @@ export const ExpenseOverview = ({
 
   return (
     <div className="space-y-6">
-      <SummaryCards 
-        totalExpenses={calculations.totalExpenses}
+      <SummaryCards
+        totalExpenses={totalExpenses}
         expenseCount={propsExpenses.length}
         lastExpenseDate={lastExpenseDate}
       />
 
       <BalanceList
-        finalBalances={calculations.finalBalances}
+        finalBalances={finalBalances}
         currentUserDisplayName={currentUserDisplayName}
         roommates={roommates}
-        settlements={settlements} // This is current user's settlements
+        settlements={settlements}
         currentUserId={currentUserId}
-        onDebtorMarksAsPaid={initiateDebtorPaymentProcess} // Updated
-        onCreditorConfirmsReceipt={onUpdateStatus} 
-        onCreditorRequestsPayment={initiateCreditorRequestProcess} // Updated
+        onDebtorMarksAsPaid={initiateDebtorPaymentProcess}
+        onCreditorConfirmsReceipt={onUpdateStatus}
+        onCreditorRequestsPayment={initiateCreditorRequestProcess}
         onPayViaUpi={handlePayClick}
       />
 
@@ -397,7 +266,7 @@ export const ExpenseOverview = ({
         monthlyData={monthlyData}
         colors={COLORS}
       />
-      
+
       <RecentExpensesList
         expenses={propsExpenses}
         currentUserDisplayName={currentUserDisplayName}
