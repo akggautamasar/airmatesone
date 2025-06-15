@@ -30,10 +30,14 @@ export const sharedShoppingListService = {
       throw error;
     }
     
+    if (!data || !Array.isArray(data)) {
+      return [];
+    }
+    
     // Get user profiles for added_by and purchased_by users
     const userIds = [...new Set([
-      ...data.map(item => item.added_by),
-      ...data.filter(item => item.purchased_by).map(item => item.purchased_by)
+      ...data.map((item: any) => item.added_by),
+      ...data.filter((item: any) => item.purchased_by).map((item: any) => item.purchased_by)
     ])];
     
     const { data: profiles } = await supabase
@@ -43,7 +47,7 @@ export const sharedShoppingListService = {
     
     const profileMap = new Map(profiles?.map(p => [p.id, p.name]) || []);
     
-    return data.map(item => ({
+    return data.map((item: any) => ({
       ...item,
       added_by_name: profileMap.get(item.added_by) || 'Unknown',
       purchased_by_name: item.purchased_by ? profileMap.get(item.purchased_by) : undefined
@@ -69,6 +73,10 @@ export const sharedShoppingListService = {
       throw error;
     }
 
+    if (!data) {
+      throw new Error('No data returned from insert');
+    }
+
     // Get the user's profile name
     const { data: profile } = await supabase
       .from('profiles')
@@ -77,7 +85,7 @@ export const sharedShoppingListService = {
       .single();
 
     return {
-      ...data,
+      ...(data as any),
       added_by_name: profile?.name || 'Unknown'
     };
   },
@@ -101,8 +109,12 @@ export const sharedShoppingListService = {
       throw error;
     }
 
+    if (!data) {
+      throw new Error('No data returned from update');
+    }
+
     // Get both users' profile names
-    const userIds = [data.added_by, data.purchased_by].filter(Boolean);
+    const userIds = [(data as any).added_by, (data as any).purchased_by].filter(Boolean);
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, name')
@@ -111,9 +123,9 @@ export const sharedShoppingListService = {
     const profileMap = new Map(profiles?.map(p => [p.id, p.name]) || []);
 
     return {
-      ...data,
-      added_by_name: profileMap.get(data.added_by) || 'Unknown',
-      purchased_by_name: profileMap.get(data.purchased_by) || undefined
+      ...(data as any),
+      added_by_name: profileMap.get((data as any).added_by) || 'Unknown',
+      purchased_by_name: profileMap.get((data as any).purchased_by) || undefined
     };
   },
 
