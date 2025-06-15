@@ -5,8 +5,8 @@ import type { ShoppingList } from '@/types/shopping';
 
 interface UseShoppingListRealtimeProps {
   currentList: ShoppingList | null;
-  onItemsUpdate: (listId: string) => Promise<void>;
-  onListUpdate: (list: ShoppingList) => void;
+  onItemsUpdate: (listId: string) => void;
+  onListUpdate: (list: any) => void;
 }
 
 export const useShoppingListRealtime = ({
@@ -17,63 +17,50 @@ export const useShoppingListRealtime = ({
   useEffect(() => {
     if (!currentList?.id) return;
 
-    console.log('Setting up real-time subscription for list:', currentList.id);
+    console.log('Setting up real-time subscription for shopping list:', currentList.id);
 
-    const channel = supabase
-      .channel('shopping-list-realtime')
+    // Subscribe to shopping list items changes
+    const itemsChannel = supabase
+      .channel(`shopping_list_items_${currentList.id}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'shopping_list_items'
+          table: 'shopping_list_items',
+          filter: `shopping_list_id=eq.${currentList.id}`
         },
-        async (payload) => {
-          console.log('Real-time shopping list items update received:', payload);
-          
-          // Check if this update is for our current list
-          const payloadData = payload.new || payload.old;
-          if (payloadData && typeof payloadData === 'object' && 'shopping_list_id' in payloadData) {
-            if (payloadData.shopping_list_id === currentList.id) {
-              console.log('Update is for our current list, refreshing items');
-              try {
-                await onItemsUpdate(currentList.id);
-              } catch (error) {
-                console.error('Error refreshing items after real-time update:', error);
-              }
-            }
-          }
+        (payload) => {
+          console.log('Real-time shopping list items change:', payload);
+          onItemsUpdate(currentList.id);
         }
       )
+      .subscribe();
+
+    // Subscribe to shopping list changes
+    const listChannel = supabase
+      .channel(`shopping_list_${currentList.id}`)
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'UPDATE',
           schema: 'public',
-          table: 'shopping_lists'
+          table: 'shopping_lists',
+          filter: `id=eq.${currentList.id}`
         },
-        async (payload) => {
-          console.log('Shopping list update received:', payload);
-          
-          // Refresh the current list data if it's our list
-          const payloadData = payload.new || payload.old;
-          if (payloadData && typeof payloadData === 'object' && 'id' in payloadData) {
-            if (payloadData.id === currentList.id) {
-              console.log('Update is for our current list, refreshing list data');
-              if (payload.new) {
-                onListUpdate(payload.new as ShoppingList);
-              }
-            }
+        (payload) => {
+          console.log('Real-time shopping list change:', payload);
+          if (payload.new) {
+            onListUpdate(payload.new);
           }
         }
       )
-      .subscribe((status) => {
-        console.log('Real-time subscription status:', status);
-      });
+      .subscribe();
 
     return () => {
-      console.log('Cleaning up real-time subscription');
-      supabase.removeChannel(channel);
+      console.log('Cleaning up real-time subscriptions');
+      supabase.removeChannel(itemsChannel);
+      supabase.removeChannel(listChannel);
     };
   }, [currentList?.id, onItemsUpdate, onListUpdate]);
 };

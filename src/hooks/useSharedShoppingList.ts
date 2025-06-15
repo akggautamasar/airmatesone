@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
-import { sharedShoppingListService, type SharedShoppingItem } from '@/services/sharedShoppingListService';
+import { sharedShoppingListService, SharedShoppingItem } from '@/services/sharedShoppingListService';
 
 export const useSharedShoppingList = () => {
   const [items, setItems] = useState<SharedShoppingItem[]>([]);
@@ -11,15 +11,16 @@ export const useSharedShoppingList = () => {
   const { toast } = useToast();
 
   const fetchItems = async () => {
+    if (!user) return;
+    
     try {
-      setLoading(true);
       const data = await sharedShoppingListService.fetchSharedItems();
       setItems(data);
     } catch (error: any) {
       console.error('Error fetching shared shopping items:', error);
       toast({
         title: "Error",
-        description: "Failed to load shared shopping list",
+        description: "Failed to load shared shopping items",
         variant: "destructive",
       });
     } finally {
@@ -28,14 +29,7 @@ export const useSharedShoppingList = () => {
   };
 
   const addItem = async (itemData: { name: string; quantity: string; category?: string }) => {
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to add items",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!user) return;
 
     try {
       const newItem = await sharedShoppingListService.addSharedItem(itemData, user.id);
@@ -45,7 +39,7 @@ export const useSharedShoppingList = () => {
         description: "Item added to shared shopping list",
       });
     } catch (error: any) {
-      console.error('Error adding shared item:', error);
+      console.error('Error adding shared shopping item:', error);
       toast({
         title: "Error",
         description: "Failed to add item",
@@ -55,14 +49,7 @@ export const useSharedShoppingList = () => {
   };
 
   const markAsPurchased = async (itemId: string) => {
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to mark items as purchased",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!user) return;
 
     try {
       const updatedItem = await sharedShoppingListService.markAsPurchased(itemId, user.id);
@@ -75,7 +62,7 @@ export const useSharedShoppingList = () => {
       console.error('Error marking item as purchased:', error);
       toast({
         title: "Error",
-        description: "Failed to mark item as purchased",
+        description: "Failed to mark as purchased",
         variant: "destructive",
       });
     }
@@ -90,7 +77,7 @@ export const useSharedShoppingList = () => {
         description: "Item deleted from shared shopping list",
       });
     } catch (error: any) {
-      console.error('Error deleting shared item:', error);
+      console.error('Error deleting shared shopping item:', error);
       toast({
         title: "Error",
         description: "Failed to delete item",

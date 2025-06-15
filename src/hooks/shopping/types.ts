@@ -1,12 +1,35 @@
 
-export interface UseShoppingListsReturn {
-  shoppingLists: any[];
-  currentList: any | null;
-  items: any[];
-  loading: boolean;
-  getOrCreateTodaysList: () => Promise<any>;
-  addItem: (itemData: any) => Promise<void>;
-  markAsPurchased: (itemId: string) => Promise<void>;
-  sendMarketNotification: () => Promise<void>;
-  refetch: () => Promise<void>;
+// This file defines shared types for shopping functionality
+export interface ShoppingListData {
+  id: string;
+  date: string;
+  created_by: string;
+  is_market_notification_sent: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ShoppingItemData {
+  id: string;
+  shopping_list_id: string;
+  product_id: string | null;
+  custom_product_name: string | null;
+  quantity: string;
+  added_by: string;
+  is_purchased: boolean;
+  purchased_by: string | null;
+  purchased_at: string | null;
+  created_at: string;
+  updated_at: string;
+  product?: {
+    name: string;
+    category: string | null;
+    unit: string | null;
+  } | null;
+  added_by_profile?: {
+    name: string | null;
+  } | null;
+  purchased_by_profile?: {
+    name: string | null;
+  } | null;
 }
