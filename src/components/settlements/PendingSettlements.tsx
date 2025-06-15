@@ -112,11 +112,14 @@ export const PendingSettlements = ({ settlements, expenseDetails, onUpdate }: Pe
     return roommate?.name || 'Unknown User';
   };
 
-  const getPayerUpiId = (creditorUserId: string) => {
+  const getCreditorUpiId = (creditorUserId: string) => {
+    console.log('Getting UPI ID for creditor:', creditorUserId);
     if (creditorUserId === user?.id) {
+      console.log('Creditor is current user, UPI ID:', profile?.upi_id);
       return profile?.upi_id || '';
     }
     const roommate = roommates.find(r => r.user_id === creditorUserId);
+    console.log('Found roommate for creditor:', roommate);
     return roommate?.upi_id || '';
   };
 
@@ -140,7 +143,9 @@ export const PendingSettlements = ({ settlements, expenseDetails, onUpdate }: Pe
         
         const creditorName = getUserDisplayName(settlement.creditor_user_id);
         const debtorName = getUserDisplayName(settlement.debtor_user_id);
-        const payerUpiId = getPayerUpiId(settlement.creditor_user_id);
+        const creditorUpiId = getCreditorUpiId(settlement.creditor_user_id);
+
+        console.log('Settlement:', settlement.id, 'Creditor UPI ID:', creditorUpiId);
 
         return (
           <Card key={settlement.id}>
@@ -195,14 +200,14 @@ export const PendingSettlements = ({ settlements, expenseDetails, onUpdate }: Pe
                   
                   {isDebtor && (
                     <div className="space-y-2">
-                      {payerUpiId && (
+                      {creditorUpiId && (
                         <Button
                           size="sm"
                           variant="outline"
                           asChild
                         >
                           <a
-                            href={`https://quantxpay.vercel.app/${payerUpiId}/${settlement.amount}`}
+                            href={`https://quantxpay.vercel.app/${creditorUpiId}/${settlement.amount}`}
                             target="_blank"
                             rel="noopener noreferrer"
                           >
