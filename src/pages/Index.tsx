@@ -18,7 +18,7 @@ import { getCurrentUserDisplayName } from "@/utils/userDisplay";
 const Index = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { expenses, loading: expensesLoading, refetch: refetchExpenses } = useExpenses();
+  const { refetch: refetchExpenses } = useExpenses();
   const { roommates } = useRoommates();
   const { profile } = useProfile();
 
@@ -30,9 +30,7 @@ const Index = () => {
     }
   }, [user, authLoading, navigate]);
 
-  const overallLoading = authLoading || expensesLoading;
-
-  if (overallLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -62,16 +60,6 @@ const Index = () => {
   }
 
   const currentUserDisplayName = getCurrentUserDisplayName(profile, user);
-
-  const formattedExpenses = expenses.map(expense => ({
-    id: expense.id,
-    description: expense.description,
-    amount: expense.amount,
-    paidBy: expense.paid_by,
-    date: new Date(expense.date).toISOString(),
-    category: expense.category,
-    sharers: expense.sharers || []
-  }));
   
   const handleExpenseUpdate = () => {
     refetchExpenses();
@@ -96,7 +84,6 @@ const Index = () => {
 
           <TabsContent value="overview" className="space-y-6">
             <ExpenseOverview 
-              expenses={formattedExpenses}
               onExpenseUpdate={handleExpenseUpdate}
               currentUserId={user.id}
             />
