@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, ShoppingCart, Check, Trash2, Users, Package } from "lucide-react";
 import { useSharedShoppingList } from '@/hooks/useSharedShoppingList';
 import { BulkProductSelector } from './BulkProductSelector';
+import { MarketStatus } from './MarketStatus';
 
 export const SharedShoppingList = () => {
   const { items, loading, addItem, markAsPurchased, deleteItem } = useSharedShoppingList();
@@ -59,6 +59,9 @@ export const SharedShoppingList = () => {
 
   return (
     <div className="space-y-6">
+      {/* Market Status Component */}
+      <MarketStatus />
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
