@@ -255,6 +255,45 @@ export type Database = {
         }
         Relationships: []
       }
+      note_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          note_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          note_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          note_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_reactions_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "shared_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_reminders: {
         Row: {
           created_at: string
@@ -529,6 +568,63 @@ export type Database = {
             columns: ["expense_id"]
             isOneToOne: false
             referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shared_notes: {
+        Row: {
+          color_hex: string | null
+          content: string
+          created_at: string
+          done_by_user_id: string | null
+          id: string
+          is_archived: boolean
+          is_done: boolean
+          is_pinned: boolean
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color_hex?: string | null
+          content: string
+          created_at?: string
+          done_by_user_id?: string | null
+          id?: string
+          is_archived?: boolean
+          is_done?: boolean
+          is_pinned?: boolean
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color_hex?: string | null
+          content?: string
+          created_at?: string
+          done_by_user_id?: string | null
+          id?: string
+          is_archived?: boolean
+          is_done?: boolean
+          is_pinned?: boolean
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_notes_done_by_user_id_fkey"
+            columns: ["done_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_notes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
