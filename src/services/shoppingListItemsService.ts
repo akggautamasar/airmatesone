@@ -16,23 +16,31 @@ const transformItemData = (item: any): ShoppingListItem => ({
 
 export const shoppingListItemsService = {
   async fetchListItems(listId: string): Promise<ShoppingListItem[]> {
+    console.log('Fetching items for list:', listId);
+    
     const { data, error } = await supabase
       .from('shopping_list_items')
       .select(`
         *,
         product:products(name, category, unit),
-        added_by_profile:profiles!inner(name),
-        purchased_by_profile:profiles(name)
+        added_by_profile:profiles!shopping_list_items_added_by_fkey(name),
+        purchased_by_profile:profiles!shopping_list_items_purchased_by_fkey(name)
       `)
       .eq('shopping_list_id', listId)
       .order('created_at');
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching shopping list items:', error);
+      throw error;
+    }
     
+    console.log('Fetched items:', data);
     return (data || []).map(transformItemData);
   },
 
   async addItem(listId: string, userId: string, itemData: AddItemData): Promise<ShoppingListItem> {
+    console.log('Adding item to list:', listId, 'by user:', userId, 'data:', itemData);
+    
     // If it's a custom product and user wants to save it
     let finalProductId = itemData.product_id;
     if (itemData.custom_product_name && itemData.save_to_products) {
@@ -45,7 +53,10 @@ export const shoppingListItemsService = {
         .select()
         .single();
 
-      if (productError) throw productError;
+      if (productError) {
+        console.error('Error creating product:', productError);
+        throw productError;
+      }
       finalProductId = newProduct.id;
     }
 
@@ -64,7 +75,10 @@ export const shoppingListItemsService = {
       `)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error adding item:', error);
+      throw error;
+    }
 
     // Fetch the user profile separately
     const { data: userProfile } = await supabase
@@ -73,6 +87,7 @@ export const shoppingListItemsService = {
       .eq('id', userId)
       .single();
 
+    console.log('Item added successfully:', data);
     return {
       ...data,
       product: data.product,
@@ -82,6 +97,8 @@ export const shoppingListItemsService = {
   },
 
   async markAsPurchased(itemId: string, userId: string): Promise<ShoppingListItem> {
+    console.log('Marking item as purchased:', itemId, 'by user:', userId);
+    
     const { data, error } = await supabase
       .from('shopping_list_items')
       .update({
@@ -96,7 +113,10 @@ export const shoppingListItemsService = {
       `)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error marking as purchased:', error);
+      throw error;
+    }
 
     // Fetch both user profiles separately
     const { data: addedByProfile } = await supabase
@@ -111,6 +131,7 @@ export const shoppingListItemsService = {
       .eq('id', userId)
       .single();
 
+    console.log('Item marked as purchased:', data);
     return {
       ...data,
       product: data.product,

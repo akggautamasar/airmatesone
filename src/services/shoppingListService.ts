@@ -4,20 +4,28 @@ import type { ShoppingList } from '@/types/shopping';
 
 export const shoppingListService = {
   async fetchShoppingLists(): Promise<ShoppingList[]> {
+    console.log('Fetching all shopping lists');
+    
     const { data, error } = await supabase
       .from('shopping_lists')
       .select('*')
       .order('date', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching shopping lists:', error);
+      throw error;
+    }
+    
+    console.log('Shopping lists fetched:', data);
     return data || [];
   },
 
   async getOrCreateTodaysList(userId: string): Promise<ShoppingList | null> {
     const today = new Date().toISOString().split('T')[0];
+    console.log('Getting or creating list for date:', today, 'user:', userId);
 
     try {
-      // Try to get today's list
+      // Try to get today's list (should be shared among all users)
       let { data: existingList, error } = await supabase
         .from('shopping_lists')
         .select('*')
@@ -25,11 +33,13 @@ export const shoppingListService = {
         .single();
 
       if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching existing list:', error);
         throw error;
       }
 
       // If no list exists, create one
       if (!existingList) {
+        console.log('No list exists for today, creating new one');
         const { data: newList, error: createError } = await supabase
           .from('shopping_lists')
           .insert({
@@ -39,8 +49,15 @@ export const shoppingListService = {
           .select()
           .single();
 
-        if (createError) throw createError;
+        if (createError) {
+          console.error('Error creating shopping list:', createError);
+          throw createError;
+        }
+        
+        console.log('New shopping list created:', newList);
         existingList = newList;
+      } else {
+        console.log('Existing list found:', existingList);
       }
 
       return existingList;
@@ -51,10 +68,17 @@ export const shoppingListService = {
   },
 
   async sendMarketNotification(listId: string): Promise<void> {
+    console.log('Sending market notification for list:', listId);
+    
     const { error } = await supabase.rpc('send_market_notification', {
       shopping_list_id_param: listId
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error sending market notification:', error);
+      throw error;
+    }
+    
+    console.log('Market notification sent successfully');
   }
 };

@@ -4,6 +4,7 @@ import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
 import { shoppingListService } from '@/services/shoppingListService';
 import { shoppingListItemsService } from '@/services/shoppingListItemsService';
+import { supabase } from '@/integrations/supabase/client';
 import type { ShoppingList, ShoppingListItem, AddItemData } from '@/types/shopping';
 
 export const useShoppingLists = () => {
@@ -18,7 +19,9 @@ export const useShoppingLists = () => {
     if (!user) return;
 
     try {
+      console.log('Fetching shopping lists for user:', user.id);
       const data = await shoppingListService.fetchShoppingLists();
+      console.log('Shopping lists fetched:', data);
       setShoppingLists(data);
     } catch (error: any) {
       console.error('Error fetching shopping lists:', error);
@@ -27,7 +30,9 @@ export const useShoppingLists = () => {
 
   const fetchListItems = async (listId: string) => {
     try {
+      console.log('Fetching items for list:', listId);
       const data = await shoppingListItemsService.fetchListItems(listId);
+      console.log('Items fetched:', data);
       setItems(data);
     } catch (error: any) {
       console.error('Error fetching list items:', error);
@@ -38,8 +43,10 @@ export const useShoppingLists = () => {
     if (!user) return null;
 
     try {
+      console.log('Getting or creating today\'s list for user:', user.id);
       const list = await shoppingListService.getOrCreateTodaysList(user.id);
       if (list) {
+        console.log('Current list set:', list);
         setCurrentList(list);
         await fetchListItems(list.id);
       }
@@ -59,6 +66,7 @@ export const useShoppingLists = () => {
     if (!user || !currentList) return;
 
     try {
+      console.log('Adding item:', itemData);
       const newItem = await shoppingListItemsService.addItem(currentList.id, user.id, itemData);
       setItems(prev => [...prev, newItem]);
       toast({
@@ -79,6 +87,7 @@ export const useShoppingLists = () => {
     if (!user) return;
 
     try {
+      console.log('Marking item as purchased:', itemId);
       const updatedItem = await shoppingListItemsService.markAsPurchased(itemId, user.id);
       setItems(prev => prev.map(item => item.id === itemId ? updatedItem : item));
       toast({
@@ -115,11 +124,51 @@ export const useShoppingLists = () => {
     }
   };
 
+  // Set up real-time subscription for shopping list items
+  useEffect(() => {
+    if (!currentList) return;
+
+    console.log('Setting up real-time subscription for list:', currentList.id);
+
+    const channel = supabase
+      .channel('shopping-list-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'shopping_list_items',
+          filter: `shopping_list_id=eq.${currentList.id}`
+        },
+        (payload) => {
+          console.log('Real-time update received:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            // Fetch the new item with its relations
+            fetchListItems(currentList.id);
+          } else if (payload.eventType === 'UPDATE') {
+            // Fetch updated items to get profile data
+            fetchListItems(currentList.id);
+          } else if (payload.eventType === 'DELETE') {
+            setItems(prev => prev.filter(item => item.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Cleaning up real-time subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [currentList?.id]);
+
   useEffect(() => {
     if (user) {
+      console.log('User authenticated, initializing shopping lists');
       fetchShoppingLists();
       getOrCreateTodaysList();
     }
+    setLoading(false);
   }, [user]);
 
   return {
