@@ -7,7 +7,11 @@ import { SettlementTabs } from './settlements/SettlementTabs';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useAuth } from '@/hooks/useAuth';
 
-export const ExpensesPage = () => {
+interface ExpensesPageProps {
+  onExpenseUpdate?: () => void;
+}
+
+export const ExpensesPage = ({ onExpenseUpdate }: ExpensesPageProps) => {
   const { expenses, loading, refetch } = useExpenses();
   const { user } = useAuth();
 
@@ -20,10 +24,16 @@ export const ExpensesPage = () => {
 
   const handleExpenseAdded = () => {
     refetch();
+    if (onExpenseUpdate) {
+      onExpenseUpdate();
+    }
   };
 
   const handleExpenseDeleted = () => {
     refetch();
+    if (onExpenseUpdate) {
+      onExpenseUpdate();
+    }
   };
 
   if (loading) {

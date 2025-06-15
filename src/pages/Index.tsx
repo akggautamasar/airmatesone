@@ -103,7 +103,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="expenses" className="space-y-6">
-            <ExpensesPage />
+            <ExpensesPage onExpenseUpdate={handleExpenseUpdate} />
           </TabsContent>
 
           <TabsContent value="roommates" className="space-y-6">
