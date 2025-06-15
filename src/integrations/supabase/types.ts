@@ -225,6 +225,36 @@ export type Database = {
           },
         ]
       }
+      products: {
+        Row: {
+          category: string | null
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -365,6 +395,90 @@ export type Database = {
           },
         ]
       }
+      shopping_list_items: {
+        Row: {
+          added_by: string
+          created_at: string
+          custom_product_name: string | null
+          id: string
+          is_purchased: boolean | null
+          product_id: string | null
+          purchased_at: string | null
+          purchased_by: string | null
+          quantity: string
+          shopping_list_id: string
+          updated_at: string
+        }
+        Insert: {
+          added_by: string
+          created_at?: string
+          custom_product_name?: string | null
+          id?: string
+          is_purchased?: boolean | null
+          product_id?: string | null
+          purchased_at?: string | null
+          purchased_by?: string | null
+          quantity: string
+          shopping_list_id: string
+          updated_at?: string
+        }
+        Update: {
+          added_by?: string
+          created_at?: string
+          custom_product_name?: string | null
+          id?: string
+          is_purchased?: boolean | null
+          product_id?: string | null
+          purchased_at?: string | null
+          purchased_by?: string | null
+          quantity?: string
+          shopping_list_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopping_list_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopping_list_items_shopping_list_id_fkey"
+            columns: ["shopping_list_id"]
+            isOneToOne: false
+            referencedRelation: "shopping_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shopping_lists: {
+        Row: {
+          created_at: string
+          created_by: string
+          date: string
+          id: string
+          is_market_notification_sent: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          date: string
+          id?: string
+          is_market_notification_sent?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          date?: string
+          id?: string
+          is_market_notification_sent?: boolean | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -377,6 +491,10 @@ export type Database = {
       get_user_email_by_id: {
         Args: { user_id_param: string }
         Returns: string
+      }
+      send_market_notification: {
+        Args: { shopping_list_id_param: string }
+        Returns: undefined
       }
     }
     Enums: {

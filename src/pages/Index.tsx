@@ -8,6 +8,7 @@ import { ExpenseOverview } from "@/components/ExpenseOverview";
 import { ExpensesPage } from "@/components/ExpensesPage";
 import { RoommateManagement } from "@/components/RoommateManagement";
 import { Profile } from "@/components/Profile";
+import { ShoppingPage } from "@/components/ShoppingPage";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useRoommates } from "@/hooks/useRoommates";
 import { useProfile } from "@/hooks/useProfile";
@@ -71,13 +72,14 @@ const Index = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user.email && user.email.split('@')[0]}!</h1>
-          <p className="text-gray-600">Manage your expenses and settlements.</p>
+          <p className="text-gray-600">Manage your expenses, settlements, and shopping lists.</p>
         </div>
         
         <Tabs defaultValue="overview" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-4 gap-2">
+          <TabsList className="grid w-full grid-cols-5 gap-2">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="expenses">Expenses</TabsTrigger>
+            <TabsTrigger value="shopping">Shopping</TabsTrigger>
             <TabsTrigger value="roommates">Roommates</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
@@ -91,6 +93,10 @@ const Index = () => {
 
           <TabsContent value="expenses" className="space-y-6">
             <ExpensesPage onExpenseUpdate={handleExpenseUpdate} />
+          </TabsContent>
+
+          <TabsContent value="shopping" className="space-y-6">
+            <ShoppingPage />
           </TabsContent>
 
           <TabsContent value="roommates" className="space-y-6">
