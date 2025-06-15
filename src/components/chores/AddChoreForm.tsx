@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,6 +30,7 @@ const formSchema = z.object({
   assignment_type: z.enum(['daily_rotation', 'weekly_rotation']).default('daily_rotation'),
   start_date: z.date().optional(),
   weekly_schedule: z.record(z.string().nullable()).optional(),
+  reminder_time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format (HH:mm)").default('08:00'),
 }).refine(data => {
   if (data.assignment_type === 'daily_rotation') {
     return !!data.start_date;
@@ -67,6 +67,7 @@ export const AddChoreForm = ({ onChoreAdded }: AddChoreFormProps) => {
       participants: [],
       assignment_type: 'daily_rotation',
       weekly_schedule: daysOfWeek.reduce((acc, day) => ({ ...acc, [day]: 'unassigned' }), {}),
+      reminder_time: '08:00',
     },
   });
 
@@ -80,6 +81,7 @@ export const AddChoreForm = ({ onChoreAdded }: AddChoreFormProps) => {
       created_by: user.id,
       assignment_type: values.assignment_type,
       start_date: format(new Date(), "yyyy-MM-dd"), // default for weekly, overwritten for daily
+      reminder_time: `${values.reminder_time}:00`,
     };
 
     if (values.assignment_type === 'daily_rotation' && values.start_date) {
@@ -265,6 +267,20 @@ export const AddChoreForm = ({ onChoreAdded }: AddChoreFormProps) => {
                       </TabsContent>
                     </Tabs>
                   </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="reminder_time"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Reminder Time</FormLabel>
+                  <FormControl>
+                    <Input type="time" {...field} className="w-full md:w-1/3" />
+                  </FormControl>
+                  <FormDescription>The time of day a reminder will be sent to the assigned person.</FormDescription>
+                  <FormMessage />
                 </FormItem>
               )}
             />

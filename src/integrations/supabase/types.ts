@@ -17,6 +17,7 @@ export type Database = {
           description: string | null
           frequency: string
           id: string
+          last_reminder_sent_date: string | null
           name: string
           participants: string[] | null
           reminder_time: string | null
@@ -31,6 +32,7 @@ export type Database = {
           description?: string | null
           frequency?: string
           id?: string
+          last_reminder_sent_date?: string | null
           name: string
           participants?: string[] | null
           reminder_time?: string | null
@@ -45,6 +47,7 @@ export type Database = {
           description?: string | null
           frequency?: string
           id?: string
+          last_reminder_sent_date?: string | null
           name?: string
           participants?: string[] | null
           reminder_time?: string | null
