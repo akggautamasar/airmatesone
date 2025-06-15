@@ -124,13 +124,13 @@ export const useShoppingLists = () => {
     }
   };
 
-  // Set up real-time subscription for shopping list items with better error handling
+  // Set up real-time subscription for shopping list items
   useEffect(() => {
     if (!currentList?.id) return;
 
     console.log('Setting up real-time subscription for list:', currentList.id);
 
-    // Set up real-time subscription for all shopping list changes
+    // Set up real-time subscription for shopping list items changes
     const channel = supabase
       .channel('shopping-list-realtime')
       .on(
@@ -138,17 +138,22 @@ export const useShoppingLists = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'shopping_list_items',
-          filter: `shopping_list_id=eq.${currentList.id}`
+          table: 'shopping_list_items'
         },
         async (payload) => {
-          console.log('Real-time update received:', payload);
+          console.log('Real-time shopping list items update received:', payload);
           
-          // Always refetch all items to ensure we have the latest data with profiles
-          try {
-            await fetchListItems(currentList.id);
-          } catch (error) {
-            console.error('Error refreshing items after real-time update:', error);
+          // Check if this update is for our current list
+          const payloadData = payload.new || payload.old;
+          if (payloadData && typeof payloadData === 'object' && 'shopping_list_id' in payloadData) {
+            if (payloadData.shopping_list_id === currentList.id) {
+              console.log('Update is for our current list, refreshing items');
+              try {
+                await fetchListItems(currentList.id);
+              } catch (error) {
+                console.error('Error refreshing items after real-time update:', error);
+              }
+            }
           }
         }
       )
@@ -162,9 +167,15 @@ export const useShoppingLists = () => {
         async (payload) => {
           console.log('Shopping list update received:', payload);
           
-          // Refresh the current list data
-          if (payload.new && payload.new.id === currentList.id) {
-            setCurrentList(payload.new as ShoppingList);
+          // Refresh the current list data if it's our list
+          const payloadData = payload.new || payload.old;
+          if (payloadData && typeof payloadData === 'object' && 'id' in payloadData) {
+            if (payloadData.id === currentList.id) {
+              console.log('Update is for our current list, refreshing list data');
+              if (payload.new) {
+                setCurrentList(payload.new as ShoppingList);
+              }
+            }
           }
         }
       )
