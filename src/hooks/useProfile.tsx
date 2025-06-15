@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -74,7 +75,7 @@ export const useProfile = () => {
 
   useEffect(() => {
     fetchProfile();
-  }, [user]);
+  }, [user?.id]); // Only re-run if user ID changes.
 
   return {
     profile,

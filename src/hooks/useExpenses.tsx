@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -70,7 +69,7 @@ export const useExpenses = () => {
       setExpenses([]);
       setLoading(false);
     }
-  }, [user]); // Only re-run if user object itself changes. fetchExpenses is stable.
+  }, [user?.id]); // Only re-run if user ID changes.
 
   return {
     expenses,
