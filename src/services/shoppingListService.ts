@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { ShoppingListItem, ShoppingList } from '@/types/shopping';
 
@@ -59,8 +60,8 @@ export const shoppingListService = {
 
     const itemsWithProfiles: ShoppingListItem[] = items.map(item => ({
       ...item,
-      added_by_profile: item.added_by ? profilesById.get(item.added_by) : null,
-      purchased_by_profile: item.purchased_by ? profilesById.get(item.purchased_by) : null,
+      added_by_profile: (item.added_by ? profilesById.get(item.added_by) : null) || null,
+      purchased_by_profile: (item.purchased_by ? profilesById.get(item.purchased_by) : null) || null,
     }));
 
     return itemsWithProfiles;
@@ -135,8 +136,8 @@ export const shoppingListService = {
 
     const result: ShoppingListItem = {
         ...updatedItem,
-        added_by_profile: updatedItem.added_by ? profilesById.get(updatedItem.added_by) : null,
-        purchased_by_profile: updatedItem.purchased_by ? profilesById.get(updatedItem.purchased_by) : null,
+        added_by_profile: (updatedItem.added_by ? profilesById.get(updatedItem.added_by) : null) || null,
+        purchased_by_profile: (updatedItem.purchased_by ? profilesById.get(updatedItem.purchased_by) : null) || null,
     };
     return result;
   },
