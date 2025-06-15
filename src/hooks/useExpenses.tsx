@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -59,88 +60,6 @@ export const useExpenses = () => {
     }
   };
 
-  const addExpense = async (expense: Omit<Expense, 'id' | 'user_id' | 'date'> & { date?: string, sharers?: string[] }) => {
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to add expenses.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const expensePayload = {
-        ...expense,
-        user_id: user.id,
-        date: expense.date || new Date().toISOString(), // Ensure date is ISO if not provided
-        sharers: expense.sharers || null // Ensure sharers is passed or null
-      };
-      console.log('addExpense: Attempting to add expense for user ID:', user.id, 'Data:', expensePayload);
-      const { data, error } = await supabase
-        .from('expenses')
-        .insert([expensePayload])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('addExpense: Supabase error adding expense. Message:', error.message, 'Details:', error.details, 'Hint:', error.hint, 'Code:', error.code);
-        throw error;
-      }
-      console.log('addExpense: Successfully added expense. Response data:', data);
-      await fetchExpenses(); 
-      
-      toast({
-        title: "Expense Added",
-        description: "Your expense has been added successfully.",
-      });
-    } catch (error: any) {
-      console.error('addExpense: Catch block error adding expense:', error);
-      toast({
-        title: "Error",
-        description: `Failed to add expense: ${error.message || 'Unknown error'}`,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const deleteExpense = async (expenseId: string) => {
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to delete expenses.",
-        variant: "destructive",
-      });
-      return;
-    }
-    console.log('deleteExpense: Attempting to delete expense ID:', expenseId, 'for user ID:', user.id);
-    try {
-      const { error, status } = await supabase // Capture status for delete
-        .from('expenses')
-        .delete()
-        .eq('id', expenseId);
-
-      if (error) {
-        console.error('deleteExpense: Supabase error deleting expense. Message:', error.message, 'Details:', error.details, 'Hint:', error.hint, 'Code:', error.code, 'Status:', status);
-        throw error;
-      }
-      console.log('deleteExpense: Successfully deleted expense ID:', expenseId, 'Status:', status);
-      await fetchExpenses(); 
-      
-      toast({
-        title: "Expense Deleted",
-        description: "The expense has been removed successfully.",
-      });
-    } catch (error: any) {
-      console.error('deleteExpense: Catch block error deleting expense:', error);
-      toast({
-        title: "Error",
-        description: `Failed to delete expense: ${error.message || 'Unknown error'}`,
-        variant: "destructive",
-      });
-    }
-  };
-
   useEffect(() => {
     console.log('useExpenses useEffect: User object changed or component mounted. User:', user?.email, 'User ID:', user?.id);
     if (user) {
@@ -155,8 +74,6 @@ export const useExpenses = () => {
   return {
     expenses,
     loading,
-    addExpense,
-    deleteExpense,
     refetch: fetchExpenses
   };
 };

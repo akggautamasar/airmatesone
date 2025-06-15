@@ -1,44 +1,24 @@
-
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { NavBar } from "@/components/NavBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExpenseOverview } from "@/components/ExpenseOverview";
-import { AddExpense } from "@/components/AddExpense";
 import { RoommateManagement } from "@/components/RoommateManagement";
-import { SettlementHistory } from "@/components/SettlementHistory";
-import { Settlement } from "@/types";
 import { Profile } from "@/components/Profile";
 import { useExpenses } from "@/hooks/useExpenses";
-import { useSettlements } from "@/hooks/useSettlements";
 import { useRoommates } from "@/hooks/useRoommates";
 import { useProfile } from "@/hooks/useProfile";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Plus } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
-import { useExpenseSettlements } from "@/hooks/useExpenseSettlements";
 import { getCurrentUserDisplayName } from "@/utils/userDisplay";
 
 const Index = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { expenses, addExpense, deleteExpense, loading: expensesLoading, refetch: refetchExpenses } = useExpenses();
+  const { expenses, loading: expensesLoading, refetch: refetchExpenses } = useExpenses();
   const { roommates } = useRoommates();
   const { profile } = useProfile();
-  const { 
-    settlements, 
-    loading: settlementsLoading, 
-    addSettlementPair, 
-    addUniversalSettlementPair,
-    updateSettlementStatusByGroupId,
-    deleteSettlementGroup,
-    refetchSettlements 
-  } = useSettlements();
-  const { createSettlementsForExpense } = useExpenseSettlements();
-  const [showAddExpense, setShowAddExpense] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     console.log('Index page - user:', user?.email, 'authLoading:', authLoading);
@@ -48,7 +28,7 @@ const Index = () => {
     }
   }, [user, authLoading, navigate]);
 
-  const overallLoading = authLoading || expensesLoading || settlementsLoading;
+  const overallLoading = authLoading || expensesLoading;
 
   if (overallLoading) {
     return (
@@ -91,56 +71,7 @@ const Index = () => {
     sharers: expense.sharers || []
   }));
   
-  const hasActiveExpenses = formattedExpenses.length > 0;
-
-  const handleAddExpenseSubmit = async (expense: any) => {
-    try {
-      await addExpense({
-        description: expense.description,
-        amount: expense.amount,
-        paid_by: expense.paid_by,
-        category: expense.category,
-        date: new Date().toISOString(),
-        sharers: expense.sharers
-      });
-
-      // Refactored settlement creation into custom hook
-      await createSettlementsForExpense({
-        expense,
-        user,
-        profile,
-        roommates,
-        addSettlementPair: addUniversalSettlementPair,
-      });
-
-      setShowAddExpense(false);
-      handleExpenseUpdate();
-
-      toast({ 
-        title: "Expense Added", 
-        description: "Expense added and settlements created automatically."
-      });
-    } catch (error) {
-      console.error('Error adding expense:', error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to add expense.", 
-        variant: "destructive" 
-      });
-    }
-  };
-
   const handleExpenseUpdate = () => {
-    refetchExpenses();
-    refetchSettlements();
-  };
-
-  const handleSettlementStatusUpdate = async (
-    transaction_group_id: string,
-    newStatus: "pending" | "debtor_paid" | "settled"
-  ) => {
-    await updateSettlementStatusByGroupId(transaction_group_id, newStatus);
-    refetchSettlements();
     refetchExpenses();
   };
 
@@ -154,11 +85,9 @@ const Index = () => {
         </div>
         
         <Tabs defaultValue="overview" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-3 gap-2 sm:grid-cols-5">
+          <TabsList className="grid w-full grid-cols-3 gap-2">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="expenses">Add Expense</TabsTrigger>
             <TabsTrigger value="roommates">Roommates</TabsTrigger>
-            <TabsTrigger value="settlements">Settlements</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
 
@@ -166,42 +95,12 @@ const Index = () => {
             <ExpenseOverview 
               expenses={formattedExpenses}
               onExpenseUpdate={handleExpenseUpdate}
-              settlements={settlements}
               currentUserId={user.id}
-              onUpdateStatus={handleSettlementStatusUpdate}
-              onDeleteSettlementGroup={deleteSettlementGroup}
-            />
-          </TabsContent>
-
-          <TabsContent value="expenses" className="space-y-6">
-            <div className="flex justify-center">
-              <Button 
-                onClick={() => setShowAddExpense(true)}
-                className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
-                size="lg"
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                Add New Expense
-              </Button>
-            </div>
-            
-            <AddExpense 
-              open={showAddExpense}
-              onClose={() => setShowAddExpense(false)}
-              onAddExpense={handleAddExpenseSubmit}
             />
           </TabsContent>
 
           <TabsContent value="roommates" className="space-y-6">
             <RoommateManagement />
-          </TabsContent>
-
-          <TabsContent value="settlements" className="space-y-6">
-            <SettlementHistory 
-              settlements={settlements} 
-              onUpdateStatus={handleSettlementStatusUpdate}
-              onDeleteSettlementGroup={deleteSettlementGroup}
-            />
           </TabsContent>
 
           <TabsContent value="profile" className="space-y-6">
