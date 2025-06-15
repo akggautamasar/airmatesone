@@ -136,19 +136,26 @@ export const createUniversalSettlementPairInSupabase = async (
   creditor: { name: string; email: string; upi_id: string; },
   amount: number
 ): Promise<void> => {
+  console.log(`[settlementService] createUniversalSettlementPair. Debtor: ${debtor.name} (${debtor.email}), Creditor: ${creditor.name} (${creditor.email}), Amount: ${amount}`);
   const transactionGroupId = uuidv4();
 
   const { data: debtorProfile, error: debtorError } = await supabase.from('profiles').select('id').eq('email', debtor.email).maybeSingle();
   if (debtorError) { console.error('Error fetching debtor profile:', debtorError); throw debtorError; }
+  console.log(`[settlementService] Debtor profile lookup for email ${debtor.email}:`, debtorProfile);
 
   const { data: creditorProfile, error: creditorError } = await supabase.from('profiles').select('id').eq('email', creditor.email).maybeSingle();
   if (creditorError) { console.error('Error fetching creditor profile:', creditorError); throw creditorError; }
+  console.log(`[settlementService] Creditor profile lookup for email ${creditor.email}:`, creditorProfile);
+
 
   const debtorUserId = debtorProfile?.id;
   const creditorUserId = creditorProfile?.id;
+  console.log(`[settlementService] Found UserIDs. Debtor: ${debtorUserId}, Creditor: ${creditorUserId}`);
+
 
   // Create settlement for the debtor if they are a registered user
   if (debtorUserId) {
+    console.log(`[settlementService] Attempting to create 'owes' settlement for debtor user ${debtorUserId}`);
     const { error } = await supabase.from('settlements').insert({
       user_id: debtorUserId,
       name: creditor.name,
@@ -159,11 +166,18 @@ export const createUniversalSettlementPairInSupabase = async (
       status: 'pending',
       transaction_group_id: transactionGroupId,
     });
-    if (error) { console.error("[settlementService] Error inserting debtor settlement:", error); throw error; }
+    if (error) { 
+        console.error("[settlementService] Error inserting debtor settlement:", error); 
+        throw error; 
+    }
+    console.log(`[settlementService] Successfully created 'owes' settlement for debtor user ${debtorUserId}`);
+  } else {
+    console.warn(`[settlementService] SKIPPED: Could not create 'owes' settlement for debtor ${debtor.name} (${debtor.email}) because they do not appear to be a registered user (profile not found).`);
   }
 
   // Create settlement for the creditor if they are a registered user
   if (creditorUserId) {
+    console.log(`[settlementService] Attempting to create 'owed' settlement for creditor user ${creditorUserId}`);
     const { error } = await supabase.from('settlements').insert({
       user_id: creditorUserId,
       name: debtor.name,
@@ -174,7 +188,13 @@ export const createUniversalSettlementPairInSupabase = async (
       status: 'pending',
       transaction_group_id: transactionGroupId,
     });
-    if (error) { console.error("[settlementService] Error inserting creditor settlement:", error); throw error; }
+    if (error) { 
+        console.error("[settlementService] Error inserting creditor settlement:", error); 
+        throw error; 
+    }
+    console.log(`[settlementService] Successfully created 'owed' settlement for creditor user ${creditorUserId}`);
+  } else {
+    console.warn(`[settlementService] SKIPPED: Could not create 'owed' settlement for creditor ${creditor.name} (${creditor.email}) because they do not appear to be a registered user (profile not found).`);
   }
 };
 
