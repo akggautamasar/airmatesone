@@ -20,6 +20,8 @@ export type SharedNoteWithDetails = SharedNote & {
   reactions: (NoteReaction & { user: UserDetails | undefined })[];
 };
 
+type NewNotePayload = Pick<Database['public']['Tables']['shared_notes']['Insert'], 'title' | 'content' | 'is_pinned' | 'color_hex'>;
+
 export const useSharedNotes = () => {
     const { user } = useAuth();
     const { toast } = useToast();
@@ -82,7 +84,7 @@ export const useSharedNotes = () => {
     });
 
     const addNoteMutation = useMutation({
-        mutationFn: async (newNote: Omit<SharedNote, 'id' | 'created_at' | 'updated_at' | 'user_id' | 'is_archived' | 'is_done' | 'done_by_user_id'>) => {
+        mutationFn: async (newNote: NewNotePayload) => {
             if (!user) throw new Error("User not authenticated");
             const { data, error } = await supabase
                 .from('shared_notes')
