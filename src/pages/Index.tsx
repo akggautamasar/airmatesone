@@ -19,7 +19,8 @@ import { ChoresPage } from "@/components/ChoresPage";
 import { ReportsPage } from "@/components/ReportsPage";
 import { EventsPage } from "@/components/EventsPage";
 import { UpcomingEvents } from "@/components/overview/UpcomingEvents";
-import { LayoutGrid, FileText, ShoppingCart, Users, User, ClipboardList, FilePieChart, CalendarDays } from "lucide-react";
+import { LayoutGrid, FileText, ShoppingCart, Users, User, ClipboardList, FilePieChart, CalendarDays, Pin } from "lucide-react";
+import { NoteList } from "@/components/pinboard/NoteList";
 
 const Index = () => {
   const { user, loading: authLoading } = useAuth();
@@ -81,7 +82,7 @@ const Index = () => {
         </div>
         
         <Tabs defaultValue="overview" className="space-y-8">
-          <TabsList className="grid w-full h-auto grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+          <TabsList className="grid w-full h-auto grid-cols-2 sm:grid-cols-5 lg:grid-cols-9 gap-2">
             <TabsTrigger value="overview" className="flex items-center space-x-2"><LayoutGrid className="h-4 w-4" /><span>Overview</span></TabsTrigger>
             <TabsTrigger value="expenses" className="flex items-center space-x-2"><FileText className="h-4 w-4" /><span>Expenses</span></TabsTrigger>
             <TabsTrigger value="reports" className="flex items-center space-x-2"><FilePieChart className="h-4 w-4" /><span>Reports</span></TabsTrigger>
@@ -90,6 +91,7 @@ const Index = () => {
             <TabsTrigger value="chores" className="flex items-center space-x-2"><ClipboardList className="h-4 w-4" /><span>Chores</span></TabsTrigger>
             <TabsTrigger value="roommates" className="flex items-center space-x-2"><Users className="h-4 w-4" /><span>Roommates</span></TabsTrigger>
             <TabsTrigger value="profile" className="flex items-center space-x-2"><User className="h-4 w-4" /><span>Profile</span></TabsTrigger>
+            <TabsTrigger value="pinboard" className="flex items-center space-x-2"><Pin className="h-4 w-4" /><span>Pinboard</span></TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -126,6 +128,10 @@ const Index = () => {
 
           <TabsContent value="profile" className="space-y-6">
             <Profile />
+          </TabsContent>
+
+          <TabsContent value="pinboard" className="space-y-6">
+            <NoteList />
           </TabsContent>
         </Tabs>
       </div>
