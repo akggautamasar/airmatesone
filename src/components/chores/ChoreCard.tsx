@@ -4,7 +4,7 @@ import { Chore } from '@/types/chores';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Trash2, User, CalendarDays, Users } from 'lucide-react';
-import { differenceInDays, parseISO } from 'date-fns';
+import { format, differenceInDays, parseISO } from 'date-fns';
 import { useChores } from '@/hooks/useChores';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/hooks/useAuth';
@@ -24,6 +24,25 @@ export const ChoreCard = ({ chore, onChoreDeleted }: ChoreCardProps) => {
       return 'No one assigned';
     }
 
+    if (chore.assignment_type === 'weekly_rotation') {
+      if (!chore.weekly_schedule) {
+        return 'Not configured';
+      }
+      const today = new Date();
+      const dayOfWeek = format(today, 'eeee').toLowerCase();
+      const schedule = chore.weekly_schedule as { [key: string]: string };
+
+      const assignedEmail = schedule[dayOfWeek];
+
+      if (!assignedEmail || assignedEmail === 'unassigned') {
+        return 'No one for today';
+      }
+      
+      // The chore only stores the email, so we display the user part of it.
+      return assignedEmail.split('@')[0];
+    }
+    
+    // Default to daily rotation
     const startDate = parseISO(chore.start_date);
     const today = new Date();
     today.setHours(0,0,0,0);
@@ -34,7 +53,8 @@ export const ChoreCard = ({ chore, onChoreDeleted }: ChoreCardProps) => {
     }
 
     const assignedIndex = daysSinceStart % chore.participants.length;
-    return chore.participants[assignedIndex];
+    const assignedEmail = chore.participants[assignedIndex];
+    return assignedEmail.split('@')[0];
   };
   
   const handleDelete = async () => {
@@ -61,10 +81,12 @@ export const ChoreCard = ({ chore, onChoreDeleted }: ChoreCardProps) => {
             <User className="mr-2 h-4 w-4" />
             <span>Today's turn: <strong>{assignedRoommate}</strong></span>
         </div>
-        <div className="flex items-center text-sm text-muted-foreground">
-            <CalendarDays className="mr-2 h-4 w-4" />
-            <span>Starts on: {chore.start_date}</span>
-        </div>
+        {chore.assignment_type === 'daily_rotation' && (
+          <div className="flex items-center text-sm text-muted-foreground">
+              <CalendarDays className="mr-2 h-4 w-4" />
+              <span>Starts on: {chore.start_date}</span>
+          </div>
+        )}
         <div className="flex items-start text-sm text-muted-foreground">
             <Users className="mr-2 h-4 w-4 mt-1" />
             <div>

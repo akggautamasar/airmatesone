@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -17,14 +17,33 @@ import { useChores } from '@/hooks/useChores';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { WeeklyDayAssigner } from "./WeeklyDayAssigner";
+import { ChoreInsert } from '@/types/chores';
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters long."),
   description: z.string().optional(),
-  start_date: z.date({
-    required_error: "A start date is required.",
-  }),
   participants: z.array(z.string()).min(1, "You must select at least one roommate."),
+  assignment_type: z.enum(['daily_rotation', 'weekly_rotation']).default('daily_rotation'),
+  start_date: z.date().optional(),
+  weekly_schedule: z.record(z.string().nullable()).optional(),
+}).refine(data => {
+  if (data.assignment_type === 'daily_rotation') {
+    return !!data.start_date;
+  }
+  return true;
+}, {
+  message: "A start date is required for daily rotation.",
+  path: ["start_date"],
+}).refine(data => {
+  if (data.assignment_type === 'weekly_rotation') {
+    return data.weekly_schedule && Object.values(data.weekly_schedule).some(v => v && v !== 'unassigned');
+  }
+  return true;
+}, {
+  message: "You must assign at least one day in the weekly schedule.",
+  path: ["weekly_schedule"],
 });
 
 interface AddChoreFormProps {
@@ -43,28 +62,49 @@ export const AddChoreForm = ({ onChoreAdded }: AddChoreFormProps) => {
       name: "",
       description: "",
       participants: [],
+      assignment_type: 'daily_rotation',
+      weekly_schedule: daysOfWeek.reduce((acc, day) => ({ ...acc, [day]: 'unassigned' }), {}),
     },
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!user) return;
 
+    const payload: ChoreInsert = {
+      name: values.name,
+      description: values.description,
+      participants: values.participants,
+      created_by: user.id,
+      assignment_type: values.assignment_type,
+      start_date: format(new Date(), "yyyy-MM-dd"), // default for weekly, overwritten for daily
+    };
+
+    if (values.assignment_type === 'daily_rotation' && values.start_date) {
+      payload.start_date = format(values.start_date, "yyyy-MM-dd");
+      payload.frequency = 'daily';
+    } else if (values.assignment_type === 'weekly_rotation') {
+      const schedule = values.weekly_schedule;
+      const finalSchedule = schedule ? Object.entries(schedule).reduce((acc, [day, email]) => {
+        if (email && email !== 'unassigned') {
+          acc[day] = email;
+        }
+        return acc;
+      }, {} as Record<string, string>) : {};
+      payload.weekly_schedule = finalSchedule;
+      payload.frequency = 'weekly';
+    }
+
     try {
-      await addChore({
-        name: values.name,
-        description: values.description,
-        participants: values.participants,
-        created_by: user.id,
-        start_date: format(values.start_date, "yyyy-MM-dd"),
-        frequency: 'daily',
-      });
-      toast({ title: "Success!", description: "New daily rotating chore has been added." });
+      await addChore(payload);
+      toast({ title: "Success!", description: "New chore has been added." });
       form.reset();
       onChoreAdded();
     } catch (error: any) {
       toast({ title: "Error adding chore", description: error.message, variant: "destructive" });
     }
   };
+  
+  const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
   return (
     <Card>
@@ -100,106 +140,133 @@ export const AddChoreForm = ({ onChoreAdded }: AddChoreFormProps) => {
                 </FormItem>
               )}
             />
-            <div className="grid md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="start_date"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Rotation Start Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() -1))}
-                          initialFocus
+            <FormField
+              control={form.control}
+              name="participants"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Participants</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className={cn(
+                            "w-full justify-between",
+                            !field.value.length && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value.length > 0 ? `${field.value.length} selected` : "Select roommates"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                      <Command>
+                        <CommandInput placeholder="Search roommates..." />
+                        <CommandList>
+                          <CommandEmpty>No results found.</CommandEmpty>
+                          <CommandGroup>
+                            {roommates.map((roommate) => (
+                              <CommandItem
+                                key={roommate.email}
+                                onSelect={() => {
+                                  const newSelection = field.value.includes(roommate.email)
+                                    ? field.value.filter(email => email !== roommate.email)
+                                    : [...field.value, roommate.email];
+                                  field.onChange(newSelection);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    field.value.includes(roommate.email)
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                {roommate.name} ({roommate.email.split('@')[0]})
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <FormDescription>These roommates will be in the daily rotation.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="assignment_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Assignment Method</FormLabel>
+                  <FormControl>
+                    <Tabs
+                      value={field.value}
+                      onValueChange={(value) => {
+                        field.onChange(value as 'daily_rotation' | 'weekly_rotation');
+                      }}
+                      className="w-full"
+                    >
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="daily_rotation">Daily Rotation</TabsTrigger>
+                        <TabsTrigger value="weekly_rotation">Weekly Rotation</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="daily_rotation" className="pt-4">
+                        <FormField
+                          control={form.control}
+                          name="start_date"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                              <FormLabel>Rotation Start Date</FormLabel>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant={"outline"}
+                                      className={cn(
+                                        "w-full pl-3 text-left font-normal",
+                                        !field.value && "text-muted-foreground"
+                                      )}
+                                    >
+                                      {field.value ? (
+                                        format(field.value, "PPP")
+                                      ) : (
+                                        <span>Pick a date</span>
+                                      )}
+                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar
+                                    mode="single"
+                                    selected={field.value}
+                                    onSelect={field.onChange}
+                                    disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))}
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              <FormDescription>The first day of the automated daily rotation.</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
                         />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="participants"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Participants</FormLabel>
-                     <Popover>
-                        <PopoverTrigger asChild>
-                            <FormControl>
-                            <Button
-                                variant="outline"
-                                role="combobox"
-                                className={cn(
-                                "w-full justify-between",
-                                !field.value.length && "text-muted-foreground"
-                                )}
-                            >
-                                {field.value.length > 0 ? `${field.value.length} selected` : "Select roommates"}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                            </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                                <CommandInput placeholder="Search roommates..." />
-                                <CommandList>
-                                    <CommandEmpty>No results found.</CommandEmpty>
-                                    <CommandGroup>
-                                    {roommates.map((roommate) => (
-                                        <CommandItem
-                                        key={roommate.email}
-                                        onSelect={() => {
-                                            const newSelection = field.value.includes(roommate.email)
-                                            ? field.value.filter(email => email !== roommate.email)
-                                            : [...field.value, roommate.email];
-                                            field.onChange(newSelection);
-                                        }}
-                                        >
-                                        <Check
-                                            className={cn(
-                                            "mr-2 h-4 w-4",
-                                            field.value.includes(roommate.email)
-                                                ? "opacity-100"
-                                                : "opacity-0"
-                                            )}
-                                        />
-                                        {roommate.name} ({roommate.email.split('@')[0]})
-                                        </CommandItem>
-                                    ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
-                    <FormDescription>These roommates will be in the daily rotation.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                      </TabsContent>
+                      <TabsContent value="weekly_rotation" className="pt-4">
+                        <WeeklyDayAssigner roommates={roommates} />
+                      </TabsContent>
+                    </Tabs>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
             <Button type="submit" disabled={isAdding}>{isAdding ? "Adding..." : "Add Chore"}</Button>
           </form>
         </Form>

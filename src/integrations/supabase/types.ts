@@ -11,6 +11,7 @@ export type Database = {
     Tables: {
       chores: {
         Row: {
+          assignment_type: string
           created_at: string
           created_by: string
           description: string | null
@@ -18,10 +19,13 @@ export type Database = {
           id: string
           name: string
           participants: string[] | null
+          reminder_time: string | null
           start_date: string
           updated_at: string
+          weekly_schedule: Json | null
         }
         Insert: {
+          assignment_type?: string
           created_at?: string
           created_by: string
           description?: string | null
@@ -29,10 +33,13 @@ export type Database = {
           id?: string
           name: string
           participants?: string[] | null
+          reminder_time?: string | null
           start_date: string
           updated_at?: string
+          weekly_schedule?: Json | null
         }
         Update: {
+          assignment_type?: string
           created_at?: string
           created_by?: string
           description?: string | null
@@ -40,8 +47,10 @@ export type Database = {
           id?: string
           name?: string
           participants?: string[] | null
+          reminder_time?: string | null
           start_date?: string
           updated_at?: string
+          weekly_schedule?: Json | null
         }
         Relationships: []
       }
