@@ -12,7 +12,7 @@ import { useExpenseCalculations } from "./overview/hooks/useExpenseCalculations"
 import { SummaryCards } from "./overview/SummaryCards";
 import { ChartsSection } from "./overview/ChartsSection";
 import { RecentExpensesList } from "./overview/RecentExpensesList";
-import { BalanceList } from './overview/BalanceList';
+import { NetExpensesOverview } from './overview/NetExpensesOverview';
 
 interface Expense {
   id: string;
@@ -28,24 +28,14 @@ interface ExpenseOverviewProps {
   expenses: Expense[];
   onExpenseUpdate: () => void;
   settlements: DetailedSettlement[]; 
-  onAddSettlementPair: (
-    currentUserInvolves: { name: string; email: string; upi_id: string; type: 'owes' | 'owed' },
-    otherPartyInvolves: { name: string; email: string; upi_id: string; type: 'owes' | 'owed' },
-    amount: number,
-    initialStatus?: 'pending' | 'debtor_paid' | 'settled'
-  ) => Promise<DetailedSettlement | null>;
   currentUserId: string | undefined;
-  onUpdateStatus: (transactionGroupId: string, newStatus: "pending" | "debtor_paid" | "settled") => Promise<void>;
-  onDeleteSettlementGroup?: (transactionGroupId: string) => Promise<void>;
 }
 
 export const ExpenseOverview = ({
   expenses: propsExpenses,
   onExpenseUpdate,
   settlements,
-  onAddSettlementPair,
   currentUserId,
-  onUpdateStatus,
 }: ExpenseOverviewProps) => {
   const { deleteExpense } = useExpenses();
   const { roommates } = useRoommates();
@@ -86,57 +76,6 @@ export const ExpenseOverview = ({
     }
   };
 
-  const handlePayViaUpi = (upiId: string, amount: number) => {
-    const memo = `Payment for shared expenses`;
-    const upiUrl = `upi://pay?pa=${upiId}&am=${amount.toFixed(2)}&tn=${encodeURIComponent(memo)}`;
-    window.open(upiUrl, '_blank');
-    toast({
-      title: "Opening UPI App",
-      description: "If it doesn't open, please check if you have a UPI app installed."
-    });
-  };
-
-  const handleDebtorMarksAsPaid = async (debtorName: string, creditorName: string, amountToSettle: number, initialStatus: 'pending' | 'debtor_paid' | 'settled' = 'debtor_paid') => {
-    const currentUserIsDebtor = debtorName === currentUserDisplayName;
-    const isPartOfTransaction = currentUserIsDebtor || creditorName === currentUserDisplayName;
-
-    if (!isPartOfTransaction) {
-        toast({ title: "Error", description: "You are not part of this transaction.", variant: "destructive" });
-        return;
-    }
-
-    const currentUserInfo = {
-      name: currentUserDisplayName,
-      email: user?.email || '',
-      upi_id: profile?.upi_id || ''
-    };
-    
-    const otherPartyName = currentUserIsDebtor ? creditorName : debtorName;
-    const otherPartyRoommateInfo = roommates.find(r => r.name === otherPartyName);
-    
-    if (!otherPartyRoommateInfo) {
-      toast({ title: "Error", description: `Could not find details for ${otherPartyName}`, variant: "destructive" });
-      return;
-    }
-    const otherPartyDetails = {
-      name: otherPartyRoommateInfo.name,
-      email: otherPartyRoommateInfo.email,
-      upi_id: otherPartyRoommateInfo.upi_id || ''
-    };
-
-    await onAddSettlementPair(
-      { ...currentUserInfo, type: currentUserIsDebtor ? 'owes' : 'owed' },
-      { ...otherPartyDetails, type: currentUserIsDebtor ? 'owed' : 'owes' },
-      amountToSettle,
-      initialStatus
-    );
-    onExpenseUpdate();
-  };
-
-  const handleCreditorConfirmsReceipt = async (transactionGroupId: string) => {
-    await onUpdateStatus(transactionGroupId, 'settled');
-  };
-
   const lastExpenseDate = propsExpenses.length > 0 ? propsExpenses.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date : null;
 
   if (propsExpenses.length === 0 && settlements.filter(s => s.status !== 'settled').length === 0) {
@@ -157,19 +96,9 @@ export const ExpenseOverview = ({
         lastExpenseDate={lastExpenseDate}
       />
 
-      <BalanceList
+      <NetExpensesOverview 
         finalBalances={finalBalances}
         currentUserDisplayName={currentUserDisplayName}
-        roommates={roommates}
-        settlements={settlements}
-        currentUserId={currentUserId}
-        onDebtorMarksAsPaid={handleDebtorMarksAsPaid}
-        onCreditorConfirmsReceipt={handleCreditorConfirmsReceipt}
-        onCreditorRequestsPayment={async () => {
-          // This feature is not requested. Can be added later.
-          console.log("Request payment clicked");
-        }}
-        onPayViaUpi={handlePayViaUpi}
       />
 
       <ChartsSection

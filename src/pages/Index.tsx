@@ -84,7 +84,7 @@ const Index = () => {
     id: expense.id,
     description: expense.description,
     amount: expense.amount,
-    paidBy: expense.paid_by,
+    paid_by: expense.paid_by,
     date: new Date(expense.date).toISOString(),
     category: expense.category,
     sharers: expense.sharers || []
@@ -166,10 +166,7 @@ const Index = () => {
               expenses={formattedExpenses}
               onExpenseUpdate={handleExpenseUpdate}
               settlements={settlements}
-              onAddSettlementPair={addSettlementPair}
               currentUserId={user.id}
-              onUpdateStatus={handleSettlementStatusUpdate} 
-              onDeleteSettlementGroup={deleteSettlementGroup}
             />
           </TabsContent>
 
