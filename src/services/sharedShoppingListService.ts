@@ -34,17 +34,27 @@ export const sharedShoppingListService = {
       return [];
     }
     
-    // Get user profiles for added_by and purchased_by users
+    // Get all unique user IDs from the items
     const userIds = [...new Set([
       ...data.map((item: any) => item.added_by),
       ...data.filter((item: any) => item.purchased_by).map((item: any) => item.purchased_by)
-    ])];
+    ])].filter(Boolean); // Remove any null/undefined values
 
     console.log('Fetching profiles for user IDs:', userIds);
     
+    if (userIds.length === 0) {
+      console.log('No user IDs to fetch profiles for');
+      return data.map((item: any) => ({
+        ...item,
+        added_by_name: 'Unknown User',
+        purchased_by_name: item.purchased_by ? 'Unknown User' : undefined
+      }));
+    }
+
+    // First try to get profiles from the profiles table
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, name')
+      .select('id, name, email')
       .in('id', userIds);
 
     if (profilesError) {
@@ -53,12 +63,47 @@ export const sharedShoppingListService = {
 
     console.log('Fetched profiles:', profiles);
     
-    const profileMap = new Map(profiles?.map(p => [p.id, p.name]) || []);
+    // Create a map of user IDs to names
+    const profileMap = new Map();
+    
+    if (profiles) {
+      profiles.forEach(profile => {
+        // Use name if available, otherwise fall back to email or 'Unknown User'
+        const displayName = profile.name || profile.email || 'Unknown User';
+        profileMap.set(profile.id, displayName);
+      });
+    }
+
+    // For any missing profiles, try to get user data from auth.users via a function call
+    const missingUserIds = userIds.filter(id => !profileMap.has(id));
+    
+    if (missingUserIds.length > 0) {
+      console.log('Missing profiles for user IDs:', missingUserIds);
+      
+      // Try to get emails for missing users
+      for (const userId of missingUserIds) {
+        try {
+          const { data: emailData } = await supabase.rpc('get_user_email_by_id', {
+            user_id_param: userId
+          });
+          
+          if (emailData) {
+            profileMap.set(userId, emailData);
+            console.log(`Found email for user ${userId}: ${emailData}`);
+          } else {
+            profileMap.set(userId, 'Unknown User');
+          }
+        } catch (error) {
+          console.error(`Error fetching email for user ${userId}:`, error);
+          profileMap.set(userId, 'Unknown User');
+        }
+      }
+    }
     
     const itemsWithNames = data.map((item: any) => ({
       ...item,
       added_by_name: profileMap.get(item.added_by) || 'Unknown User',
-      purchased_by_name: item.purchased_by ? profileMap.get(item.purchased_by) || 'Unknown User' : undefined
+      purchased_by_name: item.purchased_by ? (profileMap.get(item.purchased_by) || 'Unknown User') : undefined
     }));
 
     console.log('Items with names:', itemsWithNames);
@@ -91,13 +136,15 @@ export const sharedShoppingListService = {
     // Get the user's profile name
     const { data: profile } = await supabase
       .from('profiles')
-      .select('name')
+      .select('name, email')
       .eq('id', userId)
       .single();
 
+    const displayName = profile?.name || profile?.email || 'Unknown User';
+
     return {
       ...(data as any),
-      added_by_name: profile?.name || 'Unknown User'
+      added_by_name: displayName
     };
   },
 
@@ -128,10 +175,17 @@ export const sharedShoppingListService = {
     const userIds = [(data as any).added_by, (data as any).purchased_by].filter(Boolean);
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, name')
+      .select('id, name, email')
       .in('id', userIds);
     
-    const profileMap = new Map(profiles?.map(p => [p.id, p.name]) || []);
+    const profileMap = new Map();
+    
+    if (profiles) {
+      profiles.forEach(profile => {
+        const displayName = profile.name || profile.email || 'Unknown User';
+        profileMap.set(profile.id, displayName);
+      });
+    }
 
     return {
       ...(data as any),
