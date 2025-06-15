@@ -21,7 +21,7 @@ export const sharedShoppingListService = {
     console.log('Fetching shared shopping list items');
     
     const { data, error } = await supabase
-      .from('shared_shopping_items')
+      .from('shared_shopping_items' as any)
       .select(`
         *,
         added_by_profile:profiles!shared_shopping_items_added_by_fkey(name),
@@ -34,7 +34,7 @@ export const sharedShoppingListService = {
       throw error;
     }
     
-    return (data || []).map(item => ({
+    return (data || []).map((item: any) => ({
       ...item,
       added_by_name: item.added_by_profile?.name || 'Unknown',
       purchased_by_name: item.purchased_by_profile?.name || undefined
@@ -45,7 +45,7 @@ export const sharedShoppingListService = {
     console.log('Adding shared shopping item:', itemData);
     
     const { data, error } = await supabase
-      .from('shared_shopping_items')
+      .from('shared_shopping_items' as any)
       .insert({
         name: itemData.name,
         quantity: itemData.quantity,
@@ -73,7 +73,7 @@ export const sharedShoppingListService = {
     console.log('Marking shared item as purchased:', itemId);
     
     const { data, error } = await supabase
-      .from('shared_shopping_items')
+      .from('shared_shopping_items' as any)
       .update({
         is_purchased: true,
         purchased_by: userId,
@@ -103,7 +103,7 @@ export const sharedShoppingListService = {
     console.log('Deleting shared shopping item:', itemId);
     
     const { error } = await supabase
-      .from('shared_shopping_items')
+      .from('shared_shopping_items' as any)
       .delete()
       .eq('id', itemId);
 

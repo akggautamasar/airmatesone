@@ -395,6 +395,45 @@ export type Database = {
           },
         ]
       }
+      shared_shopping_items: {
+        Row: {
+          added_by: string
+          category: string | null
+          created_at: string
+          id: string
+          is_purchased: boolean | null
+          name: string
+          purchased_at: string | null
+          purchased_by: string | null
+          quantity: string
+          updated_at: string
+        }
+        Insert: {
+          added_by: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_purchased?: boolean | null
+          name: string
+          purchased_at?: string | null
+          purchased_by?: string | null
+          quantity: string
+          updated_at?: string
+        }
+        Update: {
+          added_by?: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_purchased?: boolean | null
+          name?: string
+          purchased_at?: string | null
+          purchased_by?: string | null
+          quantity?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       shopping_list_items: {
         Row: {
           added_by: string
