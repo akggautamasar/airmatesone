@@ -9,14 +9,28 @@ import { Event } from '@/types/events';
 import { PlusCircle, Settings } from 'lucide-react';
 import { format } from 'date-fns';
 import { EventTypeManager } from './events/EventTypeManager';
+import { EventList } from './events/EventList';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+
 
 export const EventsPage = () => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
-    const { events, isLoading } = useEvents(currentMonth);
+    const { events, isLoading, deleteEvent } = useEvents(currentMonth);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
     const [selectedDate, setSelectedDate] = useState<Date | undefined>();
     const [isTypeManagerOpen, setIsTypeManagerOpen] = useState(false);
+    const [eventToDelete, setEventToDelete] = useState<string | null>(null);
 
     const handleEventSelect = (event: Event) => {
         setSelectedDate(new Date(event.event_date));
@@ -36,6 +50,24 @@ export const EventsPage = () => {
         setIsFormOpen(true);
     }
     
+    const handleDeleteRequest = (eventId: string) => {
+        setEventToDelete(eventId);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (eventToDelete) {
+            try {
+                await deleteEvent(eventToDelete);
+                toast.success("Event deleted successfully.");
+            } catch (error) {
+                console.error("Failed to delete event:", error);
+                toast.error("Failed to delete event.");
+            } finally {
+                setEventToDelete(null);
+            }
+        }
+    };
+
     return (
         <div className="space-y-6">
             <Card>
@@ -69,6 +101,14 @@ export const EventsPage = () => {
                 </CardContent>
             </Card>
 
+            {!isLoading && 
+                <EventList 
+                    events={events} 
+                    onEdit={handleEventSelect}
+                    onDelete={handleDeleteRequest} 
+                />
+            }
+
             <AddEventForm
                 isOpen={isFormOpen}
                 onOpenChange={setIsFormOpen}
@@ -79,6 +119,21 @@ export const EventsPage = () => {
                 isOpen={isTypeManagerOpen}
                 onOpenChange={setIsTypeManagerOpen}
             />
+
+            <AlertDialog open={!!eventToDelete} onOpenChange={(open) => !open && setEventToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the event.
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmDelete} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };
