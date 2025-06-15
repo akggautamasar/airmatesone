@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import { useToast } from './use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface Profile {
   id: string;
@@ -12,6 +11,7 @@ interface Profile {
   upi_id: string | null;
   avatar_url: string | null;
   mobile_number: string | null;
+  language: string | null;
 }
 
 export const useProfile = () => {

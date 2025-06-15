@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { DateRange } from 'react-day-picker';
 import { Input } from '@/components/ui/input';
@@ -90,9 +89,9 @@ export const ExpenseFilters = ({ filters, onFilterChange }: ExpenseFiltersProps)
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((cat) => (
-                <SelectItem key={cat.id} value={cat.name}>
-                  {cat.name}
+              {categories.map((catName: string) => (
+                <SelectItem key={catName} value={catName}>
+                  {catName}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -1,0 +1,16 @@
+
+{
+  "profile_title": "आपकी प्रोफ़ाइल",
+  "profile_description": "अपनी व्यक्तिगत जानकारी और भुगतान विवरण प्रबंधित करें",
+  "email_label": "ईमेल",
+  "display_name_label": "प्रदर्शित होने वाला नाम",
+  "display_name_placeholder": "अपना नाम दर्ज करें",
+  "mobile_number_label": "मोबाइल नंबर",
+  "mobile_number_placeholder": "+91 98765 43210",
+  "upi_id_label": "UPI ID",
+  "upi_id_placeholder": "नाम@paytm",
+  "language_label": "भाषा",
+  "edit_profile_button": "प्रोफ़ाइल संपादित करें",
+  "save_changes_button": "बदलाव सहेजें",
+  "cancel_button": "रद्द करें"
+}

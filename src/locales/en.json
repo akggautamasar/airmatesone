@@ -1,0 +1,16 @@
+
+{
+  "profile_title": "Your Profile",
+  "profile_description": "Manage your personal information and payment details",
+  "email_label": "Email",
+  "display_name_label": "Display Name",
+  "display_name_placeholder": "Enter your name",
+  "mobile_number_label": "Mobile Number",
+  "mobile_number_placeholder": "+91 98765 43210",
+  "upi_id_label": "UPI ID",
+  "upi_id_placeholder": "name@paytm",
+  "language_label": "Language",
+  "edit_profile_button": "Edit Profile",
+  "save_changes_button": "Save Changes",
+  "cancel_button": "Cancel"
+}
