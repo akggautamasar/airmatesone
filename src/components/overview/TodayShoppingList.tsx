@@ -66,7 +66,6 @@ export const TodayShoppingList = () => {
 // Custom hook: useShoppingList but for a fixed date, with minimal props
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
-import { useState, useEffect, useCallback } from "react";
 import { shoppingListService } from "@/services/shoppingListService";
 import { ShoppingListItem } from "@/types/shopping";
 import { format as formatDate } from "date-fns";
@@ -78,7 +77,7 @@ function useShoppingListWithFixedDate(date: Date) {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const fetchList = useCallback(async () => {
+  const fetchList = React.useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
