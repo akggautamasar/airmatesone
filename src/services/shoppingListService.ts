@@ -6,18 +6,23 @@ export const shoppingListService = {
   async fetchShoppingLists(): Promise<ShoppingList[]> {
     console.log('Fetching all shared shopping lists');
     
-    const { data, error } = await supabase
-      .from('shopping_lists')
-      .select('*')
-      .order('date', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('shopping_lists')
+        .select('*')
+        .order('date', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching shopping lists:', error);
+      if (error) {
+        console.error('Error fetching shopping lists:', error);
+        throw error;
+      }
+      
+      console.log('Shared shopping lists fetched:', data);
+      return data || [];
+    } catch (error) {
+      console.error('Service error fetching shopping lists:', error);
       throw error;
     }
-    
-    console.log('Shared shopping lists fetched:', data);
-    return data || [];
   },
 
   async getOrCreateTodaysList(userId: string): Promise<ShoppingList | null> {
@@ -67,45 +72,23 @@ export const shoppingListService = {
     }
   },
 
-  async createNewSharedList(userId: string, date?: string): Promise<ShoppingList | null> {
-    const listDate = date || new Date().toISOString().split('T')[0];
-    console.log('Creating new shared shopping list for date:', listDate, 'by user:', userId);
-
-    try {
-      const { data: newList, error: createError } = await supabase
-        .from('shopping_lists')
-        .insert({
-          date: listDate,
-          created_by: userId
-        })
-        .select()
-        .single();
-
-      if (createError) {
-        console.error('Error creating new shared shopping list:', createError);
-        throw createError;
-      }
-      
-      console.log('New shared shopping list created:', newList);
-      return newList;
-    } catch (error: any) {
-      console.error('Error creating new shared shopping list:', error);
-      throw error;
-    }
-  },
-
   async sendMarketNotification(listId: string): Promise<void> {
     console.log('Sending market notification for shared list:', listId);
     
-    const { error } = await supabase.rpc('send_market_notification', {
-      shopping_list_id_param: listId
-    });
+    try {
+      const { error } = await supabase.rpc('send_market_notification', {
+        shopping_list_id_param: listId
+      });
 
-    if (error) {
-      console.error('Error sending market notification:', error);
+      if (error) {
+        console.error('Error sending market notification:', error);
+        throw error;
+      }
+      
+      console.log('Market notification sent successfully to all roommates');
+    } catch (error) {
+      console.error('Service error sending market notification:', error);
       throw error;
     }
-    
-    console.log('Market notification sent successfully to all roommates');
   }
 };

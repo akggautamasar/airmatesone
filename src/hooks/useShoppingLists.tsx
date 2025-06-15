@@ -29,12 +29,16 @@ export const useShoppingLists = () => {
   // Memoized callbacks for real-time updates to maintain data persistence
   const handleItemsUpdate = useCallback(async (listId: string) => {
     console.log('Real-time update: refreshing items for shared list:', listId);
-    await fetchListItems(listId);
+    if (listId) {
+      await fetchListItems(listId);
+    }
   }, [fetchListItems]);
 
   const handleListUpdate = useCallback((list: any) => {
     console.log('Real-time update: refreshing shared list data:', list);
-    setCurrentList(list);
+    if (list) {
+      setCurrentList(list);
+    }
   }, [setCurrentList]);
 
   // Set up real-time subscription for shared shopping list
@@ -60,9 +64,14 @@ export const useShoppingLists = () => {
         console.log('User authenticated, initializing shared shopping lists for user:', user.id);
         setLoading(true);
         try {
+          // Try to fetch shopping lists first
           await fetchShoppingLists();
+          
+          // Then get or create today's list
           const sharedList = await getOrCreateTodaysList();
-          if (sharedList) {
+          
+          // If we have a shared list, load its items
+          if (sharedList?.id) {
             console.log('Loading items for shared list:', sharedList.id);
             await fetchListItems(sharedList.id);
           }

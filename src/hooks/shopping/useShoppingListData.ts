@@ -12,7 +12,10 @@ export const useShoppingListData = () => {
   const { toast } = useToast();
 
   const fetchShoppingLists = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('No user available for fetching shopping lists');
+      return;
+    }
 
     try {
       console.log('Fetching shopping lists for user:', user.id);
@@ -21,11 +24,22 @@ export const useShoppingListData = () => {
       setShoppingLists(data);
     } catch (error: any) {
       console.error('Error fetching shopping lists:', error);
+      // Don't show toast for network errors during initial load
+      if (error.message !== 'TypeError: Failed to fetch') {
+        toast({
+          title: "Error",
+          description: "Failed to load shopping lists",
+          variant: "destructive",
+        });
+      }
     }
   };
 
   const getOrCreateTodaysList = async () => {
-    if (!user) return null;
+    if (!user) {
+      console.log('No user available for getting/creating today\'s list');
+      return null;
+    }
 
     try {
       console.log('Getting or creating today\'s list for user:', user.id);
@@ -37,17 +51,23 @@ export const useShoppingListData = () => {
       return list;
     } catch (error: any) {
       console.error('Error getting/creating shopping list:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load shopping list",
-        variant: "destructive",
-      });
+      // Don't show toast for network errors during initial load
+      if (error.message !== 'TypeError: Failed to fetch') {
+        toast({
+          title: "Error",
+          description: "Failed to load shopping list",
+          variant: "destructive",
+        });
+      }
       return null;
     }
   };
 
   const sendMarketNotification = async () => {
-    if (!currentList) return;
+    if (!currentList) {
+      console.log('No current list available for market notification');
+      return;
+    }
 
     try {
       await shoppingListService.sendMarketNotification(currentList.id);

@@ -11,6 +11,11 @@ export const useShoppingListItems = () => {
   const { toast } = useToast();
 
   const fetchListItems = async (listId: string) => {
+    if (!listId) {
+      console.log('No listId provided for fetching items');
+      return;
+    }
+
     try {
       console.log('Fetching items for list:', listId);
       const data = await shoppingListItemsService.fetchListItems(listId);
@@ -18,11 +23,27 @@ export const useShoppingListItems = () => {
       setItems(data);
     } catch (error: any) {
       console.error('Error fetching list items:', error);
+      // Don't show toast for network errors during initial load
+      if (error.message !== 'TypeError: Failed to fetch') {
+        toast({
+          title: "Error",
+          description: "Failed to load shopping items",
+          variant: "destructive",
+        });
+      }
     }
   };
 
   const addItem = async (listId: string, itemData: AddItemData) => {
-    if (!user) return;
+    if (!user) {
+      console.log('No user available for adding item');
+      return;
+    }
+
+    if (!listId) {
+      console.log('No listId provided for adding item');
+      return;
+    }
 
     try {
       console.log('Adding item:', itemData);
@@ -43,7 +64,10 @@ export const useShoppingListItems = () => {
   };
 
   const markAsPurchased = async (itemId: string) => {
-    if (!user) return;
+    if (!user) {
+      console.log('No user available for marking as purchased');
+      return;
+    }
 
     try {
       console.log('Marking item as purchased:', itemId);
