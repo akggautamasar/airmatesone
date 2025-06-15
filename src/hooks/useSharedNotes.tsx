@@ -95,10 +95,13 @@ export const useSharedNotes = () => {
             if (!user) throw new Error("User not authenticated");
             const { data, error } = await supabase
                 .from('shared_notes')
-                .insert([{
-                  ...newNote,
+                .insert({
+                  title: newNote.title,
+                  content: newNote.content,
+                  is_pinned: newNote.is_pinned,
+                  color_hex: newNote.color_hex,
                   user_id: user.id,
-                }])
+                })
                 .select()
                 .single();
             if (error) throw error;
