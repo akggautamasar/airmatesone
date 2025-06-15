@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -21,7 +22,7 @@ export const useNotifications = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
-  const { sendBrowserNotification } = useBrowserNotifications();
+  const { sendBrowserNotification, permission } = useBrowserNotifications();
 
   const fetchNotifications = async () => {
     if (!user) {
@@ -127,6 +128,8 @@ export const useNotifications = () => {
           },
           (payload) => {
             const newNotification = payload.new as Notification;
+            console.log('New notification received:', newNotification);
+            
             setNotifications(prev => [newNotification, ...prev]);
             setUnreadCount(prev => prev + 1);
             
@@ -137,8 +140,15 @@ export const useNotifications = () => {
               duration: 5000,
             });
 
-            // Send browser notification only for expense-related notifications
-            if (newNotification.type === 'expense_created') {
+            // Send browser notification for expense-related notifications
+            console.log('Checking if should send browser notification:', {
+              type: newNotification.type,
+              permission,
+              isExpenseCreated: newNotification.type === 'expense_created'
+            });
+            
+            if (newNotification.type === 'expense_created' && permission === 'granted') {
+              console.log('Sending browser notification for expense creation');
               sendBrowserNotification(
                 newNotification.title,
                 newNotification.message
@@ -156,7 +166,7 @@ export const useNotifications = () => {
       setUnreadCount(0);
       setLoading(false);
     }
-  }, [user, sendBrowserNotification]);
+  }, [user, sendBrowserNotification, permission, toast]);
 
   return {
     notifications,
