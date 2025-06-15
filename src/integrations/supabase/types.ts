@@ -9,6 +9,42 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      chores: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          frequency: string
+          id: string
+          name: string
+          participants: string[] | null
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          frequency?: string
+          id?: string
+          name: string
+          participants?: string[] | null
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          frequency?: string
+          id?: string
+          name?: string
+          participants?: string[] | null
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expense_splits: {
         Row: {
           amount: number

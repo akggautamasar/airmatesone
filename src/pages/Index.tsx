@@ -15,6 +15,8 @@ import { useProfile } from "@/hooks/useProfile";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { getCurrentUserDisplayName } from "@/utils/userDisplay";
+import { ChoresPage } from "@/components/ChoresPage";
+import { LayoutGrid, FileText, ShoppingCart, Users, User, ClipboardList } from "lucide-react";
 
 const Index = () => {
   const { user, loading: authLoading } = useAuth();
@@ -71,17 +73,18 @@ const Index = () => {
       <NavBar />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user.email && user.email.split('@')[0]}!</h1>
-          <p className="text-gray-600">Manage your expenses, settlements, and shopping lists.</p>
+          <h1 className="text-3xl font-bold text-gray-900">Welcome back, {currentUserDisplayName}!</h1>
+          <p className="text-gray-600">Manage your expenses, chores, settlements, and shopping lists.</p>
         </div>
         
         <Tabs defaultValue="overview" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-5 gap-2">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="expenses">Expenses</TabsTrigger>
-            <TabsTrigger value="shopping">Shopping</TabsTrigger>
-            <TabsTrigger value="roommates">Roommates</TabsTrigger>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-6 gap-2">
+            <TabsTrigger value="overview" className="flex items-center space-x-2"><LayoutGrid className="h-4 w-4" /><span>Overview</span></TabsTrigger>
+            <TabsTrigger value="expenses" className="flex items-center space-x-2"><FileText className="h-4 w-4" /><span>Expenses</span></TabsTrigger>
+            <TabsTrigger value="shopping" className="flex items-center space-x-2"><ShoppingCart className="h-4 w-4" /><span>Shopping</span></TabsTrigger>
+            <TabsTrigger value="chores" className="flex items-center space-x-2"><ClipboardList className="h-4 w-4" /><span>Chores</span></TabsTrigger>
+            <TabsTrigger value="roommates" className="flex items-center space-x-2"><Users className="h-4 w-4" /><span>Roommates</span></TabsTrigger>
+            <TabsTrigger value="profile" className="flex items-center space-x-2"><User className="h-4 w-4" /><span>Profile</span></TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -97,6 +100,10 @@ const Index = () => {
 
           <TabsContent value="shopping" className="space-y-6">
             <ShoppingPage />
+          </TabsContent>
+
+          <TabsContent value="chores" className="space-y-6">
+            <ChoresPage />
           </TabsContent>
 
           <TabsContent value="roommates" className="space-y-6">
