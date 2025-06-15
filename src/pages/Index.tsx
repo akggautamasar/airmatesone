@@ -97,7 +97,7 @@ const Index = () => {
       await addExpense({
         description: expense.description,
         amount: expense.amount,
-        paidBy: expense.paidBy,
+        paid_by: expense.paidBy,
         category: expense.category,
         date: new Date().toISOString(),
         sharers: expense.sharers
