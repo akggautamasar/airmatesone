@@ -22,11 +22,7 @@ export const sharedShoppingListService = {
     
     const { data, error } = await supabase
       .from('shared_shopping_items' as any)
-      .select(`
-        *,
-        added_by_profile:profiles!shared_shopping_items_added_by_fkey(name),
-        purchased_by_profile:profiles!shared_shopping_items_purchased_by_fkey(name)
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -34,10 +30,23 @@ export const sharedShoppingListService = {
       throw error;
     }
     
-    return (data || []).map((item: any) => ({
+    // Get user profiles for added_by and purchased_by users
+    const userIds = [...new Set([
+      ...data.map(item => item.added_by),
+      ...data.filter(item => item.purchased_by).map(item => item.purchased_by)
+    ])];
+    
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, name')
+      .in('id', userIds);
+    
+    const profileMap = new Map(profiles?.map(p => [p.id, p.name]) || []);
+    
+    return data.map(item => ({
       ...item,
-      added_by_name: item.added_by_profile?.name || 'Unknown',
-      purchased_by_name: item.purchased_by_profile?.name || undefined
+      added_by_name: profileMap.get(item.added_by) || 'Unknown',
+      purchased_by_name: item.purchased_by ? profileMap.get(item.purchased_by) : undefined
     }));
   },
 
@@ -52,10 +61,7 @@ export const sharedShoppingListService = {
         category: itemData.category,
         added_by: userId
       })
-      .select(`
-        *,
-        added_by_profile:profiles!shared_shopping_items_added_by_fkey(name)
-      `)
+      .select()
       .single();
 
     if (error) {
@@ -63,9 +69,16 @@ export const sharedShoppingListService = {
       throw error;
     }
 
+    // Get the user's profile name
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('name')
+      .eq('id', userId)
+      .single();
+
     return {
       ...data,
-      added_by_name: data.added_by_profile?.name || 'Unknown'
+      added_by_name: profile?.name || 'Unknown'
     };
   },
 
@@ -80,11 +93,7 @@ export const sharedShoppingListService = {
         purchased_at: new Date().toISOString()
       })
       .eq('id', itemId)
-      .select(`
-        *,
-        added_by_profile:profiles!shared_shopping_items_added_by_fkey(name),
-        purchased_by_profile:profiles!shared_shopping_items_purchased_by_fkey(name)
-      `)
+      .select()
       .single();
 
     if (error) {
@@ -92,10 +101,19 @@ export const sharedShoppingListService = {
       throw error;
     }
 
+    // Get both users' profile names
+    const userIds = [data.added_by, data.purchased_by].filter(Boolean);
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, name')
+      .in('id', userIds);
+    
+    const profileMap = new Map(profiles?.map(p => [p.id, p.name]) || []);
+
     return {
       ...data,
-      added_by_name: data.added_by_profile?.name || 'Unknown',
-      purchased_by_name: data.purchased_by_profile?.name || undefined
+      added_by_name: profileMap.get(data.added_by) || 'Unknown',
+      purchased_by_name: profileMap.get(data.purchased_by) || undefined
     };
   },
 
