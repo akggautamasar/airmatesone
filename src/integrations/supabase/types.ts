@@ -193,8 +193,13 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          creditor_user_id: string | null
+          debtor_user_id: string | null
           email: string
+          expense_id: string | null
           id: string
+          marked_by_creditor: boolean | null
+          marked_by_debtor: boolean | null
           name: string
           settled_date: string | null
           status: string
@@ -207,8 +212,13 @@ export type Database = {
         Insert: {
           amount: number
           created_at?: string
+          creditor_user_id?: string | null
+          debtor_user_id?: string | null
           email: string
+          expense_id?: string | null
           id?: string
+          marked_by_creditor?: boolean | null
+          marked_by_debtor?: boolean | null
           name: string
           settled_date?: string | null
           status?: string
@@ -221,8 +231,13 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
+          creditor_user_id?: string | null
+          debtor_user_id?: string | null
           email?: string
+          expense_id?: string | null
           id?: string
+          marked_by_creditor?: boolean | null
+          marked_by_debtor?: boolean | null
           name?: string
           settled_date?: string | null
           status?: string
@@ -232,7 +247,15 @@ export type Database = {
           upi_id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "settlements_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

@@ -1,9 +1,11 @@
+
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { NavBar } from "@/components/NavBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExpenseOverview } from "@/components/ExpenseOverview";
+import { ExpensesPage } from "@/components/ExpensesPage";
 import { RoommateManagement } from "@/components/RoommateManagement";
 import { Profile } from "@/components/Profile";
 import { useExpenses } from "@/hooks/useExpenses";
@@ -85,8 +87,9 @@ const Index = () => {
         </div>
         
         <Tabs defaultValue="overview" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-3 gap-2">
+          <TabsList className="grid w-full grid-cols-4 gap-2">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="expenses">Expenses</TabsTrigger>
             <TabsTrigger value="roommates">Roommates</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
@@ -97,6 +100,10 @@ const Index = () => {
               onExpenseUpdate={handleExpenseUpdate}
               currentUserId={user.id}
             />
+          </TabsContent>
+
+          <TabsContent value="expenses" className="space-y-6">
+            <ExpensesPage />
           </TabsContent>
 
           <TabsContent value="roommates" className="space-y-6">
