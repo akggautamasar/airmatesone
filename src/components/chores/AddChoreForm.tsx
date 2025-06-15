@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -52,7 +51,9 @@ export const AddChoreForm = ({ onChoreAdded }: AddChoreFormProps) => {
 
     try {
       await addChore({
-        ...values,
+        name: values.name,
+        description: values.description,
+        participants: values.participants,
         created_by: user.id,
         start_date: format(values.start_date, "yyyy-MM-dd"),
         frequency: 'daily',
