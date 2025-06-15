@@ -29,13 +29,13 @@ interface ShoppingListItem {
     name: string;
     category: string | null;
     unit: string | null;
-  };
+  } | null;
   added_by_profile?: {
     name: string | null;
-  };
+  } | null;
   purchased_by_profile?: {
     name: string | null;
-  };
+  } | null;
 }
 
 export const useShoppingLists = () => {
@@ -171,7 +171,7 @@ export const useShoppingLists = () => {
 
       if (error) throw error;
 
-      setItems(prev => [...prev, data]);
+      setItems(prev => [...prev, data as ShoppingListItem]);
       toast({
         title: "Success",
         description: "Item added to shopping list",
@@ -208,7 +208,7 @@ export const useShoppingLists = () => {
 
       if (error) throw error;
 
-      setItems(prev => prev.map(item => item.id === itemId ? data : item));
+      setItems(prev => prev.map(item => item.id === itemId ? data as ShoppingListItem : item));
       toast({
         title: "Success",
         description: "Item marked as purchased",
