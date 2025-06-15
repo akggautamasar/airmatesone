@@ -1,7 +1,5 @@
-
 import { useMemo } from 'react';
 import { User } from '@supabase/supabase-js';
-import { Settlement as DetailedSettlement } from "@/components/SettlementHistory";
 
 // Define the Expense type as it's used internally for calculations
 interface Expense {
@@ -37,7 +35,6 @@ interface ProfileData {
 interface UseExpenseCalculationsProps {
   expenses: Expense[];
   currentUserDisplayName: string;
-  settlements: DetailedSettlement[];
   roommates: Roommate[];
   profile: ProfileData | null;
   currentUserId: string | undefined;
@@ -55,7 +52,6 @@ interface ExpenseCalculationsResult {
 export const useExpenseCalculations = ({
   expenses,
   currentUserDisplayName,
-  settlements,
   roommates,
   profile,
   currentUserId,
@@ -118,43 +114,6 @@ export const useExpenseCalculations = ({
         }
     });
 
-    // Apply settled settlements to adjust balances
-    settlements.forEach(settlement => {
-        if (settlement.status === 'settled') {
-          let debtorName: string | undefined;
-          let creditorName: string | undefined;
-          const settlementOwnerIsCurrentUser = settlement.user_id === currentUserId;
-
-          if (settlementOwnerIsCurrentUser) {
-              if (settlement.type === 'owes') {
-                  debtorName = currentUserDisplayName;
-                  creditorName = settlement.name;
-              } else {
-                  debtorName = settlement.name;
-                  creditorName = currentUserDisplayName;
-              }
-          } else {
-              const ownerProfile = roommates.find(r => r.user_id === settlement.user_id);
-              const ownerDisplayName = ownerProfile?.name || `User ${settlement.user_id.substring(0,5)}`;
-              if (settlement.type === 'owes') {
-                  debtorName = ownerDisplayName;
-                  creditorName = (settlement.name === user?.email || settlement.name === profile?.name) ? currentUserDisplayName : settlement.name;
-              } else {
-                  debtorName = (settlement.name === user?.email || settlement.name === profile?.name) ? currentUserDisplayName : settlement.name;
-                  creditorName = ownerDisplayName;
-              }
-          }
-          
-          // Apply settlement: debtor gets positive adjustment (reduces their debt), creditor gets negative (reduces what they're owed)
-          if (debtorName && allParticipantNames.includes(debtorName) && balanceMap.has(debtorName)) {
-              balanceMap.set(debtorName, (balanceMap.get(debtorName) || 0) + settlement.amount);
-          }
-          if (creditorName && allParticipantNames.includes(creditorName) && balanceMap.has(creditorName)) {
-              balanceMap.set(creditorName, (balanceMap.get(creditorName) || 0) - settlement.amount);
-          }
-        }
-    });
-
     // Convert to final balances array
     const finalBalancesArray: { name: string; balance: number }[] = [];
     allParticipantNames.forEach(name => {
@@ -172,7 +131,7 @@ export const useExpenseCalculations = ({
       totalExpenses: totalExpensesValue,
       finalBalances: finalBalancesArray
     };
-  }, [expenses, allParticipantNames, currentUserDisplayName, settlements, roommates, profile, currentUserId, user]);
+  }, [expenses, allParticipantNames, currentUserDisplayName, roommates, profile, currentUserId, user]);
 
   const categoryData = useMemo(() => expenses.reduce((acc, expense) => {
     const existing = acc.find(item => item.name === expense.category);
