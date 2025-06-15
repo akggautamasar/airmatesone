@@ -139,13 +139,16 @@ export const createUniversalSettlementPairInSupabase = async (
   console.log(`[settlementService] createUniversalSettlementPair. Debtor: ${debtor.name} (${debtor.email}), Creditor: ${creditor.name} (${creditor.email}), Amount: ${amount}`);
   const transactionGroupId = uuidv4();
 
-  const { data: debtorProfile, error: debtorError } = await supabase.from('profiles').select('id').eq('email', debtor.email).maybeSingle();
-  if (debtorError) { console.error('Error fetching debtor profile:', debtorError); throw debtorError; }
-  console.log(`[settlementService] Debtor profile lookup for email ${debtor.email}:`, debtorProfile);
+  const debtorEmail = debtor.email.toLowerCase();
+  const creditorEmail = creditor.email.toLowerCase();
 
-  const { data: creditorProfile, error: creditorError } = await supabase.from('profiles').select('id').eq('email', creditor.email).maybeSingle();
+  const { data: debtorProfile, error: debtorError } = await supabase.from('profiles').select('id').eq('email', debtorEmail).maybeSingle();
+  if (debtorError) { console.error('Error fetching debtor profile:', debtorError); throw debtorError; }
+  console.log(`[settlementService] Debtor profile lookup for email ${debtorEmail}:`, debtorProfile);
+
+  const { data: creditorProfile, error: creditorError } = await supabase.from('profiles').select('id').eq('email', creditorEmail).maybeSingle();
   if (creditorError) { console.error('Error fetching creditor profile:', creditorError); throw creditorError; }
-  console.log(`[settlementService] Creditor profile lookup for email ${creditor.email}:`, creditorProfile);
+  console.log(`[settlementService] Creditor profile lookup for email ${creditorEmail}:`, creditorProfile);
 
 
   const debtorUserId = debtorProfile?.id;
@@ -159,7 +162,7 @@ export const createUniversalSettlementPairInSupabase = async (
     const { error } = await supabase.from('settlements').insert({
       user_id: debtorUserId,
       name: creditor.name,
-      email: creditor.email,
+      email: debtorEmail,
       upi_id: creditor.upi_id || '',
       type: 'owes' as const,
       amount,
@@ -181,7 +184,7 @@ export const createUniversalSettlementPairInSupabase = async (
     const { error } = await supabase.from('settlements').insert({
       user_id: creditorUserId,
       name: debtor.name,
-      email: debtor.email,
+      email: debtorEmail,
       upi_id: creditor.upi_id || '',
       type: 'owed' as const,
       amount,

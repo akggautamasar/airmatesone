@@ -153,7 +153,7 @@ const Index = () => {
         </div>
         
         <Tabs defaultValue="overview" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-3 gap-2 sm:grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="expenses">Add Expense</TabsTrigger>
             <TabsTrigger value="roommates">Roommates</TabsTrigger>
