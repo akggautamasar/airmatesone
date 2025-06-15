@@ -558,6 +558,10 @@ export type Database = {
         Args: { user_id_param: string }
         Returns: string
       }
+      get_users_details: {
+        Args: { p_user_ids: string[] }
+        Returns: Database["public"]["CompositeTypes"]["user_details"][]
+      }
       send_market_notification: {
         Args: { shopping_list_id_param: string }
         Returns: undefined
@@ -567,7 +571,11 @@ export type Database = {
       [_ in never]: never
     }
     CompositeTypes: {
-      [_ in never]: never
+      user_details: {
+        id: string | null
+        name: string | null
+        email: string | null
+      }
     }
   }
 }

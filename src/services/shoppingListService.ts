@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ShoppingListItem, ShoppingList } from '@/types/shopping';
 
@@ -47,9 +46,7 @@ export const shoppingListService = {
     }
 
     const { data: profiles, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, name, email')
-      .in('id', userIds);
+      .rpc('get_users_details', { p_user_ids: userIds });
 
     if (profileError) {
       console.error("Failed to fetch profiles:", profileError);
@@ -80,15 +77,14 @@ export const shoppingListService = {
     if (error) throw error;
     if (!newItem) throw new Error("Failed to add item.");
 
-    const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('name, email')
-        .eq('id', newItem.added_by)
-        .single();
+    const { data: profiles, error: profileError } = await supabase
+        .rpc('get_users_details', { p_user_ids: [newItem.added_by] });
 
     if (profileError) {
         console.error('Failed to fetch profile for new item:', profileError);
     }
+
+    const profile = profiles && profiles.length > 0 ? { name: profiles[0].name, email: profiles[0].email } : null;
     
     const result: ShoppingListItem = {
         ...newItem,
@@ -119,9 +115,7 @@ export const shoppingListService = {
     }
 
     const { data: profiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, name, email')
-        .in('id', userIds);
+        .rpc('get_users_details', { p_user_ids: userIds });
     
     if (profileError) {
         console.error('Failed to fetch profiles for updated item:', profileError);
