@@ -43,10 +43,11 @@ export const SettlementTabs = () => {
     if (!user) return;
 
     try {
+      // Only fetch settlements that belong to the current user's view
       const { data, error } = await supabase
         .from('settlements')
         .select('*')
-        .or(`debtor_user_id.eq.${user.id},creditor_user_id.eq.${user.id}`)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
