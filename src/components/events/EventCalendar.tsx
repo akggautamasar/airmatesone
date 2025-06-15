@@ -77,7 +77,7 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ events, month, onM
       classNames={{
         head_cell: "text-muted-foreground rounded-md w-full",
         cell: "text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-        day: "h-24 w-full p-2 font-normal rounded-md hover:bg-accent",
+        day: "h-16 sm:h-20 lg:h-24 w-full p-2 font-normal rounded-md hover:bg-accent",
         day_selected:
           "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
         day_today: 'bg-accent text-accent-foreground',

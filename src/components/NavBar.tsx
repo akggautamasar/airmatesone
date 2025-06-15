@@ -55,7 +55,7 @@ export const NavBar = ({ currentView, onViewChange }: NavBarProps) => {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <h1 className="text-2xl font-bold text-blue-600">AirMates</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-blue-600">AirMates</h1>
             </div>
             
             {/* Desktop Navigation - only show if onViewChange is provided */}

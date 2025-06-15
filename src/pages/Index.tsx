@@ -76,12 +76,12 @@ const Index = () => {
       <NavBar />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Welcome back, {currentUserDisplayName}!</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Welcome back, {currentUserDisplayName}!</h1>
           <p className="text-gray-600">Manage your expenses, chores, settlements, and shopping lists.</p>
         </div>
         
         <Tabs defaultValue="overview" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
             <TabsTrigger value="overview" className="flex items-center space-x-2"><LayoutGrid className="h-4 w-4" /><span>Overview</span></TabsTrigger>
             <TabsTrigger value="expenses" className="flex items-center space-x-2"><FileText className="h-4 w-4" /><span>Expenses</span></TabsTrigger>
             <TabsTrigger value="reports" className="flex items-center space-x-2"><FilePieChart className="h-4 w-4" /><span>Reports</span></TabsTrigger>
