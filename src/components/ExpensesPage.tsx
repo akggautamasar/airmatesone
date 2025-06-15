@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AddExpenseForm } from './expenses/AddExpenseForm';
 import { ExpenseList } from './expenses/ExpenseList';
 import { SettlementTabs } from './settlements/SettlementTabs';
+import { NotificationPanel } from './notifications/NotificationPanel';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -51,9 +52,10 @@ export const ExpensesPage = ({ onExpenseUpdate }: ExpensesPageProps) => {
       </div>
 
       <Tabs defaultValue="expenses" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="expenses">📦 Expenses</TabsTrigger>
           <TabsTrigger value="settlements">💸 Settlements</TabsTrigger>
+          <TabsTrigger value="notifications">🔔 Notifications</TabsTrigger>
         </TabsList>
 
         <TabsContent value="expenses" className="space-y-6">
@@ -66,6 +68,10 @@ export const ExpensesPage = ({ onExpenseUpdate }: ExpensesPageProps) => {
 
         <TabsContent value="settlements" className="space-y-6">
           <SettlementTabs />
+        </TabsContent>
+
+        <TabsContent value="notifications" className="space-y-6">
+          <NotificationPanel />
         </TabsContent>
       </Tabs>
     </div>

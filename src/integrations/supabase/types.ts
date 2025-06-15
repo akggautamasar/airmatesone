@@ -120,6 +120,111 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_reminders: {
+        Row: {
+          created_at: string
+          creditor_user_id: string
+          debtor_user_id: string
+          expense_id: string
+          id: string
+          is_active: boolean
+          reminder_sent_at: string | null
+          settlement_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          creditor_user_id: string
+          debtor_user_id: string
+          expense_id: string
+          id?: string
+          is_active?: boolean
+          reminder_sent_at?: string | null
+          settlement_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          creditor_user_id?: string
+          debtor_user_id?: string
+          expense_id?: string
+          id?: string
+          is_active?: boolean
+          reminder_sent_at?: string | null
+          settlement_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_reminders_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_reminders_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "settlements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          expense_id: string | null
+          id: string
+          is_read: boolean
+          message: string
+          settlement_id: string | null
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expense_id?: string | null
+          id?: string
+          is_read?: boolean
+          message: string
+          settlement_id?: string | null
+          title: string
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expense_id?: string | null
+          id?: string
+          is_read?: boolean
+          message?: string
+          settlement_id?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "settlements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
