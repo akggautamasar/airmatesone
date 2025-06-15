@@ -21,7 +21,7 @@ export const sharedShoppingListService = {
     console.log('Fetching shared shopping list items');
     
     const { data, error } = await supabase
-      .from('shared_shopping_items' as any)
+      .from('shared_shopping_items')
       .select('*')
       .order('created_at', { ascending: false });
 
@@ -39,26 +39,37 @@ export const sharedShoppingListService = {
       ...data.map((item: any) => item.added_by),
       ...data.filter((item: any) => item.purchased_by).map((item: any) => item.purchased_by)
     ])];
+
+    console.log('Fetching profiles for user IDs:', userIds);
     
-    const { data: profiles } = await supabase
+    const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, name')
       .in('id', userIds);
+
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError);
+    }
+
+    console.log('Fetched profiles:', profiles);
     
     const profileMap = new Map(profiles?.map(p => [p.id, p.name]) || []);
     
-    return data.map((item: any) => ({
+    const itemsWithNames = data.map((item: any) => ({
       ...item,
-      added_by_name: profileMap.get(item.added_by) || 'Unknown',
-      purchased_by_name: item.purchased_by ? profileMap.get(item.purchased_by) : undefined
+      added_by_name: profileMap.get(item.added_by) || 'Unknown User',
+      purchased_by_name: item.purchased_by ? profileMap.get(item.purchased_by) || 'Unknown User' : undefined
     }));
+
+    console.log('Items with names:', itemsWithNames);
+    return itemsWithNames;
   },
 
   async addSharedItem(itemData: { name: string; quantity: string; category?: string }, userId: string): Promise<SharedShoppingItem> {
     console.log('Adding shared shopping item:', itemData);
     
     const { data, error } = await supabase
-      .from('shared_shopping_items' as any)
+      .from('shared_shopping_items')
       .insert({
         name: itemData.name,
         quantity: itemData.quantity,
@@ -86,7 +97,7 @@ export const sharedShoppingListService = {
 
     return {
       ...(data as any),
-      added_by_name: profile?.name || 'Unknown'
+      added_by_name: profile?.name || 'Unknown User'
     };
   },
 
@@ -94,7 +105,7 @@ export const sharedShoppingListService = {
     console.log('Marking shared item as purchased:', itemId);
     
     const { data, error } = await supabase
-      .from('shared_shopping_items' as any)
+      .from('shared_shopping_items')
       .update({
         is_purchased: true,
         purchased_by: userId,
@@ -124,8 +135,8 @@ export const sharedShoppingListService = {
 
     return {
       ...(data as any),
-      added_by_name: profileMap.get((data as any).added_by) || 'Unknown',
-      purchased_by_name: profileMap.get((data as any).purchased_by) || undefined
+      added_by_name: profileMap.get((data as any).added_by) || 'Unknown User',
+      purchased_by_name: profileMap.get((data as any).purchased_by) || 'Unknown User'
     };
   },
 
@@ -133,7 +144,7 @@ export const sharedShoppingListService = {
     console.log('Deleting shared shopping item:', itemId);
     
     const { error } = await supabase
-      .from('shared_shopping_items' as any)
+      .from('shared_shopping_items')
       .delete()
       .eq('id', itemId);
 

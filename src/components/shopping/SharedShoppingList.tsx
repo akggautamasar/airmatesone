@@ -16,6 +16,8 @@ export const SharedShoppingList = () => {
     category: ''
   });
 
+  console.log('SharedShoppingList items:', items);
+
   const pendingItems = items.filter(item => !item.is_purchased);
   const purchasedItems = items.filter(item => item.is_purchased);
 
@@ -142,8 +144,8 @@ export const SharedShoppingList = () => {
                     Quantity: {item.quantity}
                     {item.category && ` • Category: ${item.category}`}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    Added by {item.added_by_name}
+                  <p className="text-xs text-blue-600 font-medium">
+                    Added by {item.added_by_name || 'Unknown User'}
                   </p>
                 </div>
                 <Button
@@ -184,9 +186,14 @@ export const SharedShoppingList = () => {
                   {item.category && (
                     <p className="text-xs text-muted-foreground">Category: {item.category}</p>
                   )}
-                  <p className="text-xs text-green-600">
-                    Added by {item.added_by_name} • Purchased by {item.purchased_by_name}
-                  </p>
+                  <div className="text-xs space-y-1">
+                    <p className="text-blue-600">
+                      Added by {item.added_by_name || 'Unknown User'}
+                    </p>
+                    <p className="text-green-600 font-medium">
+                      Purchased by {item.purchased_by_name || 'Unknown User'}
+                    </p>
+                  </div>
                 </div>
                 <Button
                   size="sm"
