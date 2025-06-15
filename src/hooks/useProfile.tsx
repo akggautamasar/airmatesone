@@ -11,6 +11,7 @@ interface Profile {
   name: string | null;
   upi_id: string | null;
   avatar_url: string | null;
+  mobile_number: string | null;
 }
 
 export const useProfile = () => {

@@ -127,6 +127,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          mobile_number: string | null
           name: string | null
           updated_at: string
           upi_id: string | null
@@ -137,6 +138,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          mobile_number?: string | null
           name?: string | null
           updated_at?: string
           upi_id?: string | null
@@ -147,6 +149,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          mobile_number?: string | null
           name?: string | null
           updated_at?: string
           upi_id?: string | null

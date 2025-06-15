@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, IndianRupee, Mail } from "lucide-react";
+import { User, IndianRupee, Mail, Phone } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
 
 export const Profile = () => {
@@ -12,14 +12,16 @@ export const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: profile?.name || '',
-    upi_id: profile?.upi_id || ''
+    upi_id: profile?.upi_id || '',
+    mobile_number: profile?.mobile_number || ''
   });
 
   React.useEffect(() => {
     if (profile) {
       setFormData({
         name: profile.name || '',
-        upi_id: profile.upi_id || ''
+        upi_id: profile.upi_id || '',
+        mobile_number: profile.mobile_number || ''
       });
     }
   }, [profile]);
@@ -76,6 +78,22 @@ export const Profile = () => {
             </div>
             
             <div className="space-y-2">
+              <Label htmlFor="mobile">Mobile Number</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="mobile"
+                  type="tel"
+                  placeholder="+91 98765 43210"
+                  value={formData.mobile_number}
+                  onChange={(e) => setFormData({...formData, mobile_number: e.target.value})}
+                  disabled={!isEditing}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
               <Label htmlFor="upiId">UPI ID</Label>
               <div className="relative">
                 <IndianRupee className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -107,7 +125,8 @@ export const Profile = () => {
                     setIsEditing(false);
                     setFormData({
                       name: profile?.name || '',
-                      upi_id: profile?.upi_id || ''
+                      upi_id: profile?.upi_id || '',
+                      mobile_number: profile?.mobile_number || ''
                     });
                   }}
                 >
