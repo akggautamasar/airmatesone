@@ -22,41 +22,56 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const fetchUserLanguage = async (userId: string) => {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('language')
-        .eq('id', userId)
-        .single();
-      if (profile && profile.language) {
-        setLanguage(profile.language);
-      } else {
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('language')
+          .eq('id', userId)
+          .single();
+
+        if (error && error.code !== 'PGRST116') { // Ignore if profile doesn't exist yet
+          throw error;
+        }
+
+        if (profile && profile.language) {
+          setLanguage(profile.language);
+        } else {
+          setLanguage('en');
+        }
+      } catch (error) {
+        console.error('Error fetching user language:', error);
+        // Set a fallback language on error
         setLanguage('en');
       }
     };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchUserLanguage(session.user.id);
-        } else {
-          setLanguage('en');
-        }
-        setLoading(false);
-      }
-    );
-
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log('Initial session:', session?.user?.email);
+    const handleAuthChange = async (session: Session | null) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
         await fetchUserLanguage(session.user.id);
+      } else {
+        setLanguage('en');
       }
       setLoading(false);
+    };
+
+    // Get initial session and handle it
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session:', session?.user?.email);
+      handleAuthChange(session);
+    }).catch(error => {
+      console.error("Error in getSession:", error);
+      setLoading(false);
     });
+
+    // Listen for subsequent auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
+        handleAuthChange(session);
+      }
+    );
 
     return () => subscription.unsubscribe();
   }, []);
