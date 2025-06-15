@@ -21,8 +21,8 @@ export const shoppingListItemsService = {
       .select(`
         *,
         product:products(name, category, unit),
-        added_by_profile:profiles!shopping_list_items_added_by_fkey(name),
-        purchased_by_profile:profiles!shopping_list_items_purchased_by_fkey(name)
+        added_by_profile:profiles!inner(name),
+        purchased_by_profile:profiles(name)
       `)
       .eq('shopping_list_id', listId)
       .order('created_at');
@@ -60,15 +60,23 @@ export const shoppingListItemsService = {
       })
       .select(`
         *,
-        product:products(name, category, unit),
-        added_by_profile:profiles!shopping_list_items_added_by_fkey(name)
+        product:products(name, category, unit)
       `)
       .single();
 
     if (error) throw error;
 
+    // Fetch the user profile separately
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('name')
+      .eq('id', userId)
+      .single();
+
     return {
-      ...transformItemData(data),
+      ...data,
+      product: data.product,
+      added_by_profile: userProfile ? { name: userProfile.name } : null,
       purchased_by_profile: null
     };
   },
@@ -84,13 +92,30 @@ export const shoppingListItemsService = {
       .eq('id', itemId)
       .select(`
         *,
-        product:products(name, category, unit),
-        added_by_profile:profiles!shopping_list_items_added_by_fkey(name),
-        purchased_by_profile:profiles!shopping_list_items_purchased_by_fkey(name)
+        product:products(name, category, unit)
       `)
       .single();
 
     if (error) throw error;
-    return transformItemData(data);
+
+    // Fetch both user profiles separately
+    const { data: addedByProfile } = await supabase
+      .from('profiles')
+      .select('name')
+      .eq('id', data.added_by)
+      .single();
+
+    const { data: purchasedByProfile } = await supabase
+      .from('profiles')
+      .select('name')
+      .eq('id', userId)
+      .single();
+
+    return {
+      ...data,
+      product: data.product,
+      added_by_profile: addedByProfile ? { name: addedByProfile.name } : null,
+      purchased_by_profile: purchasedByProfile ? { name: purchasedByProfile.name } : null
+    };
   }
 };
