@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -167,6 +168,8 @@ const Index = () => {
               onExpenseUpdate={handleExpenseUpdate}
               settlements={settlements}
               currentUserId={user.id}
+              onUpdateStatus={handleSettlementStatusUpdate}
+              onDeleteSettlementGroup={deleteSettlementGroup}
             />
           </TabsContent>
 
@@ -198,7 +201,6 @@ const Index = () => {
               settlements={settlements} 
               onUpdateStatus={handleSettlementStatusUpdate}
               onDeleteSettlementGroup={deleteSettlementGroup}
-              hasActiveExpenses={hasActiveExpenses}
             />
           </TabsContent>
 

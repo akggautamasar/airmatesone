@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import React from 'react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Clock } from "lucide-react";
+import { Settlement } from '@/types';
+import { SettlementItem } from '@/components/settlement/SettlementItem';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,20 +14,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-export type { Settlement } from '@/types';
-import { SettlementItem } from './settlement/SettlementItem';
-import { Settlement } from '@/types';
 
-export interface SettlementHistoryProps {
+interface PendingSettlementsProps {
   settlements: Settlement[];
   onUpdateStatus: (transaction_group_id: string, newStatus: "pending" | "debtor_paid" | "settled") => void;
   onDeleteSettlementGroup: (transaction_group_id: string) => void;
 }
 
-const SettlementHistory = ({ settlements, onUpdateStatus, onDeleteSettlementGroup }: SettlementHistoryProps) => {
-  const [settlementToDelete, setSettlementToDelete] = useState<Settlement | null>(null);
-  
-  const settledSettlements = settlements.filter(s => s.status === "settled");
+export const PendingSettlements: React.FC<PendingSettlementsProps> = ({ settlements, onUpdateStatus, onDeleteSettlementGroup }) => {
+  const [settlementToDelete, setSettlementToDelete] = React.useState<Settlement | null>(null);
+
+  const pendingSettlements = settlements.filter(s => s.status === "pending" || s.status === "debtor_paid");
 
   const getStatusText = (status: Settlement['status'], type: Settlement['type'], name: string) => {
     if (status === 'pending') {
@@ -35,41 +33,35 @@ const SettlementHistory = ({ settlements, onUpdateStatus, onDeleteSettlementGrou
     if (status === 'debtor_paid') {
       return type === 'owes' ? `You've marked as paid to ${name}, awaiting their confirmation` : `${name} marked as paid, confirm receipt`;
     }
-    if (status === 'settled') {
-      return type === 'owes' ? `You paid ${name}` : `Received from ${name}`;
-    }
     return 'Unknown status';
   };
-  
+
   return (
     <AlertDialog>
       <Card>
         <CardHeader>
-          <CardTitle>Settled Transactions</CardTitle>
-          <CardDescription>
-            A history of all your completed settlements.
-          </CardDescription>
+          <CardTitle>Pending Settlements</CardTitle>
+          <CardDescription>Actions you need to take or are waiting on.</CardDescription>
         </CardHeader>
         <CardContent>
-            {settledSettlements.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Check className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No settled transactions yet.</p>
-                <p className="text-sm">Completed settlements will appear here.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {settledSettlements.map((s) => (
-                  <SettlementItem
-                    key={s.id}
-                    settlement={s}
-                    isPendingTab={false}
-                    onUpdateStatus={onUpdateStatus}
-                    onDeleteTrigger={setSettlementToDelete}
-                  />
-                ))}
-              </div>
-            )}
+          {pendingSettlements.length === 0 ? (
+            <div className="text-center py-4 text-muted-foreground">
+              <Clock className="h-10 w-10 mx-auto mb-3 opacity-50" />
+              <p>No pending settlements.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {pendingSettlements.map((s) => (
+                <SettlementItem
+                  key={s.id}
+                  settlement={s}
+                  isPendingTab={true}
+                  onUpdateStatus={onUpdateStatus}
+                  onDeleteTrigger={setSettlementToDelete}
+                />
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -77,10 +69,10 @@ const SettlementHistory = ({ settlements, onUpdateStatus, onDeleteSettlementGrou
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action will delete the settlement record: <br />
+            This action will delete the settlement: <br />
             {settlementToDelete && `${getStatusText(settlementToDelete.status, settlementToDelete.type, settlementToDelete.name)} for ₹${settlementToDelete.amount.toFixed(2)}.`}
             <br />
-            This cannot be undone.
+            This will remove the settlement for both parties involved. This cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -101,5 +93,3 @@ const SettlementHistory = ({ settlements, onUpdateStatus, onDeleteSettlementGrou
     </AlertDialog>
   );
 };
-
-export { SettlementHistory };

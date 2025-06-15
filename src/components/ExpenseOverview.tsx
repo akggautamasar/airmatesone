@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { IndianRupee } from "lucide-react";
@@ -12,7 +13,7 @@ import { useExpenseCalculations } from "./overview/hooks/useExpenseCalculations"
 import { SummaryCards } from "./overview/SummaryCards";
 import { ChartsSection } from "./overview/ChartsSection";
 import { RecentExpensesList } from "./overview/RecentExpensesList";
-import { NetExpensesOverview } from './overview/NetExpensesOverview';
+import { PendingSettlements } from './overview/PendingSettlements';
 
 interface Expense {
   id: string;
@@ -29,6 +30,8 @@ interface ExpenseOverviewProps {
   onExpenseUpdate: () => void;
   settlements: DetailedSettlement[]; 
   currentUserId: string | undefined;
+  onUpdateStatus: (transaction_group_id: string, newStatus: "pending" | "debtor_paid" | "settled") => void;
+  onDeleteSettlementGroup: (transaction_group_id: string) => void;
 }
 
 export const ExpenseOverview = ({
@@ -36,6 +39,8 @@ export const ExpenseOverview = ({
   onExpenseUpdate,
   settlements,
   currentUserId,
+  onUpdateStatus,
+  onDeleteSettlementGroup,
 }: ExpenseOverviewProps) => {
   const { deleteExpense } = useExpenses();
   const { roommates } = useRoommates();
@@ -96,9 +101,10 @@ export const ExpenseOverview = ({
         lastExpenseDate={lastExpenseDate}
       />
 
-      <NetExpensesOverview 
-        finalBalances={finalBalances}
-        currentUserDisplayName={currentUserDisplayName}
+      <PendingSettlements
+        settlements={settlements}
+        onUpdateStatus={onUpdateStatus}
+        onDeleteSettlementGroup={onDeleteSettlementGroup}
       />
 
       <ChartsSection
