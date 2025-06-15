@@ -61,21 +61,35 @@ export const AddExpenseForm = ({ onExpenseAdded }: AddExpenseFormProps) => {
     },
   });
 
-  // Create list of all possible payers (current user + roommates)
-  const allUsers = [
-    {
+  // Create list of all possible payers (current user + roommates) with proper deduplication
+  const allUsers = React.useMemo(() => {
+    const currentUser = {
       id: user?.id || '',
       name: profile?.name || user?.email?.split('@')[0] || 'You',
       email: user?.email || '',
       upi_id: profile?.upi_id || '',
-    },
-    ...roommates.map(r => ({
+    };
+
+    const roommateUsers = roommates.map(r => ({
       id: r.user_id,
       name: r.name,
       email: r.email,
       upi_id: r.upi_id,
-    }))
-  ];
+    }));
+
+    // Combine and deduplicate by email
+    const combined = [currentUser, ...roommateUsers];
+    const uniqueUsers = combined.filter((user, index, self) => 
+      index === self.findIndex(u => u.email === user.email)
+    );
+
+    console.log('AddExpenseForm: Current user:', currentUser);
+    console.log('AddExpenseForm: Roommates:', roommates);
+    console.log('AddExpenseForm: All users before deduplication:', combined);
+    console.log('AddExpenseForm: All users after deduplication:', uniqueUsers);
+
+    return uniqueUsers;
+  }, [user, roommates, profile]);
 
   const onSubmit = async (data: ExpenseForm) => {
     if (!user) return;
@@ -205,7 +219,7 @@ export const AddExpenseForm = ({ onExpenseAdded }: AddExpenseFormProps) => {
                     </FormControl>
                     <SelectContent>
                       {allUsers.map((user) => (
-                        <SelectItem key={user.id} value={user.email}>
+                        <SelectItem key={user.email} value={user.email}>
                           {user.name}
                         </SelectItem>
                       ))}
@@ -225,13 +239,13 @@ export const AddExpenseForm = ({ onExpenseAdded }: AddExpenseFormProps) => {
                   <div className="space-y-2">
                     {allUsers.map((user) => (
                       <FormField
-                        key={user.id}
+                        key={user.email}
                         control={form.control}
                         name="sharers"
                         render={({ field }) => {
                           return (
                             <FormItem
-                              key={user.id}
+                              key={user.email}
                               className="flex flex-row items-start space-x-3 space-y-0"
                             >
                               <FormControl>
