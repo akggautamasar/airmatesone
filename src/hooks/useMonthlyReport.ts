@@ -1,8 +1,12 @@
-
 import { useExpenses } from './useExpenses';
 import { useAuth } from './useAuth';
 import { useProfile } from './useProfile';
 import { useMemo } from 'react';
+import { ShoppingListItem } from '@/types/shopping';
+import { Settlement } from '@/types';
+import { shoppingListService } from '@/services/shoppingListService';
+import { fetchSettledTransactionsForMonth } from '@/services/settlementService';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface MonthlyReportData {
     totalSpent: number;
@@ -12,6 +16,9 @@ export interface MonthlyReportData {
     month: number;
     year: number;
     userName: string;
+    purchasedItems: ShoppingListItem[];
+    moneySent: Settlement[];
+    moneyReceived: Settlement[];
 }
 
 export const useMonthlyReport = () => {
@@ -31,7 +38,7 @@ export const useMonthlyReport = () => {
         return checks.filter(Boolean).includes(nameOrEmail);
     };
 
-    const calculateReport = (year: number, month: number): MonthlyReportData => {
+    const calculateReport = async (year: number, month: number): Promise<MonthlyReportData> => {
         const monthlyExpenses = expenses.filter(expense => {
             const expenseDate = new Date(expense.date);
             return expenseDate.getFullYear() === year && expenseDate.getMonth() === month;
@@ -66,6 +73,12 @@ export const useMonthlyReport = () => {
             return acc;
         }, [] as { name: string; value: number }[]);
 
+        const purchasedItems = user ? await shoppingListService.fetchPurchasedItemsForMonth(user.id, year, month) : [];
+        const settledTransactions = user ? await fetchSettledTransactionsForMonth(supabase, user.id, year, month) : [];
+
+        const moneySent = settledTransactions.filter(t => t.type === 'owes');
+        const moneyReceived = settledTransactions.filter(t => t.type === 'owed');
+
         return {
             totalSpent,
             balance,
@@ -73,7 +86,10 @@ export const useMonthlyReport = () => {
             categoryData,
             month,
             year,
-            userName: currentUserDisplayName
+            userName: currentUserDisplayName,
+            purchasedItems,
+            moneySent,
+            moneyReceived
         };
     };
 

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { ShoppingListItem, ShoppingList } from '@/types/shopping';
 
@@ -134,6 +135,50 @@ export const shoppingListService = {
         purchased_by_profile: (updatedItem.purchased_by ? profilesById.get(updatedItem.purchased_by) : null) || null,
     };
     return result;
+  },
+
+  async fetchPurchasedItemsForMonth(userId: string, year: number, month: number): Promise<ShoppingListItem[]> {
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+
+    const { data: items, error } = await supabase
+      .from('shopping_list_items')
+      .select(`
+        *,
+        product:products(*)
+      `)
+      .eq('purchased_by', userId)
+      .gte('purchased_at', startDate.toISOString())
+      .lte('purchased_at', endDate.toISOString())
+      .order('purchased_at', { ascending: false });
+
+    if (error) {
+      console.error("Failed to fetch purchased items:", error);
+      throw error;
+    }
+    if (!items || items.length === 0) return [];
+    
+    const userIds = [...new Set(items.map(item => item.added_by).filter((id): id is string => !!id))];
+    
+    if (userIds.length === 0) {
+        return items.map(item => ({ ...item, added_by_profile: null, purchased_by_profile: null }));
+    }
+
+    const { data: profiles, error: profileError } = await supabase
+      .rpc('get_users_details', { p_user_ids: userIds });
+
+    if (profileError) {
+      console.error("Failed to fetch profiles for purchased items:", profileError);
+      return items.map(item => ({ ...item, added_by_profile: null, purchased_by_profile: null }));
+    }
+
+    const profilesById = new Map(profiles?.map(p => [p.id, { name: p.name, email: p.email }]));
+
+    return items.map(item => ({
+      ...item,
+      added_by_profile: (item.added_by ? profilesById.get(item.added_by) : null) || null,
+      purchased_by_profile: null,
+    }));
   },
 
   async deleteItem(itemId: string): Promise<void> {

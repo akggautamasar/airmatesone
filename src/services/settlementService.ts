@@ -201,6 +201,38 @@ export const createUniversalSettlementPairInSupabase = async (
   }
 };
 
+// NEW: Fetch settled transactions for a specific month
+export const fetchSettledTransactionsForMonth = async (
+  supabase: SupabaseClient,
+  userId: string,
+  year: number,
+  month: number
+): Promise<Settlement[]> => {
+  const startDate = new Date(year, month, 1);
+  const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+
+  console.log(`[settlementService] Fetching settled transactions for user ${userId} between ${startDate.toISOString()} and ${endDate.toISOString()}`);
+
+  const { data, error } = await supabase
+    .from('settlements')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'settled')
+    .gte('settled_date', startDate.toISOString())
+    .lte('settled_date', endDate.toISOString())
+    .order('settled_date', { ascending: false });
+
+  if (error) {
+    console.error(`[settlementService] Error fetching settled transactions:`, error);
+    throw error;
+  }
+  if (!data) return [];
+
+  const mappedSettlements = data.map(mapSupabaseToSettlement);
+  console.log(`[settlementService] Successfully fetched ${mappedSettlements.length} settled transactions for the month.`);
+  return mappedSettlements || [];
+};
+
 export const updateSettlementStatusInSupabase = async (
   supabase: SupabaseClient,
   transaction_group_id: string,

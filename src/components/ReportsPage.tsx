@@ -27,10 +27,10 @@ export const ReportsPage = () => {
 
     const { calculateReport } = useMonthlyReport();
 
-    const handleGenerateReport = () => {
+    const handleGenerateReport = async () => {
         setIsLoading(true);
         const [year, month] = selectedMonthYear.split('-').map(Number);
-        const data = calculateReport(year, month);
+        const data = await calculateReport(year, month);
         setReportData(data);
         setIsLoading(false);
     };
