@@ -4,12 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, ShoppingCart, Check, Trash2, Users } from "lucide-react";
+import { Plus, ShoppingCart, Check, Trash2, Users, Package } from "lucide-react";
 import { useSharedShoppingList } from '@/hooks/useSharedShoppingList';
+import { BulkProductSelector } from './BulkProductSelector';
 
 export const SharedShoppingList = () => {
   const { items, loading, addItem, markAsPurchased, deleteItem } = useSharedShoppingList();
   const [isAddingItem, setIsAddingItem] = useState(false);
+  const [showBulkSelector, setShowBulkSelector] = useState(false);
   const [newItem, setNewItem] = useState({
     name: '',
     quantity: '',
@@ -35,6 +37,17 @@ export const SharedShoppingList = () => {
     setIsAddingItem(false);
   };
 
+  const handleBulkAdd = async (selectedProducts: Array<{ product: any; quantity: string }>) => {
+    for (const { product, quantity } of selectedProducts) {
+      await addItem({
+        name: product.name,
+        quantity: quantity,
+        category: product.category || undefined
+      });
+    }
+    setShowBulkSelector(false);
+  };
+
   if (loading) {
     return (
       <div className="text-center py-8">
@@ -54,13 +67,23 @@ export const SharedShoppingList = () => {
               <ShoppingCart className="h-5 w-5" />
               <span>Shared Shopping List</span>
             </CardTitle>
-            <Button
-              onClick={() => setIsAddingItem(true)}
-              className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Item
-            </Button>
+            <div className="flex space-x-2">
+              <Button
+                onClick={() => setShowBulkSelector(true)}
+                variant="outline"
+                className="border-blue-600 text-blue-600 hover:bg-blue-50"
+              >
+                <Package className="h-4 w-4 mr-2" />
+                Add from Products
+              </Button>
+              <Button
+                onClick={() => setIsAddingItem(true)}
+                className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Item
+              </Button>
+            </div>
           </div>
         </CardHeader>
         
@@ -115,6 +138,14 @@ export const SharedShoppingList = () => {
           </CardContent>
         )}
       </Card>
+
+      {/* Bulk Product Selector Dialog */}
+      {showBulkSelector && (
+        <BulkProductSelector
+          onAdd={handleBulkAdd}
+          onCancel={() => setShowBulkSelector(false)}
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pending Items */}
