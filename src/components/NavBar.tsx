@@ -12,7 +12,9 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { NotificationBell } from './notifications/NotificationBell';
-import { User, LogOut, Settings } from 'lucide-react';
+import { User, LogOut, Settings, Pin } from 'lucide-react'; // Added Pin
+
+import { useNavigate } from "react-router-dom";
 
 interface NavBarProps {
   currentView?: string;
@@ -23,6 +25,7 @@ export const NavBar = ({ currentView, onViewChange }: NavBarProps) => {
   const { user, signOut } = useAuth();
   const { profile } = useProfile();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   const handleSignOut = async () => {
     await signOut();
@@ -47,43 +50,52 @@ export const NavBar = ({ currentView, onViewChange }: NavBarProps) => {
     { id: 'roommates', label: '👥 Roommates' },
     { id: 'grocery', label: '🛒 Grocery' },
     { id: 'profile', label: '👤 Profile' },
+    // Add Pinboard option with pin icon
+    { id: 'pinboard', label: (<span className="flex items-center"><Pin className="w-4 h-4 mr-1" />Pinboard</span>) }
   ];
 
+  // Helper for navigation (handle both tabs and custom views)
+  const handleNav = (id: string) => {
+    if (id === 'pinboard') {
+      navigate('/pinboard');
+      setIsMobileMenuOpen(false);
+    } else if (onViewChange) {
+      onViewChange(id);
+      setIsMobileMenuOpen(false);
+    }
+  };
+
+  // Removed previously hardcoded navItems (so Pinboard entry applies everywhere it’s used)
   return (
     <nav className="bg-white shadow-sm border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-blue-600">AirMates</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-blue-600 cursor-pointer" onClick={()=>navigate("/")}>AirMates</h1>
             </div>
             
-            {/* Desktop Navigation - only show if onViewChange is provided */}
-            {onViewChange && (
-              <div className="hidden md:ml-6 md:flex md:space-x-4">
-                {navItems.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => onViewChange(item.id)}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      currentView === item.id
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            )}
+            {/* Desktop Navigation - add pinboard link */}
+            <div className="hidden md:ml-6 md:flex md:space-x-4">
+              {navItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleNav(item.id)}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    currentView === item.id
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Right side - Notifications and User Menu */}
           <div className="flex items-center space-x-4">
-            {/* Notification Bell */}
             <NotificationBell />
-            
-            {/* User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
@@ -103,6 +115,12 @@ export const NavBar = ({ currentView, onViewChange }: NavBarProps) => {
                     </p>
                   </div>
                 </div>
+                <DropdownMenuSeparator />
+                {/* Link to Pinboard in dropdown menu for extra discoverability */}
+                <DropdownMenuItem onClick={() => navigate('/pinboard')}>
+                  <Pin className="mr-2 h-4 w-4" />
+                  <span>Pinboard</span>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {onViewChange && (
                   <>
@@ -124,36 +142,31 @@ export const NavBar = ({ currentView, onViewChange }: NavBarProps) => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Mobile menu button - only show if onViewChange is provided */}
-            {onViewChange && (
-              <div className="md:hidden">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                >
-                  <span className="sr-only">Open main menu</span>
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                </Button>
-              </div>
-            )}
+            {/* Mobile menu button (hamburger) */}
+            <div className="md:hidden">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              >
+                <span className="sr-only">Open main menu</span>
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile Navigation Menu - only show if onViewChange is provided */}
-      {onViewChange && isMobileMenuOpen && (
+      {/* Mobile Navigation Menu */}
+      {isMobileMenuOpen && (
         <div className="md:hidden">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-gray-50">
             {navItems.map((item) => (
               <button
                 key={item.id}
-                onClick={() => {
-                  onViewChange(item.id);
-                  setIsMobileMenuOpen(false);
-                }}
+                onClick={() => handleNav(item.id)}
                 className={`block px-3 py-2 rounded-md text-base font-medium w-full text-left transition-colors ${
                   currentView === item.id
                     ? 'bg-blue-100 text-blue-700'
@@ -169,3 +182,4 @@ export const NavBar = ({ currentView, onViewChange }: NavBarProps) => {
     </nav>
   );
 };
+
