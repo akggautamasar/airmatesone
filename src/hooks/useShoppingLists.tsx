@@ -26,16 +26,18 @@ export const useShoppingLists = () => {
     markAsPurchased
   } = useShoppingListItems();
 
-  // Memoized callbacks for real-time updates
+  // Memoized callbacks for real-time updates to maintain data persistence
   const handleItemsUpdate = useCallback(async (listId: string) => {
+    console.log('Real-time update: refreshing items for shared list:', listId);
     await fetchListItems(listId);
   }, [fetchListItems]);
 
   const handleListUpdate = useCallback((list: any) => {
+    console.log('Real-time update: refreshing shared list data:', list);
     setCurrentList(list);
   }, [setCurrentList]);
 
-  // Set up real-time subscription
+  // Set up real-time subscription for shared shopping list
   useShoppingListRealtime({
     currentList,
     onItemsUpdate: handleItemsUpdate,
@@ -43,26 +45,39 @@ export const useShoppingLists = () => {
   });
 
   const addItem = async (itemData: AddItemData) => {
-    if (!currentList) return;
+    if (!currentList) {
+      console.error('No current shared shopping list available');
+      return;
+    }
+    console.log('Adding item to shared shopping list:', currentList.id);
     await addItemToList(currentList.id, itemData);
   };
 
-  // Initialize data when user is available
+  // Initialize shared shopping list data when user is available
   useEffect(() => {
-    const initializeData = async () => {
+    const initializeSharedShoppingData = async () => {
       if (user) {
-        console.log('User authenticated, initializing shopping lists');
-        await fetchShoppingLists();
-        const list = await getOrCreateTodaysList();
-        if (list) {
-          await fetchListItems(list.id);
+        console.log('User authenticated, initializing shared shopping lists for user:', user.id);
+        setLoading(true);
+        try {
+          await fetchShoppingLists();
+          const sharedList = await getOrCreateTodaysList();
+          if (sharedList) {
+            console.log('Loading items for shared list:', sharedList.id);
+            await fetchListItems(sharedList.id);
+          }
+        } catch (error) {
+          console.error('Error initializing shared shopping data:', error);
+        } finally {
+          setLoading(false);
         }
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    initializeData();
-  }, [user]);
+    initializeSharedShoppingData();
+  }, [user, fetchShoppingLists, getOrCreateTodaysList, fetchListItems]);
 
   return {
     shoppingLists,

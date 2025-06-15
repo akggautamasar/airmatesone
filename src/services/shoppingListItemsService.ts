@@ -16,7 +16,7 @@ const transformItemData = (item: any): ShoppingListItem => ({
 
 export const shoppingListItemsService = {
   async fetchListItems(listId: string): Promise<ShoppingListItem[]> {
-    console.log('Fetching items for shared list:', listId);
+    console.log('Fetching items for shared shopping list:', listId);
     
     const { data, error } = await supabase
       .from('shopping_list_items')
@@ -30,20 +30,21 @@ export const shoppingListItemsService = {
       .order('created_at');
 
     if (error) {
-      console.error('Error fetching shopping list items:', error);
+      console.error('Error fetching shared shopping list items:', error);
       throw error;
     }
     
-    console.log('Fetched shared items with profiles:', data);
+    console.log('Fetched shared shopping items with user attribution:', data);
     return (data || []).map(transformItemData);
   },
 
   async addItem(listId: string, userId: string, itemData: AddItemData): Promise<ShoppingListItem> {
-    console.log('Adding item to shared list:', listId, 'by user:', userId, 'data:', itemData);
+    console.log('Adding item to shared shopping list:', listId, 'by user:', userId, 'data:', itemData);
     
     // If it's a custom product and user wants to save it
     let finalProductId = itemData.product_id;
     if (itemData.custom_product_name && itemData.save_to_products) {
+      console.log('Creating new product for shared use:', itemData.custom_product_name);
       const { data: newProduct, error: productError } = await supabase
         .from('products')
         .insert({
@@ -76,7 +77,7 @@ export const shoppingListItemsService = {
       .single();
 
     if (error) {
-      console.error('Error adding item to shared list:', error);
+      console.error('Error adding item to shared shopping list:', error);
       throw error;
     }
 
@@ -87,7 +88,7 @@ export const shoppingListItemsService = {
       .eq('id', userId)
       .single();
 
-    console.log('Item added successfully to shared list:', data);
+    console.log('Item added successfully to shared shopping list:', data);
     return {
       ...data,
       product: data.product,
@@ -97,7 +98,7 @@ export const shoppingListItemsService = {
   },
 
   async markAsPurchased(itemId: string, userId: string): Promise<ShoppingListItem> {
-    console.log('Marking shared item as purchased:', itemId, 'by user:', userId);
+    console.log('Marking shared shopping item as purchased:', itemId, 'by user:', userId);
     
     const { data, error } = await supabase
       .from('shopping_list_items')
@@ -131,7 +132,7 @@ export const shoppingListItemsService = {
       .eq('id', userId)
       .single();
 
-    console.log('Shared item marked as purchased:', data);
+    console.log('Shared shopping item marked as purchased:', data);
     return {
       ...data,
       product: data.product,

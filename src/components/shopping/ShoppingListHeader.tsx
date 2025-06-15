@@ -2,8 +2,7 @@
 import React from 'react';
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DialogTrigger } from "@/components/ui/dialog";
-import { ShoppingCart, Plus, Send } from "lucide-react";
+import { ShoppingCart, Plus, Send, Users } from "lucide-react";
 import type { ShoppingList, ShoppingListItem } from "@/types/shopping";
 
 interface ShoppingListHeaderProps {
@@ -29,11 +28,12 @@ export const ShoppingListHeader = ({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center space-x-2">
+              <Users className="h-5 w-5 text-blue-600" />
               <ShoppingCart className="h-5 w-5" />
-              <span>Shopping List for {today}</span>
+              <span>Shared Shopping List for {today}</span>
             </CardTitle>
             <CardDescription>
-              {pendingItems.length} items pending • {purchasedItems.length} purchased
+              {pendingItems.length} items pending • {purchasedItems.length} purchased • Shared by all roommates
             </CardDescription>
           </div>
           <div className="flex space-x-2">
@@ -42,7 +42,7 @@ export const ShoppingListHeader = ({
               className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Add Item
+              Add to Shared List
             </Button>
 
             {currentList && !currentList.is_market_notification_sent && (
@@ -52,7 +52,7 @@ export const ShoppingListHeader = ({
                 className="border-orange-300 text-orange-700 hover:bg-orange-50"
               >
                 <Send className="h-4 w-4 mr-2" />
-                I'm Going to Market
+                Notify: Going to Market
               </Button>
             )}
           </div>
