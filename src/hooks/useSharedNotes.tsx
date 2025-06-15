@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
@@ -52,7 +53,10 @@ export const useSharedNotes = () => {
     const { data: reactions, isLoading: isLoadingReactions } = useQuery({
         queryKey: ['note_reactions'],
         queryFn: async () => {
-            const { data, error } = await supabase.from('note_reactions').select('*');
+            const { data, error } = await supabase
+                .from('note_reactions')
+                .select('*')
+                .order('created_at', { ascending: false });
             if (error) throw new Error(error.message);
             return data;
         },
@@ -64,7 +68,7 @@ export const useSharedNotes = () => {
         ...(notes?.map(n => n.done_by_user_id).filter(Boolean) as string[] || []),
         ...(reactions?.map(r => r.user_id) || []),
     ];
-    const uniqueUserIds = [...new Set(userIds)];
+    const uniqueUserIds = [...new Set(userIds)].sort();
     
     const { data: userDetails, isLoading: isLoadingUserDetails } = useQuery({
         queryKey: ['users_details', uniqueUserIds],
