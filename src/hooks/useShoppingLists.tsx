@@ -80,10 +80,10 @@ export const useShoppingLists = () => {
       // Transform the data to match our interface
       const transformedData = (data || []).map(item => ({
         ...item,
-        added_by_profile: item.added_by_profile && typeof item.added_by_profile === 'object' && 'name' in item.added_by_profile 
+        added_by_profile: item.added_by_profile && typeof item.added_by_profile === 'object' && item.added_by_profile !== null && 'name' in item.added_by_profile 
           ? item.added_by_profile 
           : null,
-        purchased_by_profile: item.purchased_by_profile && typeof item.purchased_by_profile === 'object' && 'name' in item.purchased_by_profile 
+        purchased_by_profile: item.purchased_by_profile && typeof item.purchased_by_profile === 'object' && item.purchased_by_profile !== null && 'name' in item.purchased_by_profile 
           ? item.purchased_by_profile 
           : null
       }));
@@ -186,7 +186,7 @@ export const useShoppingLists = () => {
       // Transform the returned data
       const transformedItem = {
         ...data,
-        added_by_profile: data.added_by_profile && typeof data.added_by_profile === 'object' && 'name' in data.added_by_profile 
+        added_by_profile: data.added_by_profile && typeof data.added_by_profile === 'object' && data.added_by_profile !== null && 'name' in data.added_by_profile 
           ? data.added_by_profile 
           : null,
         purchased_by_profile: null
@@ -232,10 +232,10 @@ export const useShoppingLists = () => {
       // Transform the returned data
       const transformedItem = {
         ...data,
-        added_by_profile: data.added_by_profile && typeof data.added_by_profile === 'object' && 'name' in data.added_by_profile 
+        added_by_profile: data.added_by_profile && typeof data.added_by_profile === 'object' && data.added_by_profile !== null && 'name' in data.added_by_profile 
           ? data.added_by_profile 
           : null,
-        purchased_by_profile: data.purchased_by_profile && typeof data.purchased_by_profile === 'object' && 'name' in data.purchased_by_profile 
+        purchased_by_profile: data.purchased_by_profile && typeof data.purchased_by_profile === 'object' && data.purchased_by_profile !== null && 'name' in data.purchased_by_profile 
           ? data.purchased_by_profile 
           : null
       };
