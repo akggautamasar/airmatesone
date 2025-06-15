@@ -22,6 +22,10 @@ export const ExpensesPage = () => {
     refetch();
   };
 
+  const handleExpenseDeleted = () => {
+    refetch();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -46,7 +50,7 @@ export const ExpensesPage = () => {
           <AddExpenseForm onExpenseAdded={handleExpenseAdded} />
           <div className="space-y-4">
             <h2 className="text-xl font-semibold">Your Expenses</h2>
-            <ExpenseList expenses={userExpenses} />
+            <ExpenseList expenses={userExpenses} onExpenseDeleted={handleExpenseDeleted} />
           </div>
         </TabsContent>
 
