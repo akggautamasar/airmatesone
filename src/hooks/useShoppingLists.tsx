@@ -124,14 +124,15 @@ export const useShoppingLists = () => {
     }
   };
 
-  // Set up real-time subscription for shopping list items
+  // Set up real-time subscription for shopping list items with better error handling
   useEffect(() => {
-    if (!currentList) return;
+    if (!currentList?.id) return;
 
     console.log('Setting up real-time subscription for list:', currentList.id);
 
+    // Set up real-time subscription for all shopping list changes
     const channel = supabase
-      .channel('shopping-list-changes')
+      .channel('shopping-list-realtime')
       .on(
         'postgres_changes',
         {
@@ -140,21 +141,36 @@ export const useShoppingLists = () => {
           table: 'shopping_list_items',
           filter: `shopping_list_id=eq.${currentList.id}`
         },
-        (payload) => {
+        async (payload) => {
           console.log('Real-time update received:', payload);
           
-          if (payload.eventType === 'INSERT') {
-            // Fetch the new item with its relations
-            fetchListItems(currentList.id);
-          } else if (payload.eventType === 'UPDATE') {
-            // Fetch updated items to get profile data
-            fetchListItems(currentList.id);
-          } else if (payload.eventType === 'DELETE') {
-            setItems(prev => prev.filter(item => item.id !== payload.old.id));
+          // Always refetch all items to ensure we have the latest data with profiles
+          try {
+            await fetchListItems(currentList.id);
+          } catch (error) {
+            console.error('Error refreshing items after real-time update:', error);
           }
         }
       )
-      .subscribe();
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'shopping_lists'
+        },
+        async (payload) => {
+          console.log('Shopping list update received:', payload);
+          
+          // Refresh the current list data
+          if (payload.new && payload.new.id === currentList.id) {
+            setCurrentList(payload.new as ShoppingList);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('Real-time subscription status:', status);
+      });
 
     return () => {
       console.log('Cleaning up real-time subscription');
@@ -162,6 +178,7 @@ export const useShoppingLists = () => {
     };
   }, [currentList?.id]);
 
+  // Initialize data when user is available
   useEffect(() => {
     if (user) {
       console.log('User authenticated, initializing shopping lists');

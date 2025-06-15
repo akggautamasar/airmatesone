@@ -25,21 +25,21 @@ export const shoppingListService = {
     console.log('Getting or creating list for date:', today, 'user:', userId);
 
     try {
-      // Try to get today's list (should be shared among all users)
-      let { data: existingList, error } = await supabase
+      // First try to get today's list (shared among all users)
+      let { data: existingList, error: fetchError } = await supabase
         .from('shopping_lists')
         .select('*')
         .eq('date', today)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching existing list:', error);
-        throw error;
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Error fetching existing list:', fetchError);
+        throw fetchError;
       }
 
-      // If no list exists, create one
+      // If no list exists for today, create one
       if (!existingList) {
-        console.log('No list exists for today, creating new one');
+        console.log('No list exists for today, creating new one for all roommates');
         const { data: newList, error: createError } = await supabase
           .from('shopping_lists')
           .insert({
@@ -54,10 +54,10 @@ export const shoppingListService = {
           throw createError;
         }
         
-        console.log('New shopping list created:', newList);
+        console.log('New shared shopping list created:', newList);
         existingList = newList;
       } else {
-        console.log('Existing list found:', existingList);
+        console.log('Found existing shared list for today:', existingList);
       }
 
       return existingList;
