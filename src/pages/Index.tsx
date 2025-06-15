@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,7 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { getCurrentUserDisplayName } from "@/utils/userDisplay";
 import { ChoresPage } from "@/components/ChoresPage";
-import { LayoutGrid, FileText, ShoppingCart, Users, User, ClipboardList } from "lucide-react";
+import { ReportsPage } from "@/components/ReportsPage";
+import { LayoutGrid, FileText, ShoppingCart, Users, User, ClipboardList, FilePieChart } from "lucide-react";
 
 const Index = () => {
   const { user, loading: authLoading } = useAuth();
@@ -78,9 +78,10 @@ const Index = () => {
         </div>
         
         <Tabs defaultValue="overview" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-6 gap-2">
+          <TabsList className="grid w-full grid-cols-7 gap-2">
             <TabsTrigger value="overview" className="flex items-center space-x-2"><LayoutGrid className="h-4 w-4" /><span>Overview</span></TabsTrigger>
             <TabsTrigger value="expenses" className="flex items-center space-x-2"><FileText className="h-4 w-4" /><span>Expenses</span></TabsTrigger>
+            <TabsTrigger value="reports" className="flex items-center space-x-2"><FilePieChart className="h-4 w-4" /><span>Reports</span></TabsTrigger>
             <TabsTrigger value="shopping" className="flex items-center space-x-2"><ShoppingCart className="h-4 w-4" /><span>Shopping</span></TabsTrigger>
             <TabsTrigger value="chores" className="flex items-center space-x-2"><ClipboardList className="h-4 w-4" /><span>Chores</span></TabsTrigger>
             <TabsTrigger value="roommates" className="flex items-center space-x-2"><Users className="h-4 w-4" /><span>Roommates</span></TabsTrigger>
@@ -96,6 +97,10 @@ const Index = () => {
 
           <TabsContent value="expenses" className="space-y-6">
             <ExpensesPage onExpenseUpdate={handleExpenseUpdate} />
+          </TabsContent>
+
+          <TabsContent value="reports" className="space-y-6">
+            <ReportsPage />
           </TabsContent>
 
           <TabsContent value="shopping" className="space-y-6">
