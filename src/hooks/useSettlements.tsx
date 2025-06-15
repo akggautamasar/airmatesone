@@ -7,7 +7,8 @@ import {
   fetchSettlementsFromSupabase,
   addSettlementPairToSupabase,
   updateSettlementStatusInSupabase,
-  deleteSettlementGroupFromSupabase 
+  deleteSettlementGroupFromSupabase,
+  createUniversalSettlementPairInSupabase,
 } from '@/services/settlementService';
 
 export const useSettlements = () => {
@@ -86,6 +87,24 @@ export const useSettlements = () => {
     }
   };
   
+  const addUniversalSettlementPair = async (
+    debtor: { name: string; email: string; },
+    creditor: { name: string; email: string; upi_id: string; },
+    amount: number
+  ) => {
+    if (!user) {
+      toast({ title: "Error", description: "You must be logged in.", variant: "destructive" });
+      return;
+    }
+    try {
+      await createUniversalSettlementPairInSupabase(supabase, debtor, creditor, amount);
+      await fetchSettlements();
+    } catch (error: any) {
+      console.error(`[useSettlements] Error adding universal settlement pair:`, error);
+      toast({ title: "Error", description: `Failed to add settlement: ${error.message}`, variant: "destructive" });
+    }
+  };
+
   const updateSettlementStatusByGroupId = async (transaction_group_id: string, newStatus: "pending" | "debtor_paid" | "settled") => {
     if (!user) {
       toast({ title: "Error", description: "You must be logged in.", variant: "destructive" });
@@ -145,5 +164,5 @@ export const useSettlements = () => {
     }
   };
 
-  return { settlements, loading, addSettlementPair, updateSettlementStatusByGroupId, deleteSettlementGroup, refetchSettlements: fetchSettlements };
+  return { settlements, loading, addSettlementPair, addUniversalSettlementPair, updateSettlementStatusByGroupId, deleteSettlementGroup, refetchSettlements: fetchSettlements };
 };

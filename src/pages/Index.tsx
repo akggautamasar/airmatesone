@@ -30,6 +30,7 @@ const Index = () => {
     settlements, 
     loading: settlementsLoading, 
     addSettlementPair, 
+    addUniversalSettlementPair,
     updateSettlementStatusByGroupId,
     deleteSettlementGroup,
     refetchSettlements 
@@ -108,7 +109,7 @@ const Index = () => {
         user,
         profile,
         roommates,
-        addSettlementPair,
+        addSettlementPair: addUniversalSettlementPair,
       });
 
       setShowAddExpense(false);

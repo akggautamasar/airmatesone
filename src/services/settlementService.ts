@@ -129,6 +129,55 @@ export const addSettlementPairToSupabase = async (
   return mapSupabaseToSettlement(currentUserData);
 };
 
+// NEW: A universal function to create settlements between any two registered users.
+export const createUniversalSettlementPairInSupabase = async (
+  supabase: SupabaseClient,
+  debtor: { name: string; email: string; },
+  creditor: { name: string; email: string; upi_id: string; },
+  amount: number
+): Promise<void> => {
+  const transactionGroupId = uuidv4();
+
+  const { data: debtorProfile, error: debtorError } = await supabase.from('profiles').select('id').eq('email', debtor.email).maybeSingle();
+  if (debtorError) { console.error('Error fetching debtor profile:', debtorError); throw debtorError; }
+
+  const { data: creditorProfile, error: creditorError } = await supabase.from('profiles').select('id').eq('email', creditor.email).maybeSingle();
+  if (creditorError) { console.error('Error fetching creditor profile:', creditorError); throw creditorError; }
+
+  const debtorUserId = debtorProfile?.id;
+  const creditorUserId = creditorProfile?.id;
+
+  // Create settlement for the debtor if they are a registered user
+  if (debtorUserId) {
+    const { error } = await supabase.from('settlements').insert({
+      user_id: debtorUserId,
+      name: creditor.name,
+      email: creditor.email,
+      upi_id: creditor.upi_id || '',
+      type: 'owes' as const,
+      amount,
+      status: 'pending',
+      transaction_group_id: transactionGroupId,
+    });
+    if (error) { console.error("[settlementService] Error inserting debtor settlement:", error); throw error; }
+  }
+
+  // Create settlement for the creditor if they are a registered user
+  if (creditorUserId) {
+    const { error } = await supabase.from('settlements').insert({
+      user_id: creditorUserId,
+      name: debtor.name,
+      email: debtor.email,
+      upi_id: creditor.upi_id || '',
+      type: 'owed' as const,
+      amount,
+      status: 'pending',
+      transaction_group_id: transactionGroupId,
+    });
+    if (error) { console.error("[settlementService] Error inserting creditor settlement:", error); throw error; }
+  }
+};
+
 export const updateSettlementStatusInSupabase = async (
   supabase: SupabaseClient,
   transaction_group_id: string,
