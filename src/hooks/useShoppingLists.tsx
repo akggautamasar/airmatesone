@@ -171,7 +171,7 @@ export const useShoppingLists = () => {
 
       if (error) throw error;
 
-      setItems(prev => [...prev, data as ShoppingListItem]);
+      setItems(prev => [...prev, data]);
       toast({
         title: "Success",
         description: "Item added to shopping list",
@@ -208,7 +208,7 @@ export const useShoppingLists = () => {
 
       if (error) throw error;
 
-      setItems(prev => prev.map(item => item.id === itemId ? data as ShoppingListItem : item));
+      setItems(prev => prev.map(item => item.id === itemId ? data : item));
       toast({
         title: "Success",
         description: "Item marked as purchased",
