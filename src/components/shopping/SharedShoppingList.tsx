@@ -1,16 +1,40 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, ShoppingCart, Users, Package } from "lucide-react";
+import { Plus, ShoppingCart, Users, Package, Mic, Loader2 } from "lucide-react";
 import { useShoppingList } from '@/hooks/useShoppingList';
 import { BulkProductSelector } from './BulkProductSelector';
 import { MarketStatus } from './MarketStatus';
 import { ShoppingListToolbar } from './ShoppingListToolbar';
 import { ShoppingListDisplay } from './ShoppingListDisplay';
 import { AddItemData } from '@/types/shopping';
+import { useVoiceInput } from '@/hooks/useVoiceInput';
+import { useToast } from '@/hooks/use-toast';
+
+const parseVoiceInput = (text: string) => {
+  // This is a simple parser. It looks for a number and optional unit.
+  // E.g., "2 kg tomatoes", "tomatoes 2kg", "5 apples"
+  const quantityRegex = /(\d+(\.\d+)?\s*(kg|kgs|g|gs|l|litre|litres|ml|piece|pieces)?)/i;
+  const match = text.match(quantityRegex);
+
+  let name = text;
+  let quantity = '1';
+
+  if (match) {
+    quantity = match[0].trim();
+    name = text.replace(match[0], '').replace(/ of /i, '').trim();
+  }
+  
+  // If parsing results in an empty name, use the original text as the name.
+  if (!name) {
+    name = text;
+  }
+
+  return { name, quantity };
+};
+
 
 export const SharedShoppingList = () => {
   const {
@@ -26,6 +50,26 @@ export const SharedShoppingList = () => {
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [showBulkSelector, setShowBulkSelector] = useState(false);
   const [newItem, setNewItem] = useState({ name: '', quantity: '' });
+  const { toast } = useToast();
+
+  const handleTranscription = (text: string) => {
+    if (text) {
+      const { name, quantity } = parseVoiceInput(text);
+      setNewItem({ name, quantity });
+      toast({
+        title: "Item Parsed from Voice",
+        description: `Name: "${name}", Quantity: "${quantity}"`
+      });
+    } else {
+       toast({
+        title: "Voice Input Failed",
+        description: "Couldn't understand what you said. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const { isRecording, isTranscribing, startRecording } = useVoiceInput(handleTranscription);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,9 +138,21 @@ export const SharedShoppingList = () => {
                   <Input id="quantity" value={newItem.quantity} onChange={(e) => setNewItem(prev => ({ ...prev, quantity: e.target.value }))} placeholder="e.g., 2kg, 3 pieces" required />
                 </div>
               </div>
-              <div className="flex space-x-2">
-                <Button type="submit">Add Item</Button>
-                <Button type="button" variant="outline" onClick={() => setIsAddingItem(false)}>Cancel</Button>
+              <div className="flex items-center space-x-2">
+                <Button type="submit" disabled={isTranscribing}>Add Item</Button>
+                <Button type="button" variant="outline" onClick={() => { setIsAddingItem(false); setNewItem({ name: '', quantity: '' }); }}>Cancel</Button>
+                <Button
+                  type="button"
+                  variant={isRecording ? "destructive" : "outline"}
+                  size="icon"
+                  onClick={startRecording}
+                  disabled={isTranscribing}
+                  title="Add item with voice"
+                >
+                  {isTranscribing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
+                </Button>
+                {isRecording && <span className="text-sm text-blue-600 animate-pulse">Recording...</span>}
+                {isTranscribing && <span className="text-sm text-muted-foreground">Transcribing...</span>}
               </div>
             </form>
           </CardContent>
