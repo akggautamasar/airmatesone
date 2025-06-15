@@ -84,7 +84,7 @@ const Index = () => {
     id: expense.id,
     description: expense.description,
     amount: expense.amount,
-    paid_by: expense.paid_by,
+    paidBy: expense.paid_by,
     date: new Date(expense.date).toISOString(),
     category: expense.category,
     sharers: expense.sharers || []
@@ -97,7 +97,7 @@ const Index = () => {
       await addExpense({
         description: expense.description,
         amount: expense.amount,
-        paid_by: expense.paidBy,
+        paidBy: expense.paidBy,
         category: expense.category,
         date: new Date().toISOString(),
         sharers: expense.sharers
