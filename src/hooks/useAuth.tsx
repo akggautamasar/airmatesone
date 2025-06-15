@@ -21,6 +21,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [language, setLanguage] = useState('en');
 
   useEffect(() => {
+    let didUnmount = false;
+
     const fetchUserLanguage = async (userId: string) => {
       try {
         const { data: profile, error } = await supabase
@@ -29,7 +31,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .eq('id', userId)
           .single();
 
-        if (error && error.code !== 'PGRST116') { // Ignore if profile doesn't exist yet
+        if (error && error.code !== 'PGRST116') {
           throw error;
         }
 
@@ -40,12 +42,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } catch (error) {
         console.error('Error fetching user language:', error);
-        // Set a fallback language on error
         setLanguage('en');
       }
     };
 
     const handleAuthChange = async (session: Session | null) => {
+      console.log("[useAuth] handleAuthChange called. session:", session);
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -53,27 +55,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         setLanguage('en');
       }
-      setLoading(false);
+      if (!didUnmount) setLoading(false);
     };
 
-    // Get initial session and handle it
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session:', session?.user?.email);
-      handleAuthChange(session);
-    }).catch(error => {
-      console.error("Error in getSession:", error);
-      setLoading(false);
-    });
+    // Always be sure to set loading to false even in any error
+    const initAuth = async () => {
+      try {
+        // Try to get existing session
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('[useAuth] Initial session:', session?.user?.email);
+        await handleAuthChange(session);
+      } catch (error) {
+        console.error("[useAuth] Error in getSession:", error);
+        if (!didUnmount) setLoading(false);
+      }
+    };
+    initAuth();
 
-    // Listen for subsequent auth state changes
+    // Listen for subsequent auth state changes (do not make async)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
+      (_event, session) => {
+        console.log('[useAuth] Auth state changed:', _event, session?.user?.email);
         handleAuthChange(session);
       }
     );
 
-    return () => subscription.unsubscribe();
+    // If the request hangs too long, forcibly disable loading after X seconds
+    const forceDoneTimeout = setTimeout(() => {
+      if (loading) {
+        console.error("[useAuth] Timeout: Still loading after 7 seconds - forcing loading=false");
+        setLoading(false);
+      }
+    }, 7000);
+
+    return () => {
+      didUnmount = true;
+      subscription.unsubscribe();
+      clearTimeout(forceDoneTimeout);
+    };
   }, []);
 
   const signOut = async () => {
