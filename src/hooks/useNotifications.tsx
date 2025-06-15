@@ -128,7 +128,10 @@ export const useNotifications = () => {
           },
           (payload) => {
             const newNotification = payload.new as Notification;
-            console.log('New notification received:', newNotification);
+            console.log('=== NEW NOTIFICATION RECEIVED ===');
+            console.log('Notification:', newNotification);
+            console.log('Current user:', user.email);
+            console.log('Notification type:', newNotification.type);
             
             setNotifications(prev => [newNotification, ...prev]);
             setUnreadCount(prev => prev + 1);
@@ -140,20 +143,20 @@ export const useNotifications = () => {
               duration: 5000,
             });
 
-            // Send browser notification for expense-related notifications
-            console.log('Checking if should send browser notification:', {
-              type: newNotification.type,
-              permission,
-              isExpenseCreated: newNotification.type === 'expense_created',
-              sendBrowserNotificationExists: !!sendBrowserNotification
-            });
+            // Send browser notification for all expense-related notifications
+            console.log('=== BROWSER NOTIFICATION CHECK ===');
+            console.log('Notification type:', newNotification.type);
+            console.log('Permission status:', permission);
+            console.log('sendBrowserNotification function exists:', !!sendBrowserNotification);
             
             if (newNotification.type === 'expense_created') {
-              console.log('Sending browser notification for expense creation');
+              console.log('🔔 Triggering browser notification for expense creation');
               sendBrowserNotification(
                 newNotification.title,
                 newNotification.message
               );
+            } else {
+              console.log('ℹ️ Not an expense_created notification, skipping browser notification');
             }
           }
         )
@@ -167,7 +170,7 @@ export const useNotifications = () => {
       setUnreadCount(0);
       setLoading(false);
     }
-  }, [user, sendBrowserNotification, toast]);
+  }, [user, toast]);
 
   return {
     notifications,

@@ -9,7 +9,9 @@ export const useBrowserNotifications = () => {
   useEffect(() => {
     if ('Notification' in window) {
       setPermission(Notification.permission);
-      console.log('Browser notification permission:', Notification.permission);
+      console.log('Browser notification permission on mount:', Notification.permission);
+    } else {
+      console.log('Browser notifications not supported');
     }
   }, []);
 
@@ -25,37 +27,66 @@ export const useBrowserNotifications = () => {
   };
 
   const sendBrowserNotification = (title: string, message: string, icon?: string) => {
-    console.log('Attempting to send browser notification:', { title, message, permission, isSupported: 'Notification' in window });
+    console.log('=== Browser Notification Debug ===');
+    console.log('Attempting to send browser notification:', { 
+      title, 
+      message, 
+      permission: Notification.permission,
+      statePermission: permission,
+      isSupported: 'Notification' in window,
+      user: user?.email
+    });
     
-    if (permission === 'granted' && 'Notification' in window) {
-      console.log('Sending browser notification - tab visibility:', document.visibilityState);
+    if (!('Notification' in window)) {
+      console.log('❌ Browser notifications not supported');
+      return;
+    }
+
+    const currentPermission = Notification.permission;
+    console.log('Current permission status:', currentPermission);
+    
+    if (currentPermission !== 'granted') {
+      console.log('❌ Permission not granted. Current permission:', currentPermission);
+      return;
+    }
+
+    console.log('✅ Permission granted, creating notification...');
+    
+    try {
+      const notification = new Notification(title, {
+        body: message,
+        icon: icon || '/favicon.ico',
+        badge: '/favicon.ico',
+        tag: 'expense-notification',
+        requireInteraction: false,
+        silent: false
+      });
       
-      // Always send notification regardless of tab visibility
-      try {
-        const notification = new Notification(title, {
-          body: message,
-          icon: icon || '/favicon.ico',
-          badge: '/favicon.ico',
-          tag: 'expense-notification', // This will replace previous notifications
-        });
-        
-        console.log('Browser notification sent successfully');
-        
-        // Auto-close notification after 5 seconds
-        setTimeout(() => {
-          notification.close();
-        }, 5000);
-        
-        // Handle notification click
-        notification.onclick = () => {
-          window.focus();
-          notification.close();
-        };
-      } catch (error) {
-        console.error('Error sending browser notification:', error);
-      }
-    } else {
-      console.log('Cannot send notification - permission not granted or not supported');
+      console.log('✅ Browser notification created successfully:', notification);
+      
+      // Auto-close notification after 5 seconds
+      setTimeout(() => {
+        console.log('Auto-closing notification');
+        notification.close();
+      }, 5000);
+      
+      // Handle notification click
+      notification.onclick = () => {
+        console.log('Notification clicked');
+        window.focus();
+        notification.close();
+      };
+
+      notification.onerror = (error) => {
+        console.error('❌ Notification error:', error);
+      };
+
+      notification.onshow = () => {
+        console.log('✅ Notification shown successfully');
+      };
+
+    } catch (error) {
+      console.error('❌ Error creating notification:', error);
     }
   };
 
