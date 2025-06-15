@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { IndianRupee } from "lucide-react";
@@ -11,7 +10,8 @@ import { useExpenses } from "@/hooks/useExpenses";
 
 import { SummaryCards } from "./overview/SummaryCards";
 import { ChartsSection } from "./overview/ChartsSection";
-import { NoteList } from "@/components/pinboard/NoteList"; // <-- Added import
+import { NoteList } from "@/components/pinboard/NoteList";
+import { TodayShoppingList } from "./overview/TodayShoppingList";
 
 interface ExpenseOverviewProps {
   onExpenseUpdate: () => void;
@@ -85,9 +85,11 @@ export const ExpenseOverview = ({
         <IndianRupee className="h-16 w-16 mx-auto text-gray-400 mb-4" />
         <h3 className="text-lg font-medium text-gray-900 mb-2">All Clear!</h3>
         <p className="text-gray-500">No expenses to display.</p>
-        {/* Display Pinboard on dashboard even if there are no expenses */}
         <div className="my-8">
           <NoteList />
+        </div>
+        <div className="my-8">
+          <TodayShoppingList />
         </div>
       </div>
     );
@@ -98,6 +100,11 @@ export const ExpenseOverview = ({
       {/* Pinboard/Notes on dash */}
       <div>
         <NoteList />
+      </div>
+
+      {/* Today's Shopping List Section */}
+      <div>
+        <TodayShoppingList />
       </div>
 
       <SummaryCards
