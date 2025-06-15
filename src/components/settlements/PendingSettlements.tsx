@@ -112,19 +112,27 @@ export const PendingSettlements = ({ settlements, expenseDetails, onUpdate }: Pe
     return roommate?.name || 'Unknown User';
   };
 
-  const getCreditorUpiId = (creditorUserId: string) => {
-    console.log('Getting UPI ID for creditor:', creditorUserId);
+  const getCreditorUpiId = (settlement: Settlement) => {
+    console.log('Getting UPI ID for settlement:', settlement);
+    console.log('Settlement UPI ID from DB:', settlement.upi_id);
     
-    // If the creditor is the current user, get UPI from their profile
-    if (creditorUserId === user?.id) {
-      console.log('Creditor is current user, UPI ID:', profile?.upi_id);
+    // The settlement.upi_id should contain the creditor's UPI ID
+    // This is set when the settlement is created by the trigger function
+    if (settlement.upi_id) {
+      console.log('Using UPI ID from settlement record:', settlement.upi_id);
+      return settlement.upi_id;
+    }
+    
+    // Fallback: if creditor is current user, get from profile
+    if (settlement.creditor_user_id === user?.id) {
+      console.log('Creditor is current user, using profile UPI:', profile?.upi_id);
       return profile?.upi_id || '';
     }
     
-    // For other users, we need to get their UPI ID from the profiles table
-    // The settlement should already have the UPI ID stored
-    // Let's use the upi_id from the settlement record itself
-    return '';
+    // Fallback: try to find in roommates
+    const creditorRoommate = roommates.find(r => r.user_id === settlement.creditor_user_id);
+    console.log('Found creditor roommate:', creditorRoommate);
+    return creditorRoommate?.upi_id || '';
   };
 
   if (settlements.length === 0) {
@@ -148,10 +156,15 @@ export const PendingSettlements = ({ settlements, expenseDetails, onUpdate }: Pe
         const creditorName = getUserDisplayName(settlement.creditor_user_id);
         const debtorName = getUserDisplayName(settlement.debtor_user_id);
         
-        // The settlement.upi_id should contain the creditor's UPI ID
-        const creditorUpiId = settlement.upi_id;
+        // Get the creditor's UPI ID properly
+        const creditorUpiId = getCreditorUpiId(settlement);
 
-        console.log('Settlement:', settlement.id, 'Creditor UPI ID:', creditorUpiId);
+        console.log('Settlement:', settlement.id);
+        console.log('Is Creditor:', isCreditor, 'Is Debtor:', isDebtor);
+        console.log('Creditor User ID:', settlement.creditor_user_id);
+        console.log('Debtor User ID:', settlement.debtor_user_id);
+        console.log('Current User ID:', user?.id);
+        console.log('Final Creditor UPI ID:', creditorUpiId);
 
         return (
           <Card key={settlement.id}>
@@ -218,7 +231,7 @@ export const PendingSettlements = ({ settlements, expenseDetails, onUpdate }: Pe
                             rel="noopener noreferrer"
                           >
                             <ExternalLink className="h-4 w-4 mr-1" />
-                            Pay
+                            Pay to {creditorName}
                           </a>
                         </Button>
                       )}
