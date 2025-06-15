@@ -112,29 +112,6 @@ export const PendingSettlements = ({ settlements, expenseDetails, onUpdate }: Pe
     return roommate?.name || 'Unknown User';
   };
 
-  const getCreditorUpiId = (settlement: Settlement) => {
-    console.log('Getting UPI ID for settlement:', settlement);
-    console.log('Settlement UPI ID from DB:', settlement.upi_id);
-    
-    // The settlement.upi_id should contain the creditor's UPI ID
-    // This is set when the settlement is created by the trigger function
-    if (settlement.upi_id) {
-      console.log('Using UPI ID from settlement record:', settlement.upi_id);
-      return settlement.upi_id;
-    }
-    
-    // Fallback: if creditor is current user, get from profile
-    if (settlement.creditor_user_id === user?.id) {
-      console.log('Creditor is current user, using profile UPI:', profile?.upi_id);
-      return profile?.upi_id || '';
-    }
-    
-    // Fallback: try to find in roommates
-    const creditorRoommate = roommates.find(r => r.user_id === settlement.creditor_user_id);
-    console.log('Found creditor roommate:', creditorRoommate);
-    return creditorRoommate?.upi_id || '';
-  };
-
   if (settlements.length === 0) {
     return (
       <Card>
@@ -155,16 +132,11 @@ export const PendingSettlements = ({ settlements, expenseDetails, onUpdate }: Pe
         
         const creditorName = getUserDisplayName(settlement.creditor_user_id);
         const debtorName = getUserDisplayName(settlement.debtor_user_id);
-        
-        // Get the creditor's UPI ID properly
-        const creditorUpiId = getCreditorUpiId(settlement);
 
         console.log('Settlement:', settlement.id);
-        console.log('Is Creditor:', isCreditor, 'Is Debtor:', isDebtor);
-        console.log('Creditor User ID:', settlement.creditor_user_id);
-        console.log('Debtor User ID:', settlement.debtor_user_id);
-        console.log('Current User ID:', user?.id);
-        console.log('Final Creditor UPI ID:', creditorUpiId);
+        console.log('Type:', settlement.type, 'Is Creditor:', isCreditor, 'Is Debtor:', isDebtor);
+        console.log('Settlement name (other party):', settlement.name);
+        console.log('UPI ID in settlement:', settlement.upi_id);
 
         return (
           <Card key={settlement.id}>
@@ -185,15 +157,15 @@ export const PendingSettlements = ({ settlements, expenseDetails, onUpdate }: Pe
                       <div>Date: {format(new Date(expense.date), 'PPP')}</div>
                     )}
                     
-                    {isCreditor && (
+                    {settlement.type === 'owed' && (
                       <div className="text-green-600">
-                        {debtorName} owes you ₹{settlement.amount.toFixed(2)}
+                        {settlement.name} owes you ₹{settlement.amount.toFixed(2)}
                       </div>
                     )}
                     
-                    {isDebtor && (
+                    {settlement.type === 'owes' && (
                       <div className="text-red-600">
-                        You owe ₹{settlement.amount.toFixed(2)} to {creditorName}
+                        You owe ₹{settlement.amount.toFixed(2)} to {settlement.name}
                       </div>
                     )}
                   </div>
@@ -206,7 +178,7 @@ export const PendingSettlements = ({ settlements, expenseDetails, onUpdate }: Pe
                     </div>
                   </div>
                   
-                  {isCreditor && (
+                  {settlement.type === 'owed' && (
                     <Button
                       size="sm"
                       onClick={() => handleMarkAsReceived(settlement.id)}
@@ -217,21 +189,21 @@ export const PendingSettlements = ({ settlements, expenseDetails, onUpdate }: Pe
                     </Button>
                   )}
                   
-                  {isDebtor && (
+                  {settlement.type === 'owes' && (
                     <div className="space-y-2">
-                      {creditorUpiId && (
+                      {settlement.upi_id && (
                         <Button
                           size="sm"
                           variant="outline"
                           asChild
                         >
                           <a
-                            href={`https://quantxpay.vercel.app/${creditorUpiId}/${settlement.amount}`}
+                            href={`https://quantxpay.vercel.app/${settlement.upi_id}/${settlement.amount}`}
                             target="_blank"
                             rel="noopener noreferrer"
                           >
                             <ExternalLink className="h-4 w-4 mr-1" />
-                            Pay to {creditorName}
+                            Pay to {settlement.name}
                           </a>
                         </Button>
                       )}
