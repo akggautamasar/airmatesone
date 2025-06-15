@@ -21,11 +21,17 @@ export const ExpenseOverview = ({
   onExpenseUpdate,
   currentUserId,
 }: ExpenseOverviewProps) => {
-  const { expenses, loading } = useExpenses(); // Use fresh data from useExpenses
+  const { expenses, loading } = useExpenses();
   const { roommates } = useRoommates();
   const { user } = useAuth();
   const { profile } = useProfile();
   const { toast } = useToast();
+
+  // Add debugging to see what's happening
+  console.log('ExpenseOverview: Raw expenses from useExpenses:', expenses);
+  console.log('ExpenseOverview: Expenses count:', expenses.length);
+  console.log('ExpenseOverview: Current user ID:', currentUserId);
+  console.log('ExpenseOverview: User email:', user?.email);
 
   const currentUserDisplayName = useMemo(() => {
     return profile?.name || user?.email?.split('@')[0] || 'You';
@@ -33,7 +39,7 @@ export const ExpenseOverview = ({
 
   // Convert to the format expected by calculations
   const formattedExpenses = useMemo(() => {
-    return expenses.map(expense => ({
+    const formatted = expenses.map(expense => ({
       id: expense.id,
       description: expense.description,
       amount: expense.amount,
@@ -42,6 +48,9 @@ export const ExpenseOverview = ({
       category: expense.category,
       sharers: expense.sharers || []
     }));
+    console.log('ExpenseOverview: Formatted expenses:', formatted);
+    console.log('ExpenseOverview: Formatted expenses count:', formatted.length);
+    return formatted;
   }, [expenses]);
 
   const {

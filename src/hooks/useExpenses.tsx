@@ -44,6 +44,7 @@ export const useExpenses = () => {
       } else {
         console.log('fetchExpenses: Successfully fetched expenses. Raw data:', data);
         console.log('fetchExpenses: Total expenses count from Supabase (respecting RLS):', count);
+        console.log('fetchExpenses: Setting expenses state with:', data?.length || 0, 'expenses');
         setExpenses(data || []);
       }
     } catch (error: any) {
