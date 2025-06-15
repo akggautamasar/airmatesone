@@ -33,7 +33,7 @@ export function useExpenseSettlements() {
     ];
     const uniqueParticipants = Array.from(new Map(allParticipants.map(p => [p.name, p])).values());
 
-    const payerName = expense.paidBy;
+    const payerName = expense.paid_by;
     const creditor = uniqueParticipants.find(p => p.name === payerName);
 
     if (!creditor || !creditor.email) {
