@@ -6,26 +6,32 @@ import { useEvents } from '@/hooks/useEvents';
 import { EventCalendar } from './events/EventCalendar';
 import { AddEventForm } from './events/AddEventForm';
 import { Event } from '@/types/events';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Settings } from 'lucide-react';
 import { format } from 'date-fns';
+import { EventTypeManager } from './events/EventTypeManager';
 
 export const EventsPage = () => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const { events, isLoading } = useEvents(currentMonth);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
+    const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+    const [isTypeManagerOpen, setIsTypeManagerOpen] = useState(false);
 
     const handleEventSelect = (event: Event) => {
+        setSelectedDate(new Date(event.event_date));
         setEventToEdit(event);
         setIsFormOpen(true);
     };
 
     const handleAddEventClick = () => {
+        setSelectedDate(new Date());
         setEventToEdit(null);
         setIsFormOpen(true);
     };
 
     const handleAddEventOnDate = (date: Date) => {
+        setSelectedDate(date);
         setEventToEdit(null);
         setIsFormOpen(true);
     }
@@ -38,7 +44,13 @@ export const EventsPage = () => {
                         <CardTitle>Events Calendar</CardTitle>
                         <p className="text-muted-foreground">{format(currentMonth, 'MMMM yyyy')}</p>
                     </div>
-                    <Button onClick={handleAddEventClick}><PlusCircle className="mr-2 h-4 w-4" /> Add Event</Button>
+                    <div className="flex items-center gap-2">
+                        <Button onClick={() => setIsTypeManagerOpen(true)} variant="outline" size="icon">
+                            <Settings className="h-4 w-4" />
+                            <span className="sr-only">Manage Event Types</span>
+                        </Button>
+                        <Button onClick={handleAddEventClick}><PlusCircle className="mr-2 h-4 w-4" /> Add Event</Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
@@ -61,6 +73,11 @@ export const EventsPage = () => {
                 isOpen={isFormOpen}
                 onOpenChange={setIsFormOpen}
                 eventToEdit={eventToEdit}
+                selectedDate={selectedDate}
+            />
+            <EventTypeManager 
+                isOpen={isTypeManagerOpen}
+                onOpenChange={setIsTypeManagerOpen}
             />
         </div>
     );

@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,6 +18,7 @@ import { Event } from '@/types/events';
 import { useEvents } from '@/hooks/useEvents';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { useEventTypes } from '@/hooks/useEventTypes';
 
 const eventSchema = z.object({
   name: z.string().min(1, 'Event name is required'),
@@ -32,17 +33,23 @@ interface AddEventFormProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   eventToEdit?: Event | null;
+  selectedDate?: Date;
 }
 
-export const AddEventForm: React.FC<AddEventFormProps> = ({ isOpen, onOpenChange, eventToEdit }) => {
+export const AddEventForm: React.FC<AddEventFormProps> = ({ isOpen, onOpenChange, eventToEdit, selectedDate }) => {
   const { user } = useAuth();
   const { addEvent, updateEvent } = useEvents(eventToEdit ? new Date(eventToEdit.event_date) : new Date());
+  const { eventTypes, isLoading: isLoadingTypes } = useEventTypes();
+  const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
-    defaultValues: eventToEdit
-      ? { ...eventToEdit, event_date: new Date(eventToEdit.event_date) }
-      : { name: '', notes: '', event_type: 'General', event_date: new Date() },
+    defaultValues: {
+      name: '',
+      notes: '',
+      event_type: 'General',
+      event_date: selectedDate || new Date(),
+    }
   });
 
   React.useEffect(() => {
@@ -50,10 +57,10 @@ export const AddEventForm: React.FC<AddEventFormProps> = ({ isOpen, onOpenChange
         if (eventToEdit) {
             form.reset({ ...eventToEdit, event_date: new Date(eventToEdit.event_date) });
         } else {
-            form.reset({ name: '', notes: '', event_type: 'General', event_date: new Date() });
+            form.reset({ name: '', notes: '', event_type: 'General', event_date: selectedDate || new Date() });
         }
     }
-  }, [eventToEdit, form, isOpen]);
+  }, [eventToEdit, form, isOpen, selectedDate]);
 
   const onSubmit = async (values: EventFormValues) => {
     if (!user) return;
@@ -112,7 +119,7 @@ export const AddEventForm: React.FC<AddEventFormProps> = ({ isOpen, onOpenChange
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Event Date</FormLabel>
-                  <Popover>
+                  <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
@@ -131,7 +138,12 @@ export const AddEventForm: React.FC<AddEventFormProps> = ({ isOpen, onOpenChange
                       <Calendar
                         mode="single"
                         selected={field.value}
-                        onSelect={field.onChange}
+                        onSelect={(date) => {
+                          if (date) {
+                            field.onChange(date);
+                          }
+                          setIsCalendarOpen(false);
+                        }}
                         initialFocus
                       />
                     </PopoverContent>
@@ -148,17 +160,18 @@ export const AddEventForm: React.FC<AddEventFormProps> = ({ isOpen, onOpenChange
                   <FormLabel>Event Type</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger disabled={isLoadingTypes}>
                         <SelectValue placeholder="Select an event type" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="General">General</SelectItem>
-                      <SelectItem value="Bill Due">Bill Due</SelectItem>
-                      <SelectItem value="Birthday">Birthday</SelectItem>
-                      <SelectItem value="LPG Refill">LPG Refill</SelectItem>
-                      <SelectItem value="Maid's Off">Maid's Off</SelectItem>
-                      <SelectItem value="Festival">Festival Plan</SelectItem>
+                      {isLoadingTypes ? (
+                        <SelectItem value="loading" disabled>Loading types...</SelectItem>
+                      ) : (
+                        eventTypes.map((type) => (
+                          <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
