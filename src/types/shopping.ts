@@ -26,10 +26,10 @@ export interface ShoppingListItem {
     unit: string | null;
   } | null;
   added_by_profile?: {
-    name: string | null;
+    name?: string | null;
   } | null;
   purchased_by_profile?: {
-    name: string | null;
+    name?: string | null;
   } | null;
 }
 

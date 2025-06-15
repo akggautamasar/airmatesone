@@ -40,7 +40,7 @@ export const shoppingListService = {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data;
+    return data || [];
   },
 
   async addItem(listId: string, itemData: { custom_product_name?: string; product_id?: string; quantity: string; }, userId: string): Promise<ShoppingListItem> {
