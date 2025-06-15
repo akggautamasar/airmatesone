@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useToast } from "@/components/ui/use-toast";
 import { Database } from "@/integrations/supabase/types";
+import * as z from 'zod';
 
 export type SharedNote = Database['public']['Tables']['shared_notes']['Row'];
 export type NoteReaction = Database['public']['Tables']['note_reactions']['Row'];
@@ -20,7 +21,14 @@ export type SharedNoteWithDetails = SharedNote & {
   reactions: (NoteReaction & { user: UserDetails | undefined })[];
 };
 
-type NewNotePayload = Pick<Database['public']['Tables']['shared_notes']['Insert'], 'title' | 'content' | 'is_pinned' | 'color_hex'>;
+export const noteSchema = z.object({
+  title: z.string().optional(),
+  content: z.string().min(1, { message: "Content is required." }),
+  is_pinned: z.boolean().default(false),
+  color_hex: z.string().optional(),
+});
+
+type NewNotePayload = z.infer<typeof noteSchema>;
 
 export const useSharedNotes = () => {
     const { user } = useAuth();

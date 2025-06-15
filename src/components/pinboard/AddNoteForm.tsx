@@ -18,14 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { PlusCircle } from 'lucide-react';
-import { useSharedNotes } from '@/hooks/useSharedNotes';
-
-const noteSchema = z.object({
-  title: z.string().optional(),
-  content: z.string().min(1, { message: 'Content is required.' }),
-  is_pinned: z.boolean().default(false),
-  color_hex: z.string().optional(),
-});
+import { useSharedNotes, noteSchema } from '@/hooks/useSharedNotes';
 
 export const AddNoteForm = () => {
   const [isOpen, setIsOpen] = useState(false);
