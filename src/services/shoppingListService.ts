@@ -48,7 +48,7 @@ export const shoppingListService = {
 
     const { data: profiles, error: profileError } = await supabase
       .from('profiles')
-      .select('id, name')
+      .select('id, name, email')
       .in('id', userIds);
 
     if (profileError) {
@@ -56,7 +56,7 @@ export const shoppingListService = {
       return items.map(item => ({ ...item, added_by_profile: null, purchased_by_profile: null }));
     }
 
-    const profilesById = new Map(profiles?.map(p => [p.id, { name: p.name }]));
+    const profilesById = new Map(profiles?.map(p => [p.id, { name: p.name, email: p.email }]));
 
     const itemsWithProfiles: ShoppingListItem[] = items.map(item => ({
       ...item,
@@ -82,7 +82,7 @@ export const shoppingListService = {
 
     const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('name')
+        .select('name, email')
         .eq('id', newItem.added_by)
         .single();
 
@@ -120,7 +120,7 @@ export const shoppingListService = {
 
     const { data: profiles, error: profileError } = await supabase
         .from('profiles')
-        .select('id, name')
+        .select('id, name, email')
         .in('id', userIds);
     
     if (profileError) {
@@ -132,7 +132,7 @@ export const shoppingListService = {
         };
     }
 
-    const profilesById = new Map(profiles?.map(p => [p.id, { name: p.name }]));
+    const profilesById = new Map(profiles?.map(p => [p.id, { name: p.name, email: p.email }]));
 
     const result: ShoppingListItem = {
         ...updatedItem,

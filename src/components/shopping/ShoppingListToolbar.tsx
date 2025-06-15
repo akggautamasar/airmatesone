@@ -24,9 +24,9 @@ export const ShoppingListToolbar = ({ selectedDate, onDateChange, items }: Shopp
       Name: item.product?.name || item.custom_product_name,
       Quantity: item.quantity,
       Category: item.product?.category || '',
-      'Added By': item.added_by_profile?.name || 'Unknown',
+      'Added By': item.added_by_profile?.name || item.added_by_profile?.email || 'Unknown',
       Status: item.is_purchased ? 'Purchased' : 'Pending',
-      'Purchased By': item.is_purchased ? (item.purchased_by_profile?.name || 'Unknown') : '',
+      'Purchased By': item.is_purchased ? (item.purchased_by_profile?.name || item.purchased_by_profile?.email || 'Unknown') : '',
     }));
     const csv = papaparse.unparse(data);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -47,9 +47,9 @@ export const ShoppingListToolbar = ({ selectedDate, onDateChange, items }: Shopp
         item.product?.name || item.custom_product_name || '',
         item.quantity,
         item.product?.category || '',
-        item.added_by_profile?.name || 'Unknown',
+        item.added_by_profile?.name || item.added_by_profile?.email || 'Unknown',
         item.is_purchased ? 'Purchased' : 'Pending',
-        item.is_purchased ? (item.purchased_by_profile?.name || 'Unknown') : '',
+        item.is_purchased ? (item.purchased_by_profile?.name || item.purchased_by_profile?.email || 'Unknown') : '',
       ]),
       startY: 20,
     });

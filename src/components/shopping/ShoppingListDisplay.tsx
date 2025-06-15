@@ -49,7 +49,7 @@ export const ShoppingListDisplay = ({ items, loading, onMarkPurchased, onDeleteI
                   {item.product?.category && ` • Category: ${item.product.category}`}
                 </p>
                 <p className="text-xs text-blue-600 font-medium">
-                  Added by {item.added_by_profile?.name || 'Unknown'}
+                  Added by {item.added_by_profile?.name || item.added_by_profile?.email || 'Unknown'}
                 </p>
               </div>
               <Button size="sm" onClick={() => onMarkPurchased(item.id)} className="bg-green-600 hover:bg-green-700 ml-2">
@@ -77,8 +77,8 @@ export const ShoppingListDisplay = ({ items, loading, onMarkPurchased, onDeleteI
                   {item.product?.name || item.custom_product_name} ({item.quantity})
                 </p>
                 <div className="text-xs space-y-1">
-                  <p className="text-blue-600">Added by {item.added_by_profile?.name || 'Unknown'}</p>
-                  <p className="text-green-600 font-medium">Purchased by {item.purchased_by_profile?.name || 'Unknown'}</p>
+                  <p className="text-blue-600">Added by {item.added_by_profile?.name || item.added_by_profile?.email || 'Unknown'}</p>
+                  <p className="text-green-600 font-medium">Purchased by {item.purchased_by_profile?.name || item.purchased_by_profile?.email || 'Unknown'}</p>
                 </div>
               </div>
               <Button size="sm" variant="ghost" onClick={() => onDeleteItem(item.id)} className="text-red-600 hover:text-red-700 h-8 w-8 p-0">
