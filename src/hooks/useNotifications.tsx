@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
+import { useBrowserNotifications } from './useBrowserNotifications';
 
 interface Notification {
   id: string;
@@ -21,6 +21,7 @@ export const useNotifications = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { sendBrowserNotification } = useBrowserNotifications();
 
   const fetchNotifications = async () => {
     if (!user) {
@@ -129,12 +130,20 @@ export const useNotifications = () => {
             setNotifications(prev => [newNotification, ...prev]);
             setUnreadCount(prev => prev + 1);
             
-            // Show toast for new notification
+            // Show in-app toast notification
             toast({
               title: newNotification.title,
               description: newNotification.message,
               duration: 5000,
             });
+
+            // Send browser notification only for expense-related notifications
+            if (newNotification.type === 'expense_created') {
+              sendBrowserNotification(
+                newNotification.title,
+                newNotification.message
+              );
+            }
           }
         )
         .subscribe();
@@ -147,7 +156,7 @@ export const useNotifications = () => {
       setUnreadCount(0);
       setLoading(false);
     }
-  }, [user]);
+  }, [user, sendBrowserNotification]);
 
   return {
     notifications,

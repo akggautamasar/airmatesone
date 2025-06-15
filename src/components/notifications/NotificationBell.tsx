@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bell, Check, Trash2, ExternalLink } from "lucide-react";
 import { useNotifications } from '@/hooks/useNotifications';
+import { BrowserNotificationManager } from './BrowserNotificationManager';
 import { formatDistanceToNow } from 'date-fns';
 
 export const NotificationBell = () => {
@@ -48,7 +49,7 @@ export const NotificationBell = () => {
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
         <div className="p-4 border-b">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold">Notifications</h3>
             {unreadCount > 0 && (
               <Button
@@ -61,6 +62,7 @@ export const NotificationBell = () => {
               </Button>
             )}
           </div>
+          <BrowserNotificationManager />
         </div>
         <ScrollArea className="max-h-80">
           {recentNotifications.length === 0 ? (
