@@ -1,11 +1,6 @@
-
 import React, { useMemo } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { Calendar, Users, Trash2, IndianRupee, CreditCard, BadgeCheck } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { IndianRupee } from "lucide-react";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useRoommates } from "@/hooks/useRoommates";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,6 +12,7 @@ import { useExpenseCalculations } from "./overview/hooks/useExpenseCalculations"
 import { SummaryCards } from "./overview/SummaryCards";
 import { ChartsSection } from "./overview/ChartsSection";
 import { RecentExpensesList } from "./overview/RecentExpensesList";
+import { BalanceList } from './overview/BalanceList';
 
 interface Expense {
   id: string;
@@ -35,7 +31,8 @@ interface ExpenseOverviewProps {
   onAddSettlementPair: (
     currentUserInvolves: { name: string; email: string; upi_id: string; type: 'owes' | 'owed' },
     otherPartyInvolves: { name: string; email: string; upi_id: string; type: 'owes' | 'owed' },
-    amount: number
+    amount: number,
+    initialStatus?: 'pending' | 'debtor_paid' | 'settled'
   ) => Promise<DetailedSettlement | null>;
   currentUserId: string | undefined;
   onUpdateStatus: (transactionGroupId: string, newStatus: "pending" | "debtor_paid" | "settled") => Promise<void>;
@@ -89,82 +86,56 @@ export const ExpenseOverview = ({
     }
   };
 
-  // Calculate net expenses for each participant
-  const netExpenses = useMemo(() => {
-    const expenseMap = new Map<string, { paid: number; owes: number }>();
+  const handlePayViaUpi = (upiId: string, amount: number) => {
+    const memo = `Payment for shared expenses`;
+    const upiUrl = `upi://pay?pa=${upiId}&am=${amount.toFixed(2)}&tn=${encodeURIComponent(memo)}`;
+    window.open(upiUrl, '_blank');
+    toast({
+      title: "Opening UPI App",
+      description: "If it doesn't open, please check if you have a UPI app installed."
+    });
+  };
+
+  const handleDebtorMarksAsPaid = async (debtorName: string, creditorName: string, amountToSettle: number, initialStatus: 'pending' | 'debtor_paid' | 'settled' = 'debtor_paid') => {
+    const currentUserIsDebtor = debtorName === currentUserDisplayName;
+    const isPartOfTransaction = currentUserIsDebtor || creditorName === currentUserDisplayName;
+
+    if (!isPartOfTransaction) {
+        toast({ title: "Error", description: "You are not part of this transaction.", variant: "destructive" });
+        return;
+    }
+
+    const currentUserInfo = {
+      name: currentUserDisplayName,
+      email: user?.email || '',
+      upi_id: profile?.upi_id || ''
+    };
     
-    // Initialize all participants
-    allParticipantNames.forEach(name => {
-      expenseMap.set(name, { paid: 0, owes: 0 });
-    });
+    const otherPartyName = currentUserIsDebtor ? creditorName : debtorName;
+    const otherPartyRoommateInfo = roommates.find(r => r.name === otherPartyName);
+    
+    if (!otherPartyRoommateInfo) {
+      toast({ title: "Error", description: `Could not find details for ${otherPartyName}`, variant: "destructive" });
+      return;
+    }
+    const otherPartyDetails = {
+      name: otherPartyRoommateInfo.name,
+      email: otherPartyRoommateInfo.email,
+      upi_id: otherPartyRoommateInfo.upi_id || ''
+    };
 
-    // Calculate what each person paid and owes
-    propsExpenses.forEach(expense => {
-      const payerName = expense.paidBy === user?.email?.split('@')[0] || expense.paidBy === profile?.name 
-        ? currentUserDisplayName 
-        : expense.paidBy;
-      
-      // Add to what they paid
-      if (expenseMap.has(payerName)) {
-        const current = expenseMap.get(payerName)!;
-        expenseMap.set(payerName, { ...current, paid: current.paid + expense.amount });
-      }
+    await onAddSettlementPair(
+      { ...currentUserInfo, type: currentUserIsDebtor ? 'owes' : 'owed' },
+      { ...otherPartyDetails, type: currentUserIsDebtor ? 'owed' : 'owes' },
+      amountToSettle,
+      initialStatus
+    );
+    onExpenseUpdate();
+  };
 
-      // Calculate what each person owes for this expense
-      const effectiveSharers = expense.sharers && expense.sharers.length > 0
-        ? expense.sharers.map(s => s === user?.email?.split('@')[0] || s === profile?.name ? currentUserDisplayName : s)
-        : allParticipantNames;
-
-      const amountPerSharer = expense.amount / effectiveSharers.length;
-      effectiveSharers.forEach(sharerName => {
-        if (expenseMap.has(sharerName)) {
-          const current = expenseMap.get(sharerName)!;
-          expenseMap.set(sharerName, { ...current, owes: current.owes + amountPerSharer });
-        }
-      });
-    });
-
-    // Apply settled settlements to reduce net amounts
-    settlements.filter(s => s.status === 'settled').forEach(settlement => {
-      let debtorName: string | undefined;
-      let creditorName: string | undefined;
-      const settlementOwnerIsCurrentUser = settlement.user_id === currentUserId;
-
-      if (settlementOwnerIsCurrentUser) {
-        if (settlement.type === 'owes') {
-          debtorName = currentUserDisplayName;
-          creditorName = settlement.name;
-        } else {
-          debtorName = settlement.name;
-          creditorName = currentUserDisplayName;
-        }
-      } else {
-        const ownerProfile = roommates.find(r => r.user_id === settlement.user_id);
-        const ownerDisplayName = ownerProfile?.name || `User ${settlement.user_id.substring(0,5)}`;
-        if (settlement.type === 'owes') {
-          debtorName = ownerDisplayName;
-          creditorName = (settlement.name === user?.email || settlement.name === profile?.name) ? currentUserDisplayName : settlement.name;
-        } else {
-          debtorName = (settlement.name === user?.email || settlement.name === profile?.name) ? currentUserDisplayName : settlement.name;
-          creditorName = ownerDisplayName;
-        }
-      }
-
-      // Reduce the debt by the settled amount
-      if (debtorName && expenseMap.has(debtorName)) {
-        const current = expenseMap.get(debtorName)!;
-        expenseMap.set(debtorName, { ...current, owes: Math.max(0, current.owes - settlement.amount) });
-      }
-    });
-
-    // Convert to array with net expenses
-    return Array.from(expenseMap.entries()).map(([name, amounts]) => ({
-      name,
-      netExpense: parseFloat((amounts.paid - amounts.owes).toFixed(2)),
-      totalPaid: amounts.paid,
-      totalOwes: amounts.owes
-    }));
-  }, [propsExpenses, allParticipantNames, currentUserDisplayName, settlements, roommates, profile, currentUserId, user]);
+  const handleCreditorConfirmsReceipt = async (transactionGroupId: string) => {
+    await onUpdateStatus(transactionGroupId, 'settled');
+  };
 
   const lastExpenseDate = propsExpenses.length > 0 ? propsExpenses.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date : null;
 
@@ -186,37 +157,20 @@ export const ExpenseOverview = ({
         lastExpenseDate={lastExpenseDate}
       />
 
-      {/* Net Expenses Overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Net Expenses Overview</CardTitle>
-          <CardDescription>Each person's net contribution after all expenses and settlements</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {netExpenses.map((person, index) => (
-            <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg bg-gray-50 space-y-2 sm:space-y-0">
-              <div className="flex items-center space-x-3">
-                <div className={`rounded-full p-2 ${person.netExpense > 0 ? 'bg-green-100' : person.netExpense < 0 ? 'bg-red-100' : 'bg-gray-100'}`}>
-                  <Users className={`h-4 w-4 ${person.netExpense > 0 ? 'text-green-600' : person.netExpense < 0 ? 'text-red-600' : 'text-gray-600'}`} />
-                </div>
-                <div>
-                  <p className="font-medium">{person.name}{person.name === currentUserDisplayName ? " (You)" : ""}</p>
-                  <p className="text-sm text-gray-600">
-                    Paid: ₹{person.totalPaid.toFixed(2)} | Share: ₹{person.totalOwes.toFixed(2)}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Badge variant={person.netExpense > 0 ? "default" : person.netExpense < 0 ? "destructive" : "secondary"} className={`${person.netExpense > 0 ? 'bg-green-500 hover:bg-green-600' : ''} whitespace-nowrap`}>
-                  {person.netExpense === 0 ? "Even" :
-                    person.netExpense > 0 ? `Net Paid ₹${person.netExpense.toFixed(2)}` :
-                      `Net Owes ₹${Math.abs(person.netExpense).toFixed(2)}`}
-                </Badge>
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <BalanceList
+        finalBalances={finalBalances}
+        currentUserDisplayName={currentUserDisplayName}
+        roommates={roommates}
+        settlements={settlements}
+        currentUserId={currentUserId}
+        onDebtorMarksAsPaid={handleDebtorMarksAsPaid}
+        onCreditorConfirmsReceipt={handleCreditorConfirmsReceipt}
+        onCreditorRequestsPayment={async () => {
+          // This feature is not requested. Can be added later.
+          console.log("Request payment clicked");
+        }}
+        onPayViaUpi={handlePayViaUpi}
+      />
 
       <ChartsSection
         categoryData={categoryData}
