@@ -2,11 +2,11 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Edit, Trash2, Plus, Package } from "lucide-react";
+import { Plus, Package } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
+import { ProductForm } from "./ProductForm";
+import { ProductGrid } from "./ProductGrid";
 
 export const ProductManager = () => {
   const { products, loading, addProduct, updateProduct, deleteProduct } = useProducts();
@@ -47,6 +47,11 @@ export const ProductManager = () => {
     }
   };
 
+  const handleCancelEdit = () => {
+    setEditingProduct(null);
+    setFormData({ name: '', category: '', unit: '' });
+  };
+
   if (loading) {
     return <div className="text-center py-8">Loading products...</div>;
   }
@@ -76,84 +81,21 @@ export const ProductManager = () => {
                 <DialogHeader>
                   <DialogTitle>Add New Product</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <Label htmlFor="name">Product Name</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="category">Category (Optional)</Label>
-                    <Input
-                      id="category"
-                      value={formData.category}
-                      onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                      placeholder="e.g., Vegetables, Dairy, etc."
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="unit">Unit (Optional)</Label>
-                    <Input
-                      id="unit"
-                      value={formData.unit}
-                      onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
-                      placeholder="e.g., kg, liters, pieces"
-                    />
-                  </div>
-                  <Button type="submit" className="w-full">
-                    Add Product
-                  </Button>
-                </form>
+                <ProductForm
+                  formData={formData}
+                  setFormData={setFormData}
+                  onSubmit={handleSubmit}
+                />
               </DialogContent>
             </Dialog>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {products.map((product) => (
-              <div key={product.id} className="border rounded-lg p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium">{product.name}</h3>
-                  <div className="flex space-x-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(product)}
-                    >
-                      <Edit className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDelete(product.id)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-                {product.category && (
-                  <p className="text-sm text-muted-foreground">
-                    Category: {product.category}
-                  </p>
-                )}
-                {product.unit && (
-                  <p className="text-sm text-muted-foreground">
-                    Unit: {product.unit}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {products.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              No products yet. Add your first product to get started!
-            </div>
-          )}
+          <ProductGrid
+            products={products}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
         </CardContent>
       </Card>
 
@@ -163,48 +105,13 @@ export const ProductManager = () => {
           <DialogHeader>
             <DialogTitle>Edit Product</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="edit-name">Product Name</Label>
-              <Input
-                id="edit-name"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-category">Category (Optional)</Label>
-              <Input
-                id="edit-category"
-                value={formData.category}
-                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                placeholder="e.g., Vegetables, Dairy, etc."
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-unit">Unit (Optional)</Label>
-              <Input
-                id="edit-unit"
-                value={formData.unit}
-                onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
-                placeholder="e.g., kg, liters, pieces"
-              />
-            </div>
-            <div className="flex space-x-2">
-              <Button type="submit" className="flex-1">
-                Update Product
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setEditingProduct(null)}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
+          <ProductForm
+            formData={formData}
+            setFormData={setFormData}
+            onSubmit={handleSubmit}
+            onCancel={handleCancelEdit}
+            isEditing={true}
+          />
         </DialogContent>
       </Dialog>
     </div>
