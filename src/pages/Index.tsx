@@ -81,7 +81,7 @@ const Index = () => {
         </div>
         
         <Tabs defaultValue="overview" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+          <TabsList className="grid w-full h-auto grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
             <TabsTrigger value="overview" className="flex items-center space-x-2"><LayoutGrid className="h-4 w-4" /><span>Overview</span></TabsTrigger>
             <TabsTrigger value="expenses" className="flex items-center space-x-2"><FileText className="h-4 w-4" /><span>Expenses</span></TabsTrigger>
             <TabsTrigger value="reports" className="flex items-center space-x-2"><FilePieChart className="h-4 w-4" /><span>Reports</span></TabsTrigger>
