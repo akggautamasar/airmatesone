@@ -28,10 +28,9 @@ export const useBrowserNotifications = () => {
     console.log('Attempting to send browser notification:', { title, message, permission, isSupported: 'Notification' in window });
     
     if (permission === 'granted' && 'Notification' in window) {
-      console.log('Document visibility state:', document.visibilityState);
+      console.log('Sending browser notification - tab visibility:', document.visibilityState);
       
-      // Send notification regardless of visibility state for testing
-      // In production, you might want to check document.visibilityState === 'hidden'
+      // Always send notification regardless of tab visibility
       try {
         const notification = new Notification(title, {
           body: message,
