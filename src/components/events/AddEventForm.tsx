@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -63,12 +62,14 @@ export const AddEventForm: React.FC<AddEventFormProps> = ({ isOpen, onOpenChange
         await updateEvent({
           id: eventToEdit.id,
           ...values,
+          notes: values.notes || null,
           event_date: format(values.event_date, 'yyyy-MM-dd'),
         });
         toast.success("Event updated successfully.");
       } else {
         await addEvent({
           ...values,
+          notes: values.notes || null,
           event_date: format(values.event_date, 'yyyy-MM-dd'),
           created_by: user.id,
         });
