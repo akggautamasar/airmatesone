@@ -144,10 +144,11 @@ export const useNotifications = () => {
             console.log('Checking if should send browser notification:', {
               type: newNotification.type,
               permission,
-              isExpenseCreated: newNotification.type === 'expense_created'
+              isExpenseCreated: newNotification.type === 'expense_created',
+              sendBrowserNotificationExists: !!sendBrowserNotification
             });
             
-            if (newNotification.type === 'expense_created' && permission === 'granted') {
+            if (newNotification.type === 'expense_created') {
               console.log('Sending browser notification for expense creation');
               sendBrowserNotification(
                 newNotification.title,
@@ -166,7 +167,7 @@ export const useNotifications = () => {
       setUnreadCount(0);
       setLoading(false);
     }
-  }, [user, sendBrowserNotification, permission, toast]);
+  }, [user, sendBrowserNotification, toast]);
 
   return {
     notifications,
