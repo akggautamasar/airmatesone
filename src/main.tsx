@@ -2,14 +2,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
-// Declare global for OneSignalDeferred
-declare global {
-  interface Window {
-    OneSignalDeferred?: any[];
-  }
-}
-
-// Register OneSignal Service Worker
+// Register the OneSignal service worker
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker
     .register('/OneSignalSDKWorker.js')
@@ -21,22 +14,27 @@ if ('serviceWorker' in navigator) {
     });
 }
 
-// Load OneSignal SDK Script and initialize
-const loadOneSignal = () => {
+// Dynamically add OneSignal script and init block to <head>
+const addOneSignalScript = () => {
   const script = document.createElement('script');
   script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
   script.defer = true;
   document.head.appendChild(script);
 
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  window.OneSignalDeferred.push(async function (OneSignal) {
-    await OneSignal.init({
-      appId: 'YOUR-ONESIGNAL-APP-ID', // ⬅️ Replace with your actual App ID
+  // Add OneSignal initialization inline script
+  const inlineScript = document.createElement('script');
+  inlineScript.innerHTML = `
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+      await OneSignal.init({
+        appId: "2760e048-8446-4905-8b45-064aa23e525c",
+      });
     });
-  });
+  `;
+  document.head.appendChild(inlineScript);
 };
 
-loadOneSignal(); // Load OneSignal script
+addOneSignalScript(); // Run the function
 
 // Render your App
 createRoot(document.getElementById("root")!).render(<App />);
