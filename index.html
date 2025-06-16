@@ -21,5 +21,21 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script type="module">
+  import { requestPushPermission } from "/js/firebase-messaging-init.js";
+
+  // Register Service Worker then request permission
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/firebase-messaging-sw.js')
+      .then(() => {
+        console.log("✅ Service Worker Registered");
+        requestPushPermission();
+      })
+      .catch(err => {
+        console.error("❌ SW Registration Failed", err);
+      });
+  }
+</script>
+
   </body>
 </html>
