@@ -1,73 +1,69 @@
-# Welcome to your Lovable project
+# 🏠 AirMates
 
-## Project info
+**AirMates** is a smart roommate management platform designed to simplify shared living. It helps roommates track expenses, split payments, manage chores, events, shopping lists, and keep everyone accountable — all in one place.
 
-**URL**: https://lovable.dev/projects/7e544c45-32f4-4fc9-8f89-24bfc00d58d2
 
-## How can I edit this code?
 
-There are several ways of editing your application.
+## 🚀 Features
 
-**Use Lovable**
+### 💸 Expense Management
+- Add shared expenses with descriptions (e.g., grocery, maid salary, LPG).
+- Assign who paid and who should split the cost.
+- Real-time visibility of all expenses for all involved roommates.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/7e544c45-32f4-4fc9-8f89-24bfc00d58d2) and start prompting.
+### 🔁 Settlement Module
+- Automatic pending/settled tracking.
+- Debtors can pay via UPI and mark payments.
+- Roommates who paid can confirm receipts to settle the expense.
 
-Changes made via Lovable will be committed automatically to this repo.
+### 📲 Notifications & Reminders
+- Instant notifications for new expenses or events.
+- Reminders after 24 hours if dues remain unpaid.
+- Alerts for shopping trips or completed chores.
 
-**Use your preferred IDE**
+### 🛍️ Shared Shopping List
+- Central shopping list accessible to all roommates.
+- Add items from a reusable product list or custom entries.
+- Mark items as purchased with automatic notifications.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 🧼 Chore Management
+- Assign chores like “washing dishes” or “cleaning room” to specific roommates.
+- Choose rotation schedule using calendar or custom weekly plan.
+- Tracks who is responsible each day.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 📅 Events Module
+- Add and view upcoming roommate events.
+- Get reminders for birthdays, bills, rent, meetings, etc.
+- Roommates can RSVP and get reminders.
 
-Follow these steps:
+### 🧾 Reports & Dashboard
+- Visualize monthly spendings.
+- Filter reports by category, roommate, or time.
+- Insightful stats for better budgeting.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 📱 Tech Stack
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+- **Backend**: Supabase (Authentication + Database)
+- **Notifications**: Custom in-app + system push
+- **UPI Payments**: Integrated with QuantXPay
 
-# Step 3: Install the necessary dependencies.
-npm i
+## 🌐 Live App
+[🔗 AirMates Web App](https://airmates.vercel.app)
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+## 📦 Coming Soon
+- 📱 Android APK / Play Store version
+- 🧠 AI-based expense prediction and reminders
+- 🌍 Multi-language support
 
-**Edit a file directly in GitHub**
+## 🤝 Credits
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Built with ❤️ by **AiR**  
+> Creator of AirMates  
+> GitHub: [@akggautamasar](https://github.com/akggautamasar)  
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 📜 License
 
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/7e544c45-32f4-4fc9-8f89-24bfc00d58d2) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+This project is licensed under the **MIT License**.  
+Feel free to contribute, fork, and improve!
