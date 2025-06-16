@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -54,7 +53,7 @@ const Index = () => {
         <div className="text-center space-y-6">
           <div className="flex items-center justify-center space-x-4">
             <img 
-              src="/lovable-uploads/5c66f375-5f3a-4c79-9ecb-8458e1ae356b.png" 
+              src="/lovable-uploads/cbe7537a-80de-4bb9-9f86-3b2464dec01f.png" 
               alt="AirMates Logo" 
               className="h-16 w-16"
             />

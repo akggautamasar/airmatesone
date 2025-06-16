@@ -70,7 +70,7 @@ export const NavBar = ({ currentView, onViewChange }: NavBarProps) => {
           <div className="flex items-center">
             <div className="flex-shrink-0 flex items-center cursor-pointer" onClick={()=>navigate("/")}>
               <img 
-                src="/lovable-uploads/5c66f375-5f3a-4c79-9ecb-8458e1ae356b.png" 
+                src="/lovable-uploads/cbe7537a-80de-4bb9-9f86-3b2464dec01f.png" 
                 alt="AirMates Logo" 
                 className="h-8 w-8 mr-2"
               />
