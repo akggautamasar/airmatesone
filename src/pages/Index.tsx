@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -51,10 +50,17 @@ const Index = () => {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50">
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
-            Welcome to AirMates
-          </h1>
+        <div className="text-center space-y-6">
+          <div className="flex items-center justify-center space-x-4">
+            <img 
+              src="/lovable-uploads/64c01a82-5215-4bc0-ad1c-5f4d89f3bd82.png" 
+              alt="AirMates Logo" 
+              className="h-16 w-16"
+            />
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
+              Welcome to AirMates
+            </h1>
+          </div>
           <p className="text-gray-600 max-w-md">
             Your smart roommate expense manager. Track shared expenses, manage settlements, and keep everyone happy.
           </p>

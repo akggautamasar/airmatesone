@@ -19,7 +19,18 @@ export const ReportDisplay = ({ data }: ReportDisplayProps) => {
     if (expenseCount === 0 && purchasedItems.length === 0 && moneySent.length === 0 && moneyReceived.length === 0) {
         return (
              <Card>
-                <CardHeader>
+                <CardHeader className="border-b">
+                    <div className="flex items-center space-x-3 mb-4">
+                        <img 
+                            src="/lovable-uploads/64c01a82-5215-4bc0-ad1c-5f4d89f3bd82.png" 
+                            alt="AirMates Logo" 
+                            className="h-10 w-10"
+                        />
+                        <div>
+                            <h1 className="text-2xl font-bold text-blue-600">AirMates</h1>
+                            <p className="text-sm text-muted-foreground">Monthly Expense Report</p>
+                        </div>
+                    </div>
                     <CardTitle>Report for {monthName} {year}</CardTitle>
                 </CardHeader>
                 <CardContent className="text-center py-12">
@@ -35,7 +46,18 @@ export const ReportDisplay = ({ data }: ReportDisplayProps) => {
     return (
         <div className="space-y-6">
             <Card>
-                <CardHeader>
+                <CardHeader className="border-b">
+                    <div className="flex items-center space-x-3 mb-4">
+                        <img 
+                            src="/lovable-uploads/64c01a82-5215-4bc0-ad1c-5f4d89f3bd82.png" 
+                            alt="AirMates Logo" 
+                            className="h-10 w-10"
+                        />
+                        <div>
+                            <h1 className="text-2xl font-bold text-blue-600">AirMates</h1>
+                            <p className="text-sm text-muted-foreground">Monthly Expense Report</p>
+                        </div>
+                    </div>
                     <CardTitle>Report for {monthName} {year}</CardTitle>
                     <CardDescription>A summary of {userName}'s expenses and contributions.</CardDescription>
                 </CardHeader>

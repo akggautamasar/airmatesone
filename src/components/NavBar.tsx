@@ -12,7 +12,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { NotificationBell } from './notifications/NotificationBell';
-import { User, LogOut, Settings, Pin } from 'lucide-react'; // Added Pin
+import { User, LogOut, Settings, Pin } from 'lucide-react';
 
 import { useNavigate } from "react-router-dom";
 
@@ -50,11 +50,9 @@ export const NavBar = ({ currentView, onViewChange }: NavBarProps) => {
     { id: 'roommates', label: '👥 Roommates' },
     { id: 'grocery', label: '🛒 Grocery' },
     { id: 'profile', label: '👤 Profile' },
-    // Add Pinboard option with pin icon
     { id: 'pinboard', label: (<span className="flex items-center"><Pin className="w-4 h-4 mr-1" />Pinboard</span>) }
   ];
 
-  // Helper for navigation (handle both tabs and custom views)
   const handleNav = (id: string) => {
     if (id === 'pinboard') {
       navigate('/pinboard');
@@ -65,17 +63,21 @@ export const NavBar = ({ currentView, onViewChange }: NavBarProps) => {
     }
   };
 
-  // Removed previously hardcoded navItems (so Pinboard entry applies everywhere it’s used)
   return (
     <nav className="bg-white shadow-sm border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-blue-600 cursor-pointer" onClick={()=>navigate("/")}>AirMates</h1>
+            <div className="flex-shrink-0 flex items-center cursor-pointer" onClick={()=>navigate("/")}>
+              <img 
+                src="/lovable-uploads/64c01a82-5215-4bc0-ad1c-5f4d89f3bd82.png" 
+                alt="AirMates Logo" 
+                className="h-8 w-8 mr-2"
+              />
+              <h1 className="text-xl sm:text-2xl font-bold text-blue-600">AirMates</h1>
             </div>
             
-            {/* Desktop Navigation - add pinboard link */}
+            {/* Desktop Navigation */}
             <div className="hidden md:ml-6 md:flex md:space-x-4">
               {navItems.map((item) => (
                 <button
@@ -116,7 +118,6 @@ export const NavBar = ({ currentView, onViewChange }: NavBarProps) => {
                   </div>
                 </div>
                 <DropdownMenuSeparator />
-                {/* Link to Pinboard in dropdown menu for extra discoverability */}
                 <DropdownMenuItem onClick={() => navigate('/pinboard')}>
                   <Pin className="mr-2 h-4 w-4" />
                   <span>Pinboard</span>
@@ -142,7 +143,7 @@ export const NavBar = ({ currentView, onViewChange }: NavBarProps) => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Mobile menu button (hamburger) */}
+            {/* Mobile menu button */}
             <div className="md:hidden">
               <Button
                 variant="ghost"
@@ -182,4 +183,3 @@ export const NavBar = ({ currentView, onViewChange }: NavBarProps) => {
     </nav>
   );
 };
-
