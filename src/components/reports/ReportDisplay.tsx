@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
@@ -22,7 +23,7 @@ export const ReportDisplay = ({ data }: ReportDisplayProps) => {
                 <CardHeader className="border-b">
                     <div className="flex items-center space-x-3 mb-4">
                         <img 
-                            src="/lovable-uploads/64c01a82-5215-4bc0-ad1c-5f4d89f3bd82.png" 
+                            src="/lovable-uploads/5c66f375-5f3a-4c79-9ecb-8458e1ae356b.png" 
                             alt="AirMates Logo" 
                             className="h-10 w-10"
                         />
@@ -49,7 +50,7 @@ export const ReportDisplay = ({ data }: ReportDisplayProps) => {
                 <CardHeader className="border-b">
                     <div className="flex items-center space-x-3 mb-4">
                         <img 
-                            src="/lovable-uploads/64c01a82-5215-4bc0-ad1c-5f4d89f3bd82.png" 
+                            src="/lovable-uploads/5c66f375-5f3a-4c79-9ecb-8458e1ae356b.png" 
                             alt="AirMates Logo" 
                             className="h-10 w-10"
                         />
