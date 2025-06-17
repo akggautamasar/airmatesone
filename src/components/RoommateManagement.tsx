@@ -31,10 +31,9 @@ setNewRoommate({ name: '', upi_id: '', email: '', phone: '' });
 };
 
 const handleUPIPayment = (upiId: string, amount: number) => {
-const paymentUrl = https://quantxpay.vercel.app/${upiId}/${Math.abs(amount)};
-window.open(paymentUrl, '_blank');
+  const paymentUrl = `https://quantxpay.vercel.app/${upiId}/${Math.abs(amount)}`;
+  window.open(paymentUrl, '_blank');
 };
-
 // Filter out the current user from the fetched roommates list
 const filteredRoommates = roommates.filter(
 (roommate) => roommate.email !== (user?.email || '')
