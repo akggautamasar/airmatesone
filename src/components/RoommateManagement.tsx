@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import {
+  Card, CardContent, CardDescription, CardHeader, CardTitle,
+  Button, Input, Label,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger
+} from "@/components/ui";
 import { Users, Plus, IndianRupee, Phone, Trash2, Mail, Crown, AlertTriangle } from "lucide-react";
 import { useRoommates } from "@/hooks/useRoommates";
 import { useProfile } from "@/hooks/useProfile";
@@ -13,18 +15,11 @@ export const RoommateManagement = () => {
   const { roommates, loading, addRoommate, deleteRoommate, deleteAllMyRoommates, sendEmailRequest } = useRoommates();
   const { profile } = useProfile();
   const { user } = useAuth();
-  const [newRoommate, setNewRoommate] = useState({
-    name: '',
-    upi_id: '',
-    email: '',
-    phone: ''
-  });
+
+  const [newRoommate, setNewRoommate] = useState({ name: '', upi_id: '', email: '', phone: '' });
 
   const handleAddRoommate = () => {
-    if (!newRoommate.name || !newRoommate.upi_id || !newRoommate.email) {
-      return;
-    }
-
+    if (!newRoommate.name || !newRoommate.upi_id || !newRoommate.email) return;
     addRoommate(newRoommate);
     setNewRoommate({ name: '', upi_id: '', email: '', phone: '' });
   };
@@ -34,25 +29,18 @@ export const RoommateManagement = () => {
     window.open(paymentUrl, '_blank');
   };
 
-  // Filter out the current user from the fetched roommates list
-  const filteredRoommates = roommates.filter(
-    (roommate) => roommate.email !== (user?.email || '')
-  );
-
-  // Create a combined list that includes the current user as the first entry
+  const filteredRoommates = roommates.filter((r) => r.email !== (user?.email || ''));
   const allMembers = [
-    // Current user as the owner
     {
       id: 'current-user',
       name: profile?.name || user?.email?.split('@')[0] || 'You',
       upi_id: profile?.upi_id || 'Not set',
       email: user?.email || '',
-      phone: profile?.full_name || '', // Assuming profile.full_name might be phone or similar. Let's use profile.phone if available or keep it as is. For now, checking profile schema - phone is not there.
-      balance: 0, // This needs to be calculated based on expenses, currently hardcoded for current user
+      phone: profile?.full_name || '',
+      balance: 0,
       isCurrentUser: true,
       user_id: user?.id || ''
     },
-    // Other roommates (filtered)
     ...filteredRoommates.map(r => ({ ...r, isCurrentUser: false }))
   ];
 
@@ -65,7 +53,7 @@ export const RoommateManagement = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-2 md:px-0">
       {/* Add Roommate */}
       <Card>
         <CardHeader>
@@ -78,68 +66,48 @@ export const RoommateManagement = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                placeholder="Enter name"
-                value={newRoommate.name}
-                onChange={(e) => setNewRoommate({...newRoommate, name: e.target.value})}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="upiId">UPI ID</Label>
-              <Input
-                id="upiId"
-                placeholder="name@paytm"
-                value={newRoommate.upi_id}
-                onChange={(e) => setNewRoommate({...newRoommate, upi_id: e.target.value})}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email (Must be registered)</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="registered.email@example.com"
-                value={newRoommate.email}
-                onChange={(e) => setNewRoommate({...newRoommate, email: e.target.value})}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone (Optional)</Label>
-              <Input
-                id="phone"
-                placeholder="+91 xxxxx xxxxx"
-                value={newRoommate.phone}
-                onChange={(e) => setNewRoommate({...newRoommate, phone: e.target.value})}
-              />
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {['name', 'upi_id', 'email', 'phone'].map((field, i) => (
+              <div key={i} className="space-y-2">
+                <Label htmlFor={field}>
+                  {field === 'upi_id' ? 'UPI ID' :
+                    field === 'email' ? 'Email (Must be registered)' :
+                    field === 'phone' ? 'Phone (Optional)' :
+                    'Name'}
+                </Label>
+                <Input
+                  id={field}
+                  type={field === 'email' ? 'email' : 'text'}
+                  placeholder={
+                    field === 'upi_id' ? 'name@paytm' :
+                    field === 'email' ? 'registered.email@example.com' :
+                    field === 'phone' ? '+91 xxxxx xxxxx' : 'Enter name'
+                  }
+                  value={newRoommate[field as keyof typeof newRoommate]}
+                  onChange={(e) => setNewRoommate({ ...newRoommate, [field]: e.target.value })}
+                />
+              </div>
+            ))}
           </div>
-          <div className="flex space-x-2">
-            <Button 
-              onClick={handleAddRoommate}
-              className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Roommate
-            </Button>
-          </div>
+          <Button
+            onClick={handleAddRoommate}
+            className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
+          >
+            <Plus className="h-4 w-4 mr-2" /> Add Roommate
+          </Button>
         </CardContent>
       </Card>
 
-      {/* Roommates List */}
+      {/* Roommate List */}
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-2 md:space-y-0">
             <CardTitle className="flex items-center space-x-2">
               <Users className="h-5 w-5" />
               <span>Group Members ({allMembers.length})</span>
             </CardTitle>
-            {/* Only show "Remove All" if there are roommates added by the current user */}
             {roommates.filter(r => r.user_id === user?.id).length > 0 && (
-               <AlertDialog>
+              <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="sm">
                     <Trash2 className="h-4 w-4 mr-2" />
@@ -153,15 +121,12 @@ export const RoommateManagement = () => {
                       Confirm Removal
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to remove all roommates you've added? This action will remove them from your list and cannot be undone.
+                      Are you sure you want to remove all roommates you've added? This cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={deleteAllMyRoommates}
-                      className="bg-red-600 hover:bg-red-700"
-                    >
+                    <AlertDialogAction onClick={deleteAllMyRoommates} className="bg-red-600 hover:bg-red-700">
                       Yes, Remove All
                     </AlertDialogAction>
                   </AlertDialogFooter>
@@ -170,9 +135,10 @@ export const RoommateManagement = () => {
             )}
           </div>
           <CardDescription>
-            Manage your roommate group and settle expenses. Roommates you add are specific to your list.
+            Manage your roommate group and settle expenses.
           </CardDescription>
         </CardHeader>
+
         <CardContent className="space-y-4">
           {allMembers.length === 1 ? (
             <div className="text-center py-8 text-muted-foreground">
@@ -182,41 +148,35 @@ export const RoommateManagement = () => {
             </div>
           ) : (
             allMembers.map((member) => (
-              <div key={member.id} className={`flex items-center justify-between p-4 rounded-lg ${member.isCurrentUser ? 'bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200' : 'bg-gray-50'}`}>
+              <div
+                key={member.id}
+                className={`flex flex-col md:flex-row md:items-center justify-between p-4 rounded-lg space-y-4 md:space-y-0 ${member.isCurrentUser ? 'bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200' : 'bg-gray-50'}`}
+              >
                 <div className="flex items-center space-x-4">
-                  <div className={`rounded-full p-3 ${member.isCurrentUser ? 'bg-gradient-to-r from-blue-600 to-green-600' : 'bg-gradient-to-r from-blue-600 to-green-600'}`}>
-                    {member.isCurrentUser ? (
-                      <Crown className="h-5 w-5 text-white" />
-                    ) : (
-                      <Users className="h-5 w-5 text-white" />
-                    )}
+                  <div className={`rounded-full p-3 ${member.isCurrentUser ? 'bg-gradient-to-r from-blue-600 to-green-600' : 'bg-blue-600'}`}>
+                    {member.isCurrentUser ? <Crown className="h-5 w-5 text-white" /> : <Users className="h-5 w-5 text-white" />}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center space-x-2">
                       <h3 className="font-semibold">{member.name}</h3>
-                      {member.isCurrentUser && (
-                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">You</span>
-                      )}
+                      {member.isCurrentUser && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">You</span>}
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <IndianRupee className="h-3 w-3" />
-                      <span>{member.upi_id}</span>
+                    <div className="flex items-center text-sm text-muted-foreground break-words">
+                      <IndianRupee className="h-3 w-3 mr-1" /> <span>{member.upi_id}</span>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <Mail className="h-3 w-3" />
-                      <span>{member.email}</span>
+                    <div className="flex items-center text-sm text-muted-foreground break-words">
+                      <Mail className="h-3 w-3 mr-1" /> <span>{member.email}</span>
                     </div>
                     {member.phone && (
-                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                        <Phone className="h-3 w-3" />
-                        <span>{member.phone}</span>
+                      <div className="flex items-center text-sm text-muted-foreground break-words">
+                        <Phone className="h-3 w-3 mr-1" /> <span>{member.phone}</span>
                       </div>
                     )}
                   </div>
                 </div>
-                
-                <div className="flex items-center space-x-3">
-                  <div className="text-right">
+
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-end space-y-2 md:space-y-0 md:space-x-3 w-full md:w-auto">
+                  <div className="text-right md:text-left">
                     <p className={`font-semibold ${member.balance < 0 ? 'text-orange-600' : member.balance > 0 ? 'text-green-600' : 'text-gray-600'}`}>
                       {member.balance === 0 ? '₹0' : (member.balance < 0 ? '-' : '+') + '₹' + Math.abs(member.balance)}
                     </p>
@@ -224,54 +184,45 @@ export const RoommateManagement = () => {
                       {member.balance < 0 ? 'owes you' : member.balance > 0 ? 'you owe' : 'settled'}
                     </p>
                   </div>
-                  
-                  <div className="flex space-x-2">
-                    {!member.isCurrentUser && member.balance !== 0 && (
-                      <>
-                        <Button
-                          size="sm"
-                          onClick={() => handleUPIPayment(member.upi_id, member.balance)}
-                          className="bg-blue-600 hover:bg-blue-700"
-                        >
-                          Pay
+                  {!member.isCurrentUser && member.balance !== 0 && (
+                    <>
+                      <Button
+                        size="sm"
+                        onClick={() => handleUPIPayment(member.upi_id, member.balance)}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        Pay
+                      </Button>
+                      {member.balance < 0 && (
+                        <Button size="sm" variant="outline" onClick={() => sendEmailRequest(member)}>
+                          Request
                         </Button>
-                        {member.balance < 0 && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => sendEmailRequest(member)}
-                          >
-                            Request
-                          </Button>
-                        )}
-                      </>
-                    )}
-                    
-                    {/* Only allow deleting roommates that were added by the current user */}
-                    {!member.isCurrentUser && member.user_id === user?.id && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Remove Roommate</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to remove {member.name} from your group? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => deleteRoommate(member.id)}>
-                              Remove
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-                  </div>
+                      )}
+                    </>
+                  )}
+                  {!member.isCurrentUser && member.user_id === user?.id && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remove Roommate</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to remove {member.name} from your group?
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteRoommate(member.id)}>
+                            Remove
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
               </div>
             ))
