@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +19,7 @@ export const useMarketTrips = () => {
   const [isGoingToMarket, setIsGoingToMarket] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
+  const channelRef = useRef<any>(null);
 
   const fetchMarketTrips = async () => {
     try {
@@ -122,9 +123,20 @@ export const useMarketTrips = () => {
     if (user) {
       fetchMarketTrips();
 
+      // Clean up existing channel before creating new one
+      if (channelRef.current) {
+        console.log('Removing existing market trips channel');
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+
+      // Create unique channel name to avoid conflicts
+      const channelName = `market-trips-${user.id}-${Date.now()}`;
+      console.log('Creating market trips channel:', channelName);
+
       // Set up real-time subscription for market trips
       const channel = supabase
-        .channel('market-trips-changes')
+        .channel(channelName)
         .on(
           'postgres_changes',
           {
@@ -133,16 +145,32 @@ export const useMarketTrips = () => {
             table: 'market_trips'
           },
           () => {
+            console.log('Market trips data changed, refetching...');
             fetchMarketTrips();
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log('Market trips channel subscription status:', status);
+        });
+
+      channelRef.current = channel;
 
       return () => {
-        supabase.removeChannel(channel);
+        if (channelRef.current) {
+          console.log('Cleaning up market trips channel');
+          supabase.removeChannel(channelRef.current);
+          channelRef.current = null;
+        }
       };
+    } else {
+      // Clean up channel when user logs out
+      if (channelRef.current) {
+        console.log('Removing market trips channel on user logout');
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     }
-  }, [user]);
+  }, [user?.id]); // Only depend on user ID to avoid unnecessary re-subscriptions
 
   return {
     marketTrips,

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
@@ -23,6 +23,7 @@ export const useNotifications = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { sendBrowserNotification, permission } = useBrowserNotifications();
+  const channelRef = useRef<any>(null);
 
   const fetchNotifications = async () => {
     if (!user) {
@@ -115,9 +116,20 @@ export const useNotifications = () => {
     if (user) {
       fetchNotifications();
 
+      // Clean up existing channel before creating new one
+      if (channelRef.current) {
+        console.log('Removing existing notifications channel');
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+
+      // Create unique channel name to avoid conflicts
+      const channelName = `notifications-${user.id}-${Date.now()}`;
+      console.log('Creating notifications channel:', channelName);
+      
       // Set up real-time subscription for new notifications
       const channel = supabase
-        .channel('notifications-changes')
+        .channel(channelName)
         .on(
           'postgres_changes',
           {
@@ -160,17 +172,32 @@ export const useNotifications = () => {
             }
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log('Notifications channel subscription status:', status);
+        });
+
+      channelRef.current = channel;
 
       return () => {
-        supabase.removeChannel(channel);
+        if (channelRef.current) {
+          console.log('Cleaning up notifications channel');
+          supabase.removeChannel(channelRef.current);
+          channelRef.current = null;
+        }
       };
     } else {
       setNotifications([]);
       setUnreadCount(0);
       setLoading(false);
+      
+      // Clean up channel when user logs out
+      if (channelRef.current) {
+        console.log('Removing notifications channel on user logout');
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     }
-  }, [user, toast]);
+  }, [user?.id]); // Only depend on user ID to avoid unnecessary re-subscriptions
 
   return {
     notifications,
