@@ -120,9 +120,52 @@ export const useSharedNotes = () => {
         },
     });
 
+    const updateNoteMutation = useMutation({
+        mutationFn: async ({ id, updates }: { id: string; updates: Partial<NewNotePayload> }) => {
+            if (!user) throw new Error("User not authenticated");
+            const { data, error } = await supabase
+                .from('shared_notes')
+                .update(updates)
+                .eq('id', id)
+                .eq('user_id', user.id)
+                .select()
+                .single();
+            if (error) throw error;
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['shared_notes'] });
+            toast({ title: "Success", description: "Note updated successfully." });
+        },
+        onError: (error) => {
+            toast({ title: "Error", description: error.message, variant: "destructive" });
+        },
+    });
+
+    const deleteNoteMutation = useMutation({
+        mutationFn: async (id: string) => {
+            if (!user) throw new Error("User not authenticated");
+            const { error } = await supabase
+                .from('shared_notes')
+                .delete()
+                .eq('id', id)
+                .eq('user_id', user.id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['shared_notes'] });
+            toast({ title: "Success", description: "Note deleted successfully." });
+        },
+        onError: (error) => {
+            toast({ title: "Error", description: error.message, variant: "destructive" });
+        },
+    });
+
     return {
         notes: notesWithDetails,
         isLoading: isLoadingNotes || isLoadingReactions || isLoadingUserDetails,
         addNote: addNoteMutation.mutate,
+        updateNote: updateNoteMutation.mutate,
+        deleteNote: deleteNoteMutation.mutate,
     };
 }
