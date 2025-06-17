@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Package, Search, X } from "lucide-react";
 import { useProducts } from '@/hooks/useProducts';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface BulkProductSelectorProps {
   onAdd: (selectedProducts: Array<{ product: any; quantity: string }>) => Promise<void>;
@@ -19,6 +20,7 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [quantities, setQuantities] = useState<Record<string, string>>({});
   const [isAdding, setIsAdding] = useState(false);
+  const isMobile = useIsMobile();
 
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -67,12 +69,12 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
   const selectedCount = selectedProducts.size;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-4xl max-h-[80vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 md:p-4">
+      <Card className={`w-full ${isMobile ? 'max-w-sm' : 'max-w-4xl'} max-h-[90vh] overflow-hidden`}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <CardTitle className="flex items-center space-x-2">
+          <CardTitle className="flex items-center space-x-2 text-lg">
             <Package className="h-5 w-5" />
-            <span>Select Products to Add</span>
+            <span className={isMobile ? 'text-base' : ''}>Select Products</span>
           </CardTitle>
           <Button variant="ghost" size="sm" onClick={onCancel}>
             <X className="h-4 w-4" />
@@ -88,17 +90,18 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
+              size={isMobile ? "sm" : "default"}
             />
           </div>
 
           {/* Products List */}
-          <div className="max-h-96 overflow-y-auto space-y-2">
+          <div className={`${isMobile ? 'max-h-64' : 'max-h-96'} overflow-y-auto space-y-2`}>
             {loading ? (
               <div className="text-center py-8 text-muted-foreground">
                 Loading products...
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-8 text-muted-foreground text-sm">
                 {searchTerm ? 'No products found matching your search' : 'No products available'}
               </div>
             ) : (
@@ -109,20 +112,21 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
                     selectedProducts.has(product.id) ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'
                   }`}
                 >
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-start space-x-3">
                     <Checkbox
                       checked={selectedProducts.has(product.id)}
                       onCheckedChange={() => handleProductToggle(product.id)}
+                      className="mt-1"
                     />
-                    <div className="flex-1">
-                      <h4 className="font-medium">{product.name}</h4>
-                      <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-sm md:text-base break-words">{product.name}</h4>
+                      <div className="flex flex-col md:flex-row md:items-center md:space-x-4 text-xs md:text-sm text-muted-foreground">
                         {product.category && <span>Category: {product.category}</span>}
                         {product.unit && <span>Unit: {product.unit}</span>}
                       </div>
                     </div>
                     {selectedProducts.has(product.id) && (
-                      <div className="w-24">
+                      <div className={`${isMobile ? 'w-16' : 'w-24'} flex-shrink-0`}>
                         <Label htmlFor={`quantity-${product.id}`} className="sr-only">
                           Quantity
                         </Label>
@@ -131,7 +135,8 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
                           placeholder="Qty"
                           value={quantities[product.id] || ''}
                           onChange={(e) => handleQuantityChange(product.id, e.target.value)}
-                          className="text-center"
+                          className="text-center text-xs"
+                          size="sm"
                         />
                       </div>
                     )}
@@ -142,18 +147,25 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-between pt-4 border-t">
-            <div className="text-sm text-muted-foreground">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between pt-4 border-t space-y-3 md:space-y-0">
+            <div className="text-xs md:text-sm text-muted-foreground text-center md:text-left">
               {selectedCount} product{selectedCount !== 1 ? 's' : ''} selected
             </div>
-            <div className="flex space-x-2">
-              <Button variant="outline" onClick={onCancel} disabled={isAdding}>
+            <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={onCancel} 
+                disabled={isAdding}
+                className="w-full md:w-auto"
+                size={isMobile ? "sm" : "default"}
+              >
                 Cancel
               </Button>
               <Button
                 onClick={handleSubmit}
                 disabled={selectedCount === 0 || isAdding}
-                className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
+                className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
+                size={isMobile ? "sm" : "default"}
               >
                 {isAdding ? 'Adding...' : `Add ${selectedCount} Item${selectedCount !== 1 ? 's' : ''}`}
               </Button>

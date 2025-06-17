@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { ShoppingListDisplay } from './ShoppingListDisplay';
 import { AddItemData } from '@/types/shopping';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const parseVoiceInput = (text: string) => {
   // This is a simple parser. It looks for a number and optional unit.
@@ -35,7 +37,6 @@ const parseVoiceInput = (text: string) => {
   return { name, quantity };
 };
 
-
 export const SharedShoppingList = () => {
   const {
     selectedDate,
@@ -51,6 +52,7 @@ export const SharedShoppingList = () => {
   const [showBulkSelector, setShowBulkSelector] = useState(false);
   const [newItem, setNewItem] = useState({ name: '', quantity: '' });
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const handleTranscription = (text: string) => {
     if (text) {
@@ -96,7 +98,7 @@ export const SharedShoppingList = () => {
   };
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 px-2 md:px-0">
       <MarketStatus />
 
       <ShoppingListToolbar 
@@ -107,17 +109,26 @@ export const SharedShoppingList = () => {
       
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center space-x-2">
+          <div className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
+            <CardTitle className="flex items-center space-x-2 text-lg md:text-xl">
               <ShoppingCart className="h-5 w-5" />
               <span>Shopping List</span>
             </CardTitle>
-            <div className="flex space-x-2">
-              <Button onClick={() => setShowBulkSelector(true)} variant="outline">
+            <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2">
+              <Button 
+                onClick={() => setShowBulkSelector(true)} 
+                variant="outline"
+                className="w-full md:w-auto text-sm"
+                size={isMobile ? "sm" : "default"}
+              >
                 <Package className="h-4 w-4 mr-2" />
                 Add from Products
               </Button>
-              <Button onClick={() => setIsAddingItem(true)}>
+              <Button 
+                onClick={() => setIsAddingItem(true)}
+                className="w-full md:w-auto text-sm"
+                size={isMobile ? "sm" : "default"}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Custom Item
               </Button>
@@ -128,32 +139,63 @@ export const SharedShoppingList = () => {
         {isAddingItem && (
           <CardContent className="border-t pt-4">
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <Label htmlFor="name">Item Name</Label>
-                  <Input id="name" value={newItem.name} onChange={(e) => setNewItem(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g., Tomatoes" required />
+                  <Label htmlFor="name" className="text-sm font-medium">Item Name</Label>
+                  <Input 
+                    id="name" 
+                    value={newItem.name} 
+                    onChange={(e) => setNewItem(prev => ({ ...prev, name: e.target.value }))} 
+                    placeholder="e.g., Tomatoes" 
+                    required 
+                    className="mt-1"
+                  />
                 </div>
                 <div>
-                  <Label htmlFor="quantity">Quantity</Label>
-                  <Input id="quantity" value={newItem.quantity} onChange={(e) => setNewItem(prev => ({ ...prev, quantity: e.target.value }))} placeholder="e.g., 2kg, 3 pieces" required />
+                  <Label htmlFor="quantity" className="text-sm font-medium">Quantity</Label>
+                  <Input 
+                    id="quantity" 
+                    value={newItem.quantity} 
+                    onChange={(e) => setNewItem(prev => ({ ...prev, quantity: e.target.value }))} 
+                    placeholder="e.g., 2kg, 3 pieces" 
+                    required 
+                    className="mt-1"
+                  />
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <Button type="submit" disabled={isTranscribing}>Add Item</Button>
-                <Button type="button" variant="outline" onClick={() => { setIsAddingItem(false); setNewItem({ name: '', quantity: '' }); }}>Cancel</Button>
+              <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-y-0 md:space-x-2">
+                <Button 
+                  type="submit" 
+                  disabled={isTranscribing}
+                  className="w-full md:w-auto"
+                  size={isMobile ? "sm" : "default"}
+                >
+                  Add Item
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => { setIsAddingItem(false); setNewItem({ name: '', quantity: '' }); }}
+                  className="w-full md:w-auto"
+                  size={isMobile ? "sm" : "default"}
+                >
+                  Cancel
+                </Button>
                 <Button
                   type="button"
                   variant={isRecording ? "destructive" : "outline"}
-                  size="icon"
+                  size={isMobile ? "sm" : "icon"}
                   onClick={startRecording}
                   disabled={isTranscribing}
                   title="Add item with voice"
+                  className={isMobile ? "w-full md:w-auto" : ""}
                 >
                   {isTranscribing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
+                  {isMobile && !isTranscribing && <span className="ml-2">Voice Input</span>}
                 </Button>
-                {isRecording && <span className="text-sm text-blue-600 animate-pulse">Recording...</span>}
-                {isTranscribing && <span className="text-sm text-muted-foreground">Transcribing...</span>}
               </div>
+              {isRecording && <span className="text-sm text-blue-600 animate-pulse block">Recording...</span>}
+              {isTranscribing && <span className="text-sm text-muted-foreground block">Transcribing...</span>}
             </form>
           </CardContent>
         )}

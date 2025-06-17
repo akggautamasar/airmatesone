@@ -1,15 +1,17 @@
 
 import React from 'react';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Download } from 'lucide-react';
+import { Calendar as CalendarIcon, Download, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { ShoppingListItem } from '@/types/shopping';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import papaparse from 'papaparse';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ShoppingListToolbarProps {
   selectedDate: Date;
@@ -18,6 +20,7 @@ interface ShoppingListToolbarProps {
 }
 
 export const ShoppingListToolbar = ({ selectedDate, onDateChange, items }: ShoppingListToolbarProps) => {
+  const isMobile = useIsMobile();
 
   const handleExportCSV = () => {
     const data = items.map(item => ({
@@ -57,15 +60,16 @@ export const ShoppingListToolbar = ({ selectedDate, onDateChange, items }: Shopp
   };
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border bg-card text-card-foreground shadow-sm p-4">
+    <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 md:gap-4 rounded-lg border bg-card text-card-foreground shadow-sm p-3 md:p-4">
       <Popover>
         <PopoverTrigger asChild>
           <Button
             variant={"outline"}
             className={cn(
-              "w-[280px] justify-start text-left font-normal",
+              "w-full md:w-[280px] justify-start text-left font-normal text-sm",
               !selectedDate && "text-muted-foreground"
             )}
+            size={isMobile ? "sm" : "default"}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
             {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
@@ -80,16 +84,39 @@ export const ShoppingListToolbar = ({ selectedDate, onDateChange, items }: Shopp
           />
         </PopoverContent>
       </Popover>
-      <div className="flex gap-2">
-        <Button onClick={handleExportCSV} variant="outline" size="sm" disabled={items.length === 0}>
-          <Download className="mr-2 h-4 w-4" />
-          Export CSV
-        </Button>
-        <Button onClick={handleExportPDF} variant="outline" size="sm" disabled={items.length === 0}>
-          <Download className="mr-2 h-4 w-4" />
-          Export PDF
-        </Button>
-      </div>
+      
+      {isMobile ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" disabled={items.length === 0} className="w-full">
+              <Download className="mr-2 h-4 w-4" />
+              Export
+              <MoreHorizontal className="ml-2 h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={handleExportCSV}>
+              <Download className="mr-2 h-4 w-4" />
+              Export as CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleExportPDF}>
+              <Download className="mr-2 h-4 w-4" />
+              Export as PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : (
+        <div className="flex gap-2">
+          <Button onClick={handleExportCSV} variant="outline" size="sm" disabled={items.length === 0}>
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
+          <Button onClick={handleExportPDF} variant="outline" size="sm" disabled={items.length === 0}>
+            <Download className="mr-2 h-4 w-4" />
+            Export PDF
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
