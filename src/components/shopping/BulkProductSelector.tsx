@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,7 @@ import { useProducts } from '@/hooks/useProducts';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface BulkProductSelectorProps {
-  onAdd: (selectedProducts: Array<{ product: any; quantity: string }>) => Promise<void>;
+  onAdd: (selectedProducts: Array<{ product: any; quantity: number }>) => Promise<void>; // updated quantity type
   onCancel: () => void;
 }
 
@@ -31,13 +30,11 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
     const newSelected = new Set(selectedProducts);
     if (newSelected.has(productId)) {
       newSelected.delete(productId);
-      // Remove quantity when deselecting
       const newQuantities = { ...quantities };
       delete newQuantities[productId];
       setQuantities(newQuantities);
     } else {
       newSelected.add(productId);
-      // Set default quantity when selecting
       setQuantities(prev => ({ ...prev, [productId]: '1' }));
     }
     setSelectedProducts(newSelected);
@@ -51,10 +48,11 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
     const selectedProductsData = Array.from(selectedProducts)
       .map(productId => {
         const product = products.find(p => p.id === productId);
-        const quantity = quantities[productId];
+        const quantityStr = quantities[productId];
+        const quantity = Number(quantityStr); // ✅ convert string to number
         return product && quantity ? { product, quantity } : null;
       })
-      .filter(Boolean) as Array<{ product: any; quantity: string }>;
+      .filter(Boolean) as Array<{ product: any; quantity: number }>; // ✅ updated to number
 
     if (selectedProductsData.length === 0) return;
 
@@ -82,7 +80,6 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
         </CardHeader>
         
         <CardContent className="space-y-4">
-          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
@@ -94,7 +91,6 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
             />
           </div>
 
-          {/* Products List */}
           <div className={`${isMobile ? 'max-h-64' : 'max-h-96'} overflow-y-auto space-y-2`}>
             {loading ? (
               <div className="text-center py-8 text-muted-foreground">
@@ -146,7 +142,6 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
             )}
           </div>
 
-          {/* Actions */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between pt-4 border-t space-y-3 md:space-y-0">
             <div className="text-xs md:text-sm text-muted-foreground text-center md:text-left">
               {selectedCount} product{selectedCount !== 1 ? 's' : ''} selected
