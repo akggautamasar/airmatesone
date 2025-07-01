@@ -33,8 +33,6 @@ export const useRoommates = () => {
       const { data, error } = await supabase
         .from('roommates')
         .select('*')
-        // Removed .eq('user_id', user.id) to rely on RLS:
-        // auth.uid() = user_id OR roommates.email = public.get_current_user_email()
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -91,15 +89,36 @@ export const useRoommates = () => {
         return;
       }
 
-      // Check if the target roommate email exists as a registered user in profiles
-      const { data: targetUserAccount, error: lookupError } = await supabase
+      // Check if trying to add themselves
+      if (roommate.email === user.email) {
+        toast({
+          title: "Error",
+          description: "You cannot add yourself as a roommate",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if the target roommate email exists as a registered user
+      console.log('Looking up user email:', roommate.email);
+      
+      // First, try to check auth.users table using a database function
+      const { data: authUserData, error: authUserError } = await supabase
+        .rpc('get_user_email_by_id', {});
+
+      console.log('Auth user lookup result:', { authUserData, authUserError });
+
+      // Alternative approach: Check profiles table which should contain all registered users
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('id, email')
         .eq('email', roommate.email)
         .maybeSingle();
 
-      if (lookupError) {
-        console.error('Error looking up user in profiles:', lookupError);
+      console.log('Profile lookup result:', { profileData, profileError });
+
+      if (profileError) {
+        console.error('Error looking up user in profiles:', profileError);
         toast({
           title: "Error",
           description: "Could not verify roommate's account status. Please try again.",
@@ -108,16 +127,16 @@ export const useRoommates = () => {
         return;
       }
 
-      if (!targetUserAccount) {
+      if (!profileData) {
         toast({
           title: "User Not Found",
-          description: `No registered user found with email ${roommate.email}. Please ask them to create an account first.`,
+          description: `No registered user found with email ${roommate.email}. Please ask them to create an account first, or check if the email address is correct.`,
           variant: "destructive",
         });
         return;
       }
       
-      console.log('Target user account found:', targetUserAccount);
+      console.log('Target user account found:', profileData);
 
       // Check if roommate already exists for this user (creator)
       const { data: existingRoommate, error: checkError } = await supabase
@@ -134,8 +153,8 @@ export const useRoommates = () => {
 
       if (existingRoommate) {
         toast({
-          title: "Error",
-          description: "This roommate (by email) has already been added by you.",
+          title: "Already Added",
+          description: "This roommate has already been added to your list.",
           variant: "destructive",
         });
         return;
@@ -181,21 +200,18 @@ export const useRoommates = () => {
       const { error } = await supabase
         .from('roommates')
         .delete()
-        .eq('id', roommateId); // RLS policy for delete is "USING (auth.uid() = user_id)"
-                               // This means only the creator can delete.
+        .eq('id', roommateId);
 
       if (error) {
         console.error('Supabase delete error:', error);
         throw error;
       }
       
-      // const deletedRoommate = roommates.find(r => r.id === roommateId); // Not needed if refetching
-      // setRoommates(prev => prev.filter(roommate => roommate.id !== roommateId));
-      await fetchRoommates(); // Refetch to ensure list is up-to-date
+      await fetchRoommates();
       
       toast({
         title: "Roommate Removed",
-        description: `Roommate has been removed from your group`, // Generic message as name might not be in current list
+        description: `Roommate has been removed from your group`,
       });
     } catch (error: any) {
       console.error('Error deleting roommate:', error);
@@ -221,14 +237,14 @@ export const useRoommates = () => {
       const { error } = await supabase
         .from('roommates')
         .delete()
-        .eq('user_id', user.id); // Delete all roommates CREATED BY the current user
+        .eq('user_id', user.id);
 
       if (error) {
         console.error('Supabase delete all roommates error:', error);
         throw error;
       }
       
-      await fetchRoommates(); // Refetch to update the list
+      await fetchRoommates();
       
       toast({
         title: "All Roommates Removed",
@@ -301,7 +317,6 @@ export const useRoommates = () => {
     if (user) {
       fetchRoommates();
     } else {
-      // Clear roommates if user logs out
       setRoommates([]);
       setLoading(false);
     }
