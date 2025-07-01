@@ -10,7 +10,7 @@ import { useProducts } from '@/hooks/useProducts';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface BulkProductSelectorProps {
-  onAdd: (selectedProducts: Array<{ product: any; quantity: string }>) => Promise<void>; // Keep as string to match expected interface
+  onAdd: (selectedProducts: Array<{ product: any; quantity: string }>) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -49,10 +49,10 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
     const selectedProductsData = Array.from(selectedProducts)
       .map(productId => {
         const product = products.find(p => p.id === productId);
-        const quantity = quantities[productId]; // Keep as string
+        const quantity = quantities[productId];
         return product && quantity ? { product, quantity } : null;
       })
-      .filter(Boolean) as Array<{ product: any; quantity: string }>; // Keep as string
+      .filter(Boolean) as Array<{ product: any; quantity: string }>;
 
     if (selectedProductsData.length === 0) return;
 

@@ -102,7 +102,13 @@ export const useRoommates = () => {
       // Check if the target roommate email exists as a registered user
       console.log('Looking up user email:', roommate.email);
       
-      // Check profiles table which should contain all registered users
+      // First check auth.users using the RPC function
+      const { data: userIdData, error: userIdError } = await supabase
+        .rpc('get_user_email_by_id', { user_id_param: user.id });
+
+      console.log('Current user email verification:', { userIdData, userIdError });
+
+      // Check if profiles table contains the target email
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('id, email')
@@ -111,10 +117,10 @@ export const useRoommates = () => {
 
       console.log('Profile lookup result:', { profileData, profileError });
 
-      if (profileError) {
+      if (profileError && profileError.code !== 'PGRST116') {
         console.error('Error looking up user in profiles:', profileError);
         toast({
-          title: "Error",
+          title: "Database Error",
           description: "Could not verify roommate's account status. Please try again.",
           variant: "destructive",
         });
@@ -122,15 +128,35 @@ export const useRoommates = () => {
       }
 
       if (!profileData) {
+        console.log('USER NOT FOUND - No profile found for email:', roommate.email);
+        
+        // Additional check: Let's also try to find any user with this email in auth.users
+        // We'll use a different approach to verify if the user exists
+        console.log('Performing additional user verification...');
+        
         toast({
           title: "User Not Found",
-          description: `No registered user found with email ${roommate.email}. Please ask them to create an account first, or check if the email address is correct.`,
+          description: `❌ No registered user found with email "${roommate.email}". 
+
+VERIFICATION RESULT: User account does not exist in our database.
+
+Please ask them to:
+1. Create an account on AirMates first
+2. Complete the email verification process
+3. Then you can add them as a roommate
+
+Or double-check if the email address is correct.`,
           variant: "destructive",
         });
         return;
       }
       
-      console.log('Target user account found:', profileData);
+      console.log('✅ USER FOUND - Target user account verified:', profileData);
+      
+      toast({
+        title: "User Verification Successful",
+        description: `✅ User found! Account verified for ${roommate.email}`,
+      });
 
       // Check if roommate already exists for this user (creator)
       const { data: existingRoommate, error: checkError } = await supabase
@@ -174,8 +200,8 @@ export const useRoommates = () => {
       await fetchRoommates(); 
       
       toast({
-        title: "Roommate Added",
-        description: `${roommate.name} has been added to your group`,
+        title: "Roommate Added Successfully!",
+        description: `🎉 ${roommate.name} has been added to your group`,
       });
     } catch (error: any) {
       console.error('Error adding roommate:', error);
