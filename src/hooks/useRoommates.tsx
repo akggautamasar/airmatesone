@@ -99,26 +99,19 @@ export const useRoommates = () => {
         return;
       }
 
-      // Check if the target roommate email exists as a registered user
-      console.log('Looking up user email:', roommate.email);
+      console.log('🔍 VERIFICATION STARTED - Checking if user exists:', roommate.email);
       
-      // First check auth.users using the RPC function
-      const { data: userIdData, error: userIdError } = await supabase
-        .rpc('get_user_email_by_id', { user_id_param: user.id });
-
-      console.log('Current user email verification:', { userIdData, userIdError });
-
-      // Check if profiles table contains the target email
+      // Enhanced user verification - check profiles table first
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('id, email')
+        .select('id, email, name')
         .eq('email', roommate.email)
         .maybeSingle();
 
-      console.log('Profile lookup result:', { profileData, profileError });
+      console.log('📋 Profile lookup result:', { profileData, profileError });
 
       if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Error looking up user in profiles:', profileError);
+        console.error('❌ Database error during profile lookup:', profileError);
         toast({
           title: "Database Error",
           description: "Could not verify roommate's account status. Please try again.",
@@ -128,34 +121,38 @@ export const useRoommates = () => {
       }
 
       if (!profileData) {
-        console.log('USER NOT FOUND - No profile found for email:', roommate.email);
+        console.log('❌ USER NOT FOUND - No profile found for email:', roommate.email);
         
-        // Additional check: Let's also try to find any user with this email in auth.users
-        // We'll use a different approach to verify if the user exists
-        console.log('Performing additional user verification...');
-        
+        // Show detailed error message
         toast({
           title: "User Not Found",
-          description: `❌ No registered user found with email "${roommate.email}". 
+          description: `❌ No registered user found with email "${roommate.email}".
 
-VERIFICATION RESULT: User account does not exist in our database.
+VERIFICATION FAILED: This email address is not associated with any AirMates account.
 
-Please ask them to:
-1. Create an account on AirMates first
-2. Complete the email verification process
-3. Then you can add them as a roommate
+Please ensure:
+1. The email address is spelled correctly
+2. The user has created an AirMates account
+3. They have completed email verification
 
-Or double-check if the email address is correct.`,
+Known registered emails in your tests:
+• worksbeyondair@gmail.com
+• worksbeyondworks@gmail.com  
+• abhishekathiya78@gmail.com
+
+If this email should work, there may be a database sync issue.`,
           variant: "destructive",
         });
         return;
       }
       
-      console.log('✅ USER FOUND - Target user account verified:', profileData);
+      console.log('✅ USER VERIFICATION SUCCESSFUL!');
+      console.log('📧 Found user profile:', profileData);
       
+      // Show success message for verification
       toast({
-        title: "User Verification Successful",
-        description: `✅ User found! Account verified for ${roommate.email}`,
+        title: "✅ User Verified Successfully",
+        description: `Account found for ${roommate.email}! Proceeding to add as roommate...`,
       });
 
       // Check if roommate already exists for this user (creator)
@@ -180,6 +177,8 @@ Or double-check if the email address is correct.`,
         return;
       }
 
+      console.log('🚀 Proceeding to insert roommate record...');
+
       // Insert the new roommate
       const { data, error } = await supabase
         .from('roommates')
@@ -192,19 +191,19 @@ Or double-check if the email address is correct.`,
         .single();
 
       if (error) {
-        console.error('Supabase insert error:', error);
+        console.error('❌ Supabase insert error:', error);
         throw error;
       }
 
-      console.log('Successfully added roommate:', data);
+      console.log('✅ SUCCESS! Roommate added:', data);
       await fetchRoommates(); 
       
       toast({
-        title: "Roommate Added Successfully!",
-        description: `🎉 ${roommate.name} has been added to your group`,
+        title: "🎉 Roommate Added Successfully!",
+        description: `${roommate.name} (${roommate.email}) has been added to your group`,
       });
     } catch (error: any) {
-      console.error('Error adding roommate:', error);
+      console.error('💥 Error adding roommate:', error);
       toast({
         title: "Error",
         description: `Failed to add roommate: ${error.message || 'Unknown error'}`,
