@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { useProducts } from '@/hooks/useProducts';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface BulkProductSelectorProps {
-  onAdd: (selectedProducts: Array<{ product: any; quantity: number }>) => Promise<void>; // updated quantity type
+  onAdd: (selectedProducts: Array<{ product: any; quantity: string }>) => Promise<void>; // Keep as string to match expected interface
   onCancel: () => void;
 }
 
@@ -48,11 +49,10 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
     const selectedProductsData = Array.from(selectedProducts)
       .map(productId => {
         const product = products.find(p => p.id === productId);
-        const quantityStr = quantities[productId];
-        const quantity = Number(quantityStr); // ✅ convert string to number
+        const quantity = quantities[productId]; // Keep as string
         return product && quantity ? { product, quantity } : null;
       })
-      .filter(Boolean) as Array<{ product: any; quantity: number }>; // ✅ updated to number
+      .filter(Boolean) as Array<{ product: any; quantity: string }>; // Keep as string
 
     if (selectedProductsData.length === 0) return;
 

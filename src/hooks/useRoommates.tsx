@@ -102,13 +102,7 @@ export const useRoommates = () => {
       // Check if the target roommate email exists as a registered user
       console.log('Looking up user email:', roommate.email);
       
-      // First, try to check auth.users table using a database function
-      const { data: authUserData, error: authUserError } = await supabase
-        .rpc('get_user_email_by_id', {});
-
-      console.log('Auth user lookup result:', { authUserData, authUserError });
-
-      // Alternative approach: Check profiles table which should contain all registered users
+      // Check profiles table which should contain all registered users
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('id, email')
