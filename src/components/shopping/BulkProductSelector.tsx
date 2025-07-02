@@ -42,7 +42,10 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
   };
 
   const handleQuantityChange = (productId: string, quantity: string) => {
-    setQuantities(prev => ({ ...prev, [productId]: quantity }));
+    // Input validation: only allow positive numbers
+    if (quantity === '' || /^\d+$/.test(quantity)) {
+      setQuantities(prev => ({ ...prev, [productId]: quantity }));
+    }
   };
 
   const handleSubmit = async () => {
@@ -50,7 +53,11 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
       .map(productId => {
         const product = products.find(p => p.id === productId);
         const quantity = quantities[productId];
-        return product && quantity ? { product, quantity } : null;
+        // Validate quantity is a positive number
+        if (product && quantity && /^\d+$/.test(quantity) && parseInt(quantity) > 0) {
+          return { product, quantity };
+        }
+        return null;
       })
       .filter(Boolean) as Array<{ product: any; quantity: string }>;
 
@@ -85,7 +92,7 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
             <Input
               placeholder="Search products..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => setSearchTerm(e.target.value.slice(0, 100))} // Limit input length
               className="pl-10"
               size={isMobile ? "sm" : "default"}
             />
@@ -133,6 +140,7 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
                           onChange={(e) => handleQuantityChange(product.id, e.target.value)}
                           className="text-center text-xs"
                           size="sm"
+                          maxLength={3}
                         />
                       </div>
                     )}
