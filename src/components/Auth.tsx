@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,62 +37,126 @@ export const Auth = () => {
     }
   }, [user, navigate]);
 
+  const ensureUserProfile = async (userId: string, email: string, fullName?: string) => {
+    try {
+      // Check if profile already exists
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (!existingProfile) {
+        // Create profile if it doesn't exist
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: userId,
+            email: email,
+            full_name: fullName || null,
+            name: fullName || email.split('@')[0] // Use name from email if no full name provided
+          });
+
+        if (profileError) {
+          console.error('Error creating user profile:', profileError);
+          throw profileError;
+        }
+
+        console.log('User profile created successfully');
+      }
+    } catch (error) {
+      console.error('Error ensuring user profile:', error);
+      throw error;
+    }
+  };
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const redirectUrl = `${window.location.origin}/`;
+    try {
+      const redirectUrl = `${window.location.origin}/`;
 
-    const { error } = await supabase.auth.signUp({
-      email: signUpForm.email,
-      password: signUpForm.password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: signUpForm.fullName
+      const { data, error } = await supabase.auth.signUp({
+        email: signUpForm.email,
+        password: signUpForm.password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            full_name: signUpForm.fullName
+          }
         }
-      }
-    });
+      });
 
-    if (error) {
+      if (error) {
+        toast({
+          title: "Sign Up Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        // If user is immediately available (email confirmation disabled), create profile
+        if (data.user && !data.user.email_confirmed_at) {
+          toast({
+            title: "Sign Up Successful!",
+            description: "Please check your email to confirm your account.",
+          });
+        } else if (data.user) {
+          // User signed up successfully and is logged in
+          await ensureUserProfile(data.user.id, data.user.email!, signUpForm.fullName);
+          toast({
+            title: "Welcome to AirMates!",
+            description: "Your account has been created successfully.",
+          });
+        }
+        setSignUpForm({ email: '', password: '', fullName: '' });
+      }
+    } catch (error: any) {
       toast({
         title: "Sign Up Failed",
-        description: error.message,
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Sign Up Successful!",
-        description: "Please check your email to confirm your account.",
-      });
-      setSignUpForm({ email: '', password: '', fullName: '' });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: signInForm.email,
-      password: signInForm.password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: signInForm.email,
+        password: signInForm.password,
+      });
 
-    if (error) {
+      if (error) {
+        toast({
+          title: "Sign In Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else if (data.user) {
+        // Ensure user profile exists after successful login
+        await ensureUserProfile(data.user.id, data.user.email!);
+        
+        toast({
+          title: "Welcome back!",
+          description: "You have successfully signed in.",
+        });
+        // Navigation will happen automatically via useEffect when user state changes
+      }
+    } catch (error: any) {
       toast({
         title: "Sign In Failed",
-        description: error.message,
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Welcome back!",
-        description: "You have successfully signed in.",
-      });
-      // Navigation will happen automatically via useEffect when user state changes
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

@@ -54,6 +54,31 @@ export const useRoommates = () => {
     }
   };
 
+  const ensureUserInProfiles = async (email: string) => {
+    try {
+      // First check if user exists in auth.users and get their data
+      const { data: authUsers, error: authError } = await supabase.rpc('get_users_details', {
+        p_user_ids: [] // We'll use a different approach since we can't query auth.users directly
+      });
+
+      // Alternative approach: check profiles table and create if needed
+      const { data: existingProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, email, name')
+        .eq('email', email.toLowerCase().trim())
+        .maybeSingle();
+
+      if (profileError && profileError.code !== 'PGRST116') {
+        throw profileError;
+      }
+
+      return existingProfile;
+    } catch (error) {
+      console.error('Error ensuring user in profiles:', error);
+      return null;
+    }
+  };
+
   const addRoommate = async (roommate: Omit<Roommate, 'id' | 'user_id' | 'balance'>) => {
     if (!user) {
       toast({
@@ -102,43 +127,12 @@ export const useRoommates = () => {
 
       console.log('🔍 STEP 1: USER VERIFICATION - Checking if user exists:', roommate.email);
       
-      // DIRECT check of auth.users table via profiles (which is synced with auth.users)
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, email, name')
-        .eq('email', roommate.email.toLowerCase().trim())
-        .maybeSingle();
-
-      console.log('📋 Database query result:');
-      console.log('  - Profile data:', profileData);
-      console.log('  - Profile error:', profileError);
-      console.log('  - Error code:', profileError?.code);
+      // Check if user exists in profiles table
+      const profileData = await ensureUserInProfiles(roommate.email);
       
-      // Handle database errors (but allow PGRST116 which means "no rows found")
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error('❌ CRITICAL DATABASE ERROR:', profileError);
-        toast({
-          title: "Database Error",
-          description: `Database query failed: ${profileError.message}. Please try again.`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // If no profile found, the user doesn't exist
       if (!profileData) {
         console.log('❌ VERIFICATION FAILED - User does not exist in database');
         console.log('📧 Email searched:', roommate.email);
-        console.log('📊 Known working emails: worksbeyondair@gmail.com, worksbeyondworks@gmail.com, abhishekathiya78@gmail.com');
-        
-        // Let's do an additional check to see what profiles exist
-        const { data: allProfiles, error: allProfilesError } = await supabase
-          .from('profiles')
-          .select('email')
-          .limit(10);
-        
-        console.log('🔍 DEBUG: Current profiles in database:', allProfiles);
-        console.log('🔍 DEBUG: Profiles query error:', allProfilesError);
         
         toast({
           title: "❌ User Not Found",
@@ -149,7 +143,7 @@ The user must:
 2. Complete email verification  
 3. Then you can add them
 
-Double-check the email spelling. Case-sensitive search performed.`,
+Double-check the email spelling.`,
           variant: "destructive",
         });
         return;

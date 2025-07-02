@@ -95,6 +95,7 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
               onChange={(e) => setSearchTerm(e.target.value.slice(0, 100))}
               className="pl-10"
               size={isMobile ? "sm" : "default"}
+              maxLength={100}
             />
           </div>
 
