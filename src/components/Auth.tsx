@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,22 +38,31 @@ export const Auth = () => {
 
   const ensureUserProfile = async (userId: string, email: string, fullName?: string) => {
     try {
+      console.log('🔍 Ensuring user profile exists for:', email);
+      
       // Check if profile already exists
-      const { data: existingProfile } = await supabase
+      const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, email, name, full_name')
         .eq('id', userId)
         .maybeSingle();
 
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Error checking existing profile:', fetchError);
+        throw fetchError;
+      }
+
       if (!existingProfile) {
+        console.log('📝 Creating new user profile...');
         // Create profile if it doesn't exist
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
             id: userId,
-            email: email,
+            email: email.toLowerCase().trim(),
             full_name: fullName || null,
-            name: fullName || email.split('@')[0] // Use name from email if no full name provided
+            name: fullName || email.split('@')[0], // Use name from email if no full name provided
+            language: 'en'
           });
 
         if (profileError) {
@@ -62,7 +70,37 @@ export const Auth = () => {
           throw profileError;
         }
 
-        console.log('User profile created successfully');
+        console.log('✅ User profile created successfully');
+      } else {
+        console.log('✅ User profile already exists');
+        
+        // Update profile if missing information
+        const updateData: any = {};
+        if (!existingProfile.email) {
+          updateData.email = email.toLowerCase().trim();
+        }
+        if (fullName && !existingProfile.full_name) {
+          updateData.full_name = fullName;
+        }
+        if (!existingProfile.name) {
+          updateData.name = fullName || email.split('@')[0];
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          console.log('📝 Updating user profile with missing data...');
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update(updateData)
+            .eq('id', userId);
+
+          if (updateError) {
+            console.error('Error updating user profile:', updateError);
+            // Don't throw here as the profile exists, just log the warning
+            console.warn('⚠️ Could not update profile with missing data');
+          } else {
+            console.log('✅ User profile updated successfully');
+          }
+        }
       }
     } catch (error) {
       console.error('Error ensuring user profile:', error);
@@ -77,6 +115,7 @@ export const Auth = () => {
     try {
       const redirectUrl = `${window.location.origin}/`;
 
+      console.log('🚀 Starting sign up process...');
       const { data, error } = await supabase.auth.signUp({
         email: signUpForm.email,
         password: signUpForm.password,
@@ -89,19 +128,24 @@ export const Auth = () => {
       });
 
       if (error) {
+        console.error('❌ Sign up error:', error);
         toast({
           title: "Sign Up Failed",
           description: error.message,
           variant: "destructive",
         });
       } else {
+        console.log('📧 Sign up response:', data);
+        
         // If user is immediately available (email confirmation disabled), create profile
         if (data.user && !data.user.email_confirmed_at) {
+          console.log('📧 Email confirmation required');
           toast({
             title: "Sign Up Successful!",
             description: "Please check your email to confirm your account.",
           });
         } else if (data.user) {
+          console.log('✅ User signed up and confirmed immediately');
           // User signed up successfully and is logged in
           await ensureUserProfile(data.user.id, data.user.email!, signUpForm.fullName);
           toast({
@@ -112,6 +156,7 @@ export const Auth = () => {
         setSignUpForm({ email: '', password: '', fullName: '' });
       }
     } catch (error: any) {
+      console.error('💥 Critical sign up error:', error);
       toast({
         title: "Sign Up Failed",
         description: error.message || "An unexpected error occurred",
@@ -127,18 +172,21 @@ export const Auth = () => {
     setLoading(true);
 
     try {
+      console.log('🚀 Starting sign in process...');
       const { data, error } = await supabase.auth.signInWithPassword({
         email: signInForm.email,
         password: signInForm.password,
       });
 
       if (error) {
+        console.error('❌ Sign in error:', error);
         toast({
           title: "Sign In Failed",
           description: error.message,
           variant: "destructive",
         });
       } else if (data.user) {
+        console.log('✅ User signed in successfully');
         // Ensure user profile exists after successful login
         await ensureUserProfile(data.user.id, data.user.email!);
         
@@ -149,6 +197,7 @@ export const Auth = () => {
         // Navigation will happen automatically via useEffect when user state changes
       }
     } catch (error: any) {
+      console.error('💥 Critical sign in error:', error);
       toast({
         title: "Sign In Failed",
         description: error.message || "An unexpected error occurred",

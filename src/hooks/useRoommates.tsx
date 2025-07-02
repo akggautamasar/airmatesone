@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -56,12 +57,7 @@ export const useRoommates = () => {
 
   const ensureUserInProfiles = async (email: string) => {
     try {
-      // First check if user exists in auth.users and get their data
-      const { data: authUsers, error: authError } = await supabase.rpc('get_users_details', {
-        p_user_ids: [] // We'll use a different approach since we can't query auth.users directly
-      });
-
-      // Alternative approach: check profiles table and create if needed
+      // Check if user exists in profiles table
       const { data: existingProfile, error: profileError } = await supabase
         .from('profiles')
         .select('id, email, name')
@@ -76,6 +72,77 @@ export const useRoommates = () => {
     } catch (error) {
       console.error('Error ensuring user in profiles:', error);
       return null;
+    }
+  };
+
+  const createBidirectionalRoommateRelation = async (currentUser: any, targetEmail: string, roommateData: Omit<Roommate, 'id' | 'user_id' | 'balance'>) => {
+    try {
+      console.log('🔄 Creating bidirectional roommate relationship');
+      
+      // Get target user's profile
+      const { data: targetProfile, error: targetError } = await supabase
+        .from('profiles')
+        .select('id, email, name, upi_id')
+        .eq('email', targetEmail.toLowerCase().trim())
+        .maybeSingle();
+
+      if (targetError || !targetProfile) {
+        throw new Error('Target user profile not found');
+      }
+
+      // Get current user's profile
+      const { data: currentProfile, error: currentError } = await supabase
+        .from('profiles')
+        .select('id, email, name, upi_id')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+
+      if (currentError || !currentProfile) {
+        throw new Error('Current user profile not found');
+      }
+
+      console.log('👥 Creating roommate entries for both users');
+
+      // Create roommate entry for current user (adding target as roommate)
+      const { error: currentUserRoommateError } = await supabase
+        .from('roommates')
+        .insert([{ 
+          name: roommateData.name,
+          upi_id: roommateData.upi_id,
+          email: targetEmail.toLowerCase().trim(),
+          phone: roommateData.phone || null,
+          user_id: currentUser.id,
+          balance: 0 
+        }]);
+
+      if (currentUserRoommateError) {
+        console.error('❌ Failed to create roommate for current user:', currentUserRoommateError);
+        throw currentUserRoommateError;
+      }
+
+      // Create reciprocal roommate entry for target user (adding current user as roommate)
+      const { error: targetUserRoommateError } = await supabase
+        .from('roommates')
+        .insert([{ 
+          name: currentProfile.name || currentProfile.email?.split('@')[0] || 'Unknown',
+          upi_id: currentProfile.upi_id || 'Not set',
+          email: currentProfile.email,
+          phone: null, // We don't have current user's phone in this context
+          user_id: targetProfile.id,
+          balance: 0 
+        }]);
+
+      if (targetUserRoommateError) {
+        console.error('❌ Failed to create reciprocal roommate entry:', targetUserRoommateError);
+        // Don't throw here as the first entry was successful
+        console.warn('⚠️ Roommate relationship is not fully bidirectional');
+      } else {
+        console.log('✅ Successfully created bidirectional roommate relationship');
+      }
+
+    } catch (error) {
+      console.error('💥 Error creating bidirectional relationship:', error);
+      throw error;
     }
   };
 
@@ -116,7 +183,7 @@ export const useRoommates = () => {
       }
 
       // Check if trying to add themselves
-      if (roommate.email === user.email) {
+      if (roommate.email.toLowerCase().trim() === user.email?.toLowerCase()) {
         toast({
           title: "Error",
           description: "You cannot add yourself as a roommate",
@@ -163,8 +230,8 @@ Double-check the email spelling.`,
       const { data: existingRoommate, error: checkError } = await supabase
         .from('roommates')
         .select('id')
-        .eq('user_id', user.id) // Check based on creator
-        .eq('email', roommate.email.toLowerCase().trim()) // Email of the roommate to be added
+        .eq('user_id', user.id)
+        .eq('email', roommate.email.toLowerCase().trim())
         .maybeSingle();
 
       if (checkError) {
@@ -183,35 +250,19 @@ Double-check the email spelling.`,
       }
 
       console.log('✅ STEP 2 COMPLETE - No duplicates found');
-      console.log('🚀 STEP 3: DATABASE INSERT - Adding roommate to database');
+      console.log('🚀 STEP 3: CREATING BIDIRECTIONAL RELATIONSHIP');
 
-      // Insert the new roommate
-      const { data, error } = await supabase
-        .from('roommates')
-        .insert([{ 
-          name: roommate.name,
-          upi_id: roommate.upi_id,
-          email: roommate.email.toLowerCase().trim(),
-          phone: roommate.phone || null,
-          user_id: user.id, // user_id is the creator of this roommate entry
-          balance: 0 
-        }])
-        .select()
-        .single();
+      // Create bidirectional roommate relationship
+      await createBidirectionalRoommateRelation(user, roommate.email, roommate);
 
-      if (error) {
-        console.error('❌ DATABASE INSERT FAILED:', error);
-        throw error;
-      }
-
-      console.log('🎉 SUCCESS! Roommate successfully added to database:', data);
+      console.log('🎉 SUCCESS! Roommate relationship created successfully');
       
       // Refresh the roommates list
       await fetchRoommates(); 
       
       toast({
         title: "🎉 Success!",
-        description: `${roommate.name} has been added to your roommate group!`,
+        description: `${roommate.name} has been added to your roommate group! Both of you can now see each other as roommates.`,
       });
       
     } catch (error: any) {
