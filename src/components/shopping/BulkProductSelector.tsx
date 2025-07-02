@@ -94,6 +94,7 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value.slice(0, 100))}
               className="pl-10"
+              maxLength={100}
               size={isMobile ? "sm" : "default"}
             />
           </div>
@@ -139,6 +140,7 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
                           value={quantities[product.id] || ''}
                           onChange={(e) => handleQuantityChange(product.id, e.target.value)}
                           className="text-center text-xs"
+                          maxLength={3}
                           size="sm"
                         />
                       </div>
