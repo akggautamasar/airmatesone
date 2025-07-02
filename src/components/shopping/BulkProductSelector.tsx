@@ -92,7 +92,7 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
             <Input
               placeholder="Search products..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value.slice(0, 100))} // Limit input length
+              onChange={(e) => setSearchTerm(e.target.value.slice(0, 100))}
               className="pl-10"
               size={isMobile ? "sm" : "default"}
             />
