@@ -13,6 +13,13 @@ interface Roommate {
   user_id: string;
 }
 
+interface RoommateData {
+  name: string;
+  email: string;
+  upi_id: string;
+  phone?: string;
+}
+
 export const useRoommates = () => {
   const [roommates, setRoommates] = useState<Roommate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +60,7 @@ export const useRoommates = () => {
     }
   };
 
-  const addRoommate = async (email: string) => {
+  const addRoommate = async (email: string, providedData?: RoommateData) => {
     if (!user) {
       toast({
         title: "Error",
@@ -66,6 +73,7 @@ export const useRoommates = () => {
     try {
       console.log('🚀 Adding roommate with email:', email);
       console.log('👤 Current user:', user.id, user.email);
+      console.log('📋 Provided data:', providedData);
 
       // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -111,19 +119,6 @@ export const useRoommates = () => {
         return;
       }
 
-      // Get current user's profile for reciprocal entry
-      const { data: currentUserProfile, error: currentProfileError } = await supabase
-        .from('profiles')
-        .select('id, email, name, full_name, upi_id, mobile_number')
-        .eq('id', user.id)
-        .single();
-
-      if (currentProfileError) {
-        console.error('❌ Error fetching current user profile:', currentProfileError);
-      }
-
-      console.log('📊 Current user profile:', currentUserProfile);
-
       // Try to find the target user's profile to get their details
       const { data: targetUserProfile, error: profileError } = await supabase
         .from('profiles')
@@ -133,9 +128,20 @@ export const useRoommates = () => {
 
       console.log('📊 Target user profile query result:', { targetUserProfile, profileError });
 
-      // Create roommate entry for current user with target user's details
+      // Create roommate entry for current user with target user's details or provided data
       let roommateData;
-      if (targetUserProfile) {
+      if (providedData) {
+        // Use provided data first, but update with profile data if available
+        roommateData = { 
+          name: targetUserProfile?.name || targetUserProfile?.full_name || providedData.name,
+          upi_id: targetUserProfile?.upi_id || providedData.upi_id,
+          email: email.toLowerCase(),
+          phone: targetUserProfile?.mobile_number || providedData.phone || null,
+          user_id: user.id,
+          balance: 0 
+        };
+        console.log('✅ Using provided data with profile updates');
+      } else if (targetUserProfile) {
         // Use target user's profile data
         roommateData = { 
           name: targetUserProfile.name || targetUserProfile.full_name || email.split('@')[0] || 'Unknown User',
@@ -172,30 +178,39 @@ export const useRoommates = () => {
 
       console.log('✅ Roommate created successfully!');
 
-      // Create reciprocal entry only if target user exists and current user profile exists
-      if (targetUserProfile && currentUserProfile) {
-        const reciprocalData = { 
-          name: currentUserProfile.name || currentUserProfile.full_name || user.email?.split('@')[0] || 'Unknown User',
-          upi_id: currentUserProfile.upi_id || 'Not set',
-          email: user.email || '',
-          phone: currentUserProfile.mobile_number || null,
-          user_id: targetUserProfile.id,
-          balance: 0 
-        };
+      // Create reciprocal entry only if target user exists
+      if (targetUserProfile) {
+        // Get current user's profile for reciprocal entry
+        const { data: currentUserProfile, error: currentProfileError } = await supabase
+          .from('profiles')
+          .select('id, email, name, full_name, upi_id, mobile_number')
+          .eq('id', user.id)
+          .single();
 
-        console.log('📝 Creating reciprocal roommate with data:', reciprocalData);
+        if (!currentProfileError && currentUserProfile) {
+          const reciprocalData = { 
+            name: currentUserProfile.name || currentUserProfile.full_name || user.email?.split('@')[0] || 'Unknown User',
+            upi_id: currentUserProfile.upi_id || 'Not set',
+            email: user.email || '',
+            phone: currentUserProfile.mobile_number || null,
+            user_id: targetUserProfile.id,
+            balance: 0 
+          };
 
-        const { error: targetUserRoommateError } = await supabase
-          .from('roommates')
-          .insert([reciprocalData]);
+          console.log('📝 Creating reciprocal roommate with data:', reciprocalData);
 
-        if (targetUserRoommateError) {
-          console.error('❌ Failed to create reciprocal roommate entry:', targetUserRoommateError);
-        } else {
-          console.log('✅ Reciprocal roommate created successfully!');
+          const { error: targetUserRoommateError } = await supabase
+            .from('roommates')
+            .insert([reciprocalData]);
+
+          if (targetUserRoommateError) {
+            console.error('❌ Failed to create reciprocal roommate entry:', targetUserRoommateError);
+          } else {
+            console.log('✅ Reciprocal roommate created successfully!');
+          }
         }
       } else {
-        console.log('ℹ️ Skipping reciprocal entry - target user or current user profile not found');
+        console.log('ℹ️ Skipping reciprocal entry - target user profile not found');
       }
 
       await fetchRoommates();

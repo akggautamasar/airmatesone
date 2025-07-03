@@ -1,30 +1,28 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Users, Plus, IndianRupee, Phone, Trash2, Mail, Crown, AlertTriangle } from "lucide-react";
+import { Users, IndianRupee, Phone, Trash2, Mail, Crown, AlertTriangle } from "lucide-react";
 import { useRoommates } from "@/hooks/useRoommates";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
+import { RoommateForm } from "./RoommateForm";
 
 export const RoommateManagement = () => {
   const { roommates, loading, addRoommate, deleteRoommate, deleteAllMyRoommates, sendEmailRequest } = useRoommates();
   const { profile } = useProfile();
   const { user } = useAuth();
-  const [newRoommateEmail, setNewRoommateEmail] = useState('');
   const [isAdding, setIsAdding] = useState(false);
 
-  const handleAddRoommate = async () => {
-    if (!newRoommateEmail.trim()) {
-      return;
-    }
-
+  const handleAddRoommate = async (roommateData: {
+    name: string;
+    email: string;
+    upi_id: string;
+    phone?: string;
+  }) => {
     setIsAdding(true);
     try {
-      await addRoommate(newRoommateEmail.trim());
-      setNewRoommateEmail('');
+      await addRoommate(roommateData.email, roommateData);
     } finally {
       setIsAdding(false);
     }
@@ -67,41 +65,20 @@ export const RoommateManagement = () => {
 
   return (
     <div className="space-y-6">
-      {/* Add Roommate - Simplified */}
+      {/* Add Roommate Form */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Plus className="h-5 w-5" />
-            <span>Add New Roommate</span>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center space-x-2">
+              <Users className="h-5 w-5" />
+              <span>Add New Roommate</span>
+            </span>
+            <RoommateForm onAdd={handleAddRoommate} isAdding={isAdding} />
           </CardTitle>
           <CardDescription>
-            Just enter their email address. We'll fetch their details automatically from their profile.
+            Add roommates to your group by filling in their details. If they're already registered, we'll sync their profile information.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex space-x-4">
-            <div className="flex-1">
-              <Label htmlFor="email">Roommate's Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter their registered email"
-                value={newRoommateEmail}
-                onChange={(e) => setNewRoommateEmail(e.target.value)}
-              />
-            </div>
-            <div className="flex items-end">
-              <Button   
-                onClick={handleAddRoommate}  
-                className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
-                disabled={!newRoommateEmail.trim() || isAdding}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                {isAdding ? 'Adding...' : 'Add Roommate'}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
       </Card>
 
       {/* Roommates List */}  

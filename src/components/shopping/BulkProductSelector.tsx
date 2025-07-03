@@ -94,7 +94,6 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value.slice(0, 100))}
               className="pl-10"
-              size={isMobile ? "sm" : "default"}
             />
           </div>
 
@@ -139,7 +138,6 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
                           value={quantities[product.id] || ''}
                           onChange={(e) => handleQuantityChange(product.id, e.target.value)}
                           className="text-center text-xs"
-                          size="sm"
                         />
                       </div>
                     )}
@@ -159,7 +157,6 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
                 onClick={onCancel} 
                 disabled={isAdding}
                 className="w-full md:w-auto"
-                size={isMobile ? "sm" : "default"}
               >
                 Cancel
               </Button>
@@ -167,7 +164,6 @@ export const BulkProductSelector = ({ onAdd, onCancel }: BulkProductSelectorProp
                 onClick={handleSubmit}
                 disabled={selectedCount === 0 || isAdding}
                 className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
-                size={isMobile ? "sm" : "default"}
               >
                 {isAdding ? 'Adding...' : `Add ${selectedCount} Item${selectedCount !== 1 ? 's' : ''}`}
               </Button>
