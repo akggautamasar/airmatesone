@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -65,8 +64,7 @@ export const useRoommates = () => {
     }
 
     try {
-      console.log('🚀 Adding roommate without validation');
-      console.log('📧 Target email:', email);
+      console.log('🚀 Adding roommate with email:', email);
       console.log('👤 Current user:', user.id, user.email);
 
       // Validate email format
@@ -113,26 +111,53 @@ export const useRoommates = () => {
         return;
       }
 
-      console.log('🚀 CREATING ROOMMATE ENTRIES WITHOUT VALIDATION');
-
-      // Get current user's profile
+      // Get current user's profile for reciprocal entry
       const { data: currentUserProfile, error: currentProfileError } = await supabase
         .from('profiles')
         .select('id, email, name, full_name, upi_id, mobile_number')
         .eq('id', user.id)
         .single();
 
+      if (currentProfileError) {
+        console.error('❌ Error fetching current user profile:', currentProfileError);
+      }
+
       console.log('📊 Current user profile:', currentUserProfile);
 
-      // Create roommate entry for current user (without checking if target user exists)
-      const roommateData = { 
-        name: email.split('@')[0] || 'Unknown User', // Just use email prefix as name
-        upi_id: 'Not set',
-        email: email.toLowerCase(),
-        phone: null,
-        user_id: user.id,
-        balance: 0 
-      };
+      // Try to find the target user's profile to get their details
+      const { data: targetUserProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, email, name, full_name, upi_id, mobile_number')
+        .eq('email', email.toLowerCase())
+        .maybeSingle();
+
+      console.log('📊 Target user profile query result:', { targetUserProfile, profileError });
+
+      // Create roommate entry for current user with target user's details
+      let roommateData;
+      if (targetUserProfile) {
+        // Use target user's profile data
+        roommateData = { 
+          name: targetUserProfile.name || targetUserProfile.full_name || email.split('@')[0] || 'Unknown User',
+          upi_id: targetUserProfile.upi_id || 'Not set',
+          email: email.toLowerCase(),
+          phone: targetUserProfile.mobile_number || null,
+          user_id: user.id,
+          balance: 0 
+        };
+        console.log('✅ Using target user profile data for roommate');
+      } else {
+        // Fallback: use email prefix as name
+        roommateData = { 
+          name: email.split('@')[0] || 'Unknown User',
+          upi_id: 'Not set',
+          email: email.toLowerCase(),
+          phone: null,
+          user_id: user.id,
+          balance: 0 
+        };
+        console.log('⚠️ Target user profile not found, using fallback data');
+      }
 
       console.log('📝 Creating roommate with data:', roommateData);
 
@@ -147,16 +172,7 @@ export const useRoommates = () => {
 
       console.log('✅ Roommate created successfully!');
 
-      // Try to find the target user's profile to create reciprocal entry
-      const { data: targetUserProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, email, name, full_name, upi_id, mobile_number')
-        .eq('email', email.toLowerCase())
-        .maybeSingle();
-
-      console.log('📊 Target user profile query:', { targetUserProfile, profileError });
-
-      // Create reciprocal entry only if target user exists
+      // Create reciprocal entry only if target user exists and current user profile exists
       if (targetUserProfile && currentUserProfile) {
         const reciprocalData = { 
           name: currentUserProfile.name || currentUserProfile.full_name || user.email?.split('@')[0] || 'Unknown User',
@@ -179,14 +195,16 @@ export const useRoommates = () => {
           console.log('✅ Reciprocal roommate created successfully!');
         }
       } else {
-        console.log('ℹ️ Target user not found in profiles, but roommate added to your list');
+        console.log('ℹ️ Skipping reciprocal entry - target user or current user profile not found');
       }
 
       await fetchRoommates();
       
       toast({
         title: "🎉 Success!",
-        description: `Roommate added successfully!`,
+        description: targetUserProfile 
+          ? `${targetUserProfile.name || targetUserProfile.full_name || email} added successfully with their profile details!`
+          : `Roommate added successfully! They can update their profile to show complete details.`,
       });
       
     } catch (error: any) {
