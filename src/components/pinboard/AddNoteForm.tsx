@@ -18,13 +18,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { PlusCircle } from 'lucide-react';
-import { useSharedNotes, noteSchema } from '@/hooks/useSharedNotes';
+import { useSharedNotes, noteSchema, type NoteFormData } from '@/hooks/useSharedNotes';
 
 export const AddNoteForm = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { addNote } = useSharedNotes();
   
-  const form = useForm<z.infer<typeof noteSchema>>({
+  const form = useForm<NoteFormData>({
     resolver: zodResolver(noteSchema),
     defaultValues: {
       title: '',
@@ -34,7 +34,7 @@ export const AddNoteForm = () => {
     },
   });
 
-  const onSubmit = (values: z.infer<typeof noteSchema>) => {
+  const onSubmit = (values: NoteFormData) => {
     addNote(values);
     form.reset();
     setIsOpen(false);

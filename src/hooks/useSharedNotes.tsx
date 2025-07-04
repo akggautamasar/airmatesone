@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -50,6 +49,13 @@ export interface SharedNoteWithDetails extends SharedNote {
     email: string;
   };
 }
+
+export type NoteFormData = {
+  title?: string;
+  content: string;
+  is_pinned?: boolean;
+  color_hex?: string;
+};
 
 export const useSharedNotes = () => {
   const [notes, setNotes] = useState<SharedNoteWithDetails[]>([]);
@@ -144,13 +150,24 @@ export const useSharedNotes = () => {
     }
   };
 
-  const addNote = async (newNote: Omit<SharedNote, 'id' | 'created_at' | 'updated_at' | 'user_id' | 'user_profile' | 'done_by_profile' | 'reactions'>) => {
+  const addNote = async (newNote: NoteFormData) => {
     if (!user) return;
 
     try {
+      const noteData = {
+        title: newNote.title || null,
+        content: newNote.content,
+        is_pinned: newNote.is_pinned || false,
+        color_hex: newNote.color_hex || null,
+        is_done: false,
+        is_archived: false,
+        done_by_user_id: null,
+        user_id: user.id
+      };
+
       const { data, error } = await supabase
         .from('shared_notes')
-        .insert([{ ...newNote, user_id: user.id }])
+        .insert([noteData])
         .select('*')
         .single();
 
