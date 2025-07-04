@@ -1,11 +1,16 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Event } from '@/types/events';
 import { useAuth } from './useAuth.tsx';
+import { useRoommates } from './useRoommates';
 import { startOfMonth, endOfMonth, formatISO, startOfToday, addDays } from 'date-fns';
 
-const fetchEventsWithProfiles = async (startDate: string, endDate: string): Promise<Event[]> => {
+const fetchEventsWithProfiles = async (
+  startDate: string, 
+  endDate: string, 
+  userEmail: string | undefined, 
+  roommateEmails: string[]
+): Promise<Event[]> => {
     const { data: events, error } = await supabase
         .from('events')
         .select('*')
@@ -16,10 +21,18 @@ const fetchEventsWithProfiles = async (startDate: string, endDate: string): Prom
     if (error) throw error;
     if (!events) return [];
 
+    // Get all emails that should have access (user + roommates)
+    const allEmails = [userEmail, ...roommateEmails].filter(Boolean);
+
     const userIds = [...new Set(events.map(event => event.created_by).filter((id): id is string => !!id))];
     
     if (userIds.length === 0) {
-        return events.map(event => ({ ...event, created_by_profile: null }));
+        return events
+            .filter(event => {
+                // Get the creator's email and check if they're in the allowed list
+                return event.created_by; // For now, keep all events but we'll filter by email after getting profiles
+            })
+            .map(event => ({ ...event, created_by_profile: null }));
     }
     
     const { data: profiles, error: profileError } = await supabase
@@ -32,7 +45,14 @@ const fetchEventsWithProfiles = async (startDate: string, endDate: string): Prom
 
     const profilesById = new Map(profiles?.map(p => [p.id, { name: p.name, email: p.email }]));
 
-    return events.map(event => ({
+    // Filter events to only show those created by users in the roommate network
+    const filteredEvents = events.filter(event => {
+        if (!event.created_by) return false;
+        const creatorProfile = profilesById.get(event.created_by);
+        return creatorProfile && allEmails.includes(creatorProfile.email);
+    });
+
+    return filteredEvents.map(event => ({
       ...event,
       created_by_profile: (event.created_by ? profilesById.get(event.created_by) : null) || null,
     }));
@@ -41,13 +61,17 @@ const fetchEventsWithProfiles = async (startDate: string, endDate: string): Prom
 export const useEvents = (date: Date) => {
     const queryClient = useQueryClient();
     const { user } = useAuth();
+    const { roommates } = useRoommates();
+
+    // Get roommate emails for filtering
+    const roommateEmails = roommates.map(r => r.email);
 
     const startDate = formatISO(startOfMonth(date), { representation: 'date' });
     const endDate = formatISO(endOfMonth(date), { representation: 'date' });
     
     const { data: events, isLoading, error } = useQuery({
-        queryKey: ['events', { month: date.getMonth(), year: date.getFullYear() }],
-        queryFn: () => fetchEventsWithProfiles(startDate, endDate),
+        queryKey: ['events', { month: date.getMonth(), year: date.getFullYear() }, roommateEmails],
+        queryFn: () => fetchEventsWithProfiles(startDate, endDate, user?.email, roommateEmails),
         enabled: !!user,
     });
 
@@ -98,9 +122,13 @@ export const useEvents = (date: Date) => {
 
 export const useUpcomingEvents = (days: number) => {
     const { user } = useAuth();
+    const { roommates } = useRoommates();
+
+    // Get roommate emails for filtering
+    const roommateEmails = roommates.map(r => r.email);
 
     const { data: events, isLoading, error } = useQuery({
-        queryKey: ['upcomingEvents', days],
+        queryKey: ['upcomingEvents', days, roommateEmails],
         queryFn: async () => {
             const today = startOfToday();
             const futureDate = addDays(today, days);
@@ -108,7 +136,7 @@ export const useUpcomingEvents = (days: number) => {
             const startDate = formatISO(today, { representation: 'date' });
             const endDate = formatISO(futureDate, { representation: 'date' });
             
-            return fetchEventsWithProfiles(startDate, endDate);
+            return fetchEventsWithProfiles(startDate, endDate, user?.email, roommateEmails);
         },
         enabled: !!user,
     });

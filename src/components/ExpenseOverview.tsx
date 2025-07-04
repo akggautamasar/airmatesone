@@ -12,6 +12,7 @@ import { SummaryCards } from "./overview/SummaryCards";
 import { ChartsSection } from "./overview/ChartsSection";
 import { NoteList } from "@/components/pinboard/NoteList";
 import { TodayShoppingList } from "./overview/TodayShoppingList";
+import { TodayChoresList } from "./overview/TodayChoresList";
 
 interface ExpenseOverviewProps {
   onExpenseUpdate: () => void;
@@ -97,6 +98,11 @@ export const ExpenseOverview = ({
 
   return (
     <div className="space-y-6">
+      {/* Today's Chores Section */}
+      <div>
+        <TodayChoresList />
+      </div>
+
       {/* Pinboard/Notes on dash */}
       <div>
         <NoteList />

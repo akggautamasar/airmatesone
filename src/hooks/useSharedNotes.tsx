@@ -1,171 +1,309 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './useAuth';
+import { useRoommates } from './useRoommates';
+import { useToast } from './use-toast';
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "./useAuth";
-import { useToast } from "@/components/ui/use-toast";
-import { Database } from "@/integrations/supabase/types";
-import * as z from 'zod';
-
-export type SharedNote = Database['public']['Tables']['shared_notes']['Row'];
-export type NoteReaction = Database['public']['Tables']['note_reactions']['Row'];
-
-export type UserDetails = {
-    id: string | null;
+interface SharedNote {
+  id: string;
+  title: string | null;
+  content: string;
+  color_hex: string | null;
+  is_pinned: boolean;
+  is_done: boolean;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  done_by_user_id: string | null;
+  user_profile?: {
     name: string | null;
-    email: string | null;
-};
-
-export type SharedNoteWithDetails = SharedNote & {
-  user: UserDetails | undefined;
-  done_by_user: UserDetails | undefined;
-  reactions: (NoteReaction & { user: UserDetails | undefined })[];
-};
-
-export const noteSchema = z.object({
-  title: z.string().optional(),
-  content: z.string().min(1, { message: "Content is required." }),
-  is_pinned: z.boolean().default(false),
-  color_hex: z.string().optional(),
-});
-
-type NewNotePayload = z.infer<typeof noteSchema>;
+    email: string;
+  };
+  done_by_profile?: {
+    name: string | null;
+    email: string;
+  };
+  reactions?: Array<{
+    id: string;
+    emoji: string;
+    user_id: string;
+    user_profile?: {
+      name: string | null;
+      email: string;
+    };
+  }>;
+}
 
 export const useSharedNotes = () => {
-    const { user } = useAuth();
-    const { toast } = useToast();
-    const queryClient = useQueryClient();
+  const [notes, setNotes] = useState<SharedNote[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { roommates } = useRoommates();
+  const { toast } = useToast();
 
-    const { data: notes, isLoading: isLoadingNotes } = useQuery({
-        queryKey: ['shared_notes'],
-        queryFn: async () => {
-            const { data, error } = await supabase
-                .from('shared_notes')
-                .select('*')
-                .eq('is_archived', false)
-                .order('is_pinned', { ascending: false })
-                .order('created_at', { ascending: false });
-            if (error) throw new Error(error.message);
-            return data;
-        },
-        enabled: !!user,
-    });
-    
-    const { data: reactions, isLoading: isLoadingReactions } = useQuery({
-        queryKey: ['note_reactions'],
-        queryFn: async () => {
-            const { data, error } = await supabase
-                .from('note_reactions')
-                .select('*')
-                .order('created_at', { ascending: false });
-            if (error) throw new Error(error.message);
-            return data;
-        },
-        enabled: !!user,
-    });
+  const fetchNotes = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
-    const userIds = [
-        ...(notes?.map(n => n.user_id) || []),
-        ...(notes?.map(n => n.done_by_user_id).filter(Boolean) as string[] || []),
-        ...(reactions?.map(r => r.user_id) || []),
-    ];
-    const uniqueUserIds = [...new Set(userIds)].sort();
-    
-    const { data: userDetails, isLoading: isLoadingUserDetails } = useQuery({
-        queryKey: ['users_details', uniqueUserIds],
-        queryFn: async () => {
-            if (uniqueUserIds.length === 0) return [];
-            const { data, error } = await supabase.rpc('get_users_details', { p_user_ids: uniqueUserIds });
-            if (error) throw new Error(error.message);
-            return data as UserDetails[] | null;
-        },
-        enabled: !!user && uniqueUserIds.length > 0,
-    });
+    try {
+      // Get all emails that should have access (user + roommates)
+      const roommateEmails = roommates.map(r => r.email);
+      const allEmails = [user.email, ...roommateEmails].filter(Boolean);
 
-    const notesWithDetails = notes?.map((note): SharedNoteWithDetails => {
-        const noteReactions = reactions?.filter(r => r.note_id === note.id) || [];
-        return {
-            ...note,
-            user: userDetails?.find(u => u.id === note.user_id),
-            done_by_user: userDetails?.find(u => u.id === note.done_by_user_id),
-            reactions: noteReactions.map(r => ({
-                ...r,
-                user: userDetails?.find(u => u.id === r.user_id)
-            })),
-        };
-    });
+      // Fetch notes with user profiles
+      const { data: notesData, error: notesError } = await supabase
+        .from('shared_notes')
+        .select(`
+          *,
+          note_reactions (
+            id,
+            emoji,
+            user_id
+          )
+        `)
+        .eq('is_archived', false)
+        .order('is_pinned', { ascending: false })
+        .order('created_at', { ascending: false });
 
-    const addNoteMutation = useMutation({
-        mutationFn: async (newNote: NewNotePayload) => {
-            if (!user) throw new Error("User not authenticated");
-            const { data, error } = await supabase
-                .from('shared_notes')
-                .insert({
-                  title: newNote.title,
-                  content: newNote.content,
-                  is_pinned: newNote.is_pinned,
-                  color_hex: newNote.color_hex,
-                  user_id: user.id,
-                })
-                .select()
-                .single();
-            if (error) throw error;
-            return data;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['shared_notes'] });
-            toast({ title: "Success", description: "Note added to the pinboard." });
-        },
-        onError: (error) => {
-            toast({ title: "Error", description: error.message, variant: "destructive" });
-        },
-    });
+      if (notesError) throw notesError;
 
-    const updateNoteMutation = useMutation({
-        mutationFn: async ({ id, updates }: { id: string; updates: Partial<NewNotePayload> }) => {
-            if (!user) throw new Error("User not authenticated");
-            const { data, error } = await supabase
-                .from('shared_notes')
-                .update(updates)
-                .eq('id', id)
-                .eq('user_id', user.id)
-                .select()
-                .single();
-            if (error) throw error;
-            return data;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['shared_notes'] });
-            toast({ title: "Success", description: "Note updated successfully." });
-        },
-        onError: (error) => {
-            toast({ title: "Error", description: error.message, variant: "destructive" });
-        },
-    });
+      if (!notesData || notesData.length === 0) {
+        setNotes([]);
+        setLoading(false);
+        return;
+      }
 
-    const deleteNoteMutation = useMutation({
-        mutationFn: async (id: string) => {
-            if (!user) throw new Error("User not authenticated");
-            const { error } = await supabase
-                .from('shared_notes')
-                .delete()
-                .eq('id', id)
-                .eq('user_id', user.id);
-            if (error) throw error;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['shared_notes'] });
-            toast({ title: "Success", description: "Note deleted successfully." });
-        },
-        onError: (error) => {
-            toast({ title: "Error", description: error.message, variant: "destructive" });
-        },
-    });
+      // Get all unique user IDs from notes and reactions
+      const allUserIds = new Set<string>();
+      notesData.forEach(note => {
+        allUserIds.add(note.user_id);
+        if (note.done_by_user_id) allUserIds.add(note.done_by_user_id);
+        note.note_reactions?.forEach((reaction: any) => {
+          allUserIds.add(reaction.user_id);
+        });
+      });
 
-    return {
-        notes: notesWithDetails,
-        isLoading: isLoadingNotes || isLoadingReactions || isLoadingUserDetails,
-        addNote: addNoteMutation.mutate,
-        updateNote: updateNoteMutation.mutate,
-        deleteNote: deleteNoteMutation.mutate,
+      // Fetch user profiles
+      const { data: profiles, error: profilesError } = await supabase
+        .rpc('get_users_details', { p_user_ids: Array.from(allUserIds) });
+
+      if (profilesError) {
+        console.error('Error fetching user profiles:', profilesError);
+      }
+
+      const profilesMap = new Map(
+        profiles?.map(p => [p.id, { name: p.name, email: p.email }]) || []
+      );
+
+      // Filter notes to only show those created by users in the roommate network
+      const filteredNotes = notesData
+        .filter(note => {
+          const creatorProfile = profilesMap.get(note.user_id);
+          return creatorProfile && allEmails.includes(creatorProfile.email);
+        })
+        .map(note => ({
+          ...note,
+          user_profile: profilesMap.get(note.user_id),
+          done_by_profile: note.done_by_user_id ? profilesMap.get(note.done_by_user_id) : undefined,
+          reactions: note.note_reactions?.map((reaction: any) => ({
+            ...reaction,
+            user_profile: profilesMap.get(reaction.user_id)
+          })) || []
+        }));
+
+      setNotes(filteredNotes);
+    } catch (error: any) {
+      console.error('Error fetching notes:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch notes",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addNote = async (newNote: Omit<SharedNote, 'id' | 'created_at' | 'updated_at' | 'user_id' | 'user_profile' | 'done_by_profile' | 'reactions'>) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('shared_notes')
+        .insert([{ ...newNote, user_id: user.id }])
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      setNotes(prevNotes => [
+        {
+          ...data,
+          user_profile: { name: user.user_metadata?.name as string, email: user.email as string },
+          reactions: []
+        },
+        ...prevNotes
+      ]);
+    } catch (error: any) {
+      console.error('Error adding note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add note",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateNote = async (noteId: string, updates: Partial<Omit<SharedNote, 'id' | 'created_at' | 'updated_at' | 'user_id' | 'user_profile' | 'done_by_profile' | 'reactions'>>) => {
+    try {
+      const { data, error } = await supabase
+        .from('shared_notes')
+        .update(updates)
+        .eq('id', noteId)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      setNotes(prevNotes =>
+        prevNotes.map(note => (note.id === noteId ? { ...note, ...data } : note))
+      );
+    } catch (error: any) {
+      console.error('Error updating note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update note",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteNote = async (noteId: string) => {
+    try {
+      const { error } = await supabase
+        .from('shared_notes')
+        .delete()
+        .eq('id', noteId);
+
+      if (error) throw error;
+
+      setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
+    } catch (error: any) {
+      console.error('Error deleting note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete note",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleReaction = async (noteId: string, emoji: string) => {
+    if (!user) return;
+
+    try {
+      // Check if the user has already reacted with this emoji
+      const { data: existingReaction, error: existingReactionError } = await supabase
+        .from('note_reactions')
+        .select('*')
+        .eq('note_id', noteId)
+        .eq('user_id', user.id)
+        .eq('emoji', emoji)
+        .single();
+
+      if (existingReactionError && existingReactionError.code !== 'PGRST116') {
+        throw existingReactionError;
+      }
+
+      if (existingReaction) {
+        // Delete the existing reaction
+        const { error: deleteError } = await supabase
+          .from('note_reactions')
+          .delete()
+          .eq('id', existingReaction.id);
+
+        if (deleteError) throw deleteError;
+
+        setNotes(prevNotes => {
+          return prevNotes.map(note => {
+            if (note.id === noteId) {
+              return {
+                ...note,
+                reactions: note.reactions?.filter(reaction => reaction.id !== existingReaction.id)
+              };
+            }
+            return note;
+          });
+        });
+      } else {
+        // Add a new reaction
+        const { data: newReaction, error: newReactionError } = await supabase
+          .from('note_reactions')
+          .insert([{ note_id: noteId, user_id: user.id, emoji }])
+          .select('*')
+          .single();
+
+        if (newReactionError) throw newReactionError;
+
+        setNotes(prevNotes => {
+          return prevNotes.map(note => {
+            if (note.id === noteId) {
+              return {
+                ...note,
+                reactions: [...(note.reactions || []), {
+                  ...newReaction,
+                  user_profile: { name: user.user_metadata?.name as string, email: user.email as string }
+                }]
+              };
+            }
+            return note;
+          });
+        });
+      }
+    } catch (error: any) {
+      console.error('Error toggling reaction:', error);
+      toast({
+        title: "Error",
+        description: "Failed to toggle reaction",
+        variant: "destructive",
+      });
+    }
+  };
+
+  useEffect(() => {
+    fetchNotes();
+  }, [user, roommates]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('shared_notes_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'shared_notes' },
+        (payload) => {
+          console.log('Real-time update:', payload);
+          fetchNotes();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
     };
-}
+  }, [user]);
+
+  return {
+    notes,
+    loading,
+    addNote,
+    updateNote,
+    deleteNote,
+    toggleReaction,
+    refetch: fetchNotes
+  };
+};
