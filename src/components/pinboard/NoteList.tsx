@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AddNoteForm } from './AddNoteForm';
 
 export const NoteList = () => {
-  const { notes, isLoading } = useSharedNotes();
+  const { notes, loading } = useSharedNotes();
 
   return (
     <div className="space-y-4">
@@ -14,7 +14,7 @@ export const NoteList = () => {
         <AddNoteForm />
       </div>
 
-      {isLoading && (
+      {loading && (
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
             <Skeleton key={i} className="h-32 w-full" />
@@ -22,7 +22,7 @@ export const NoteList = () => {
         </div>
       )}
       
-      {!isLoading && !notes?.length && (
+      {!loading && !notes?.length && (
         <div className="text-center py-12 text-muted-foreground">
           <p>No notes on the pinboard yet.</p>
           <p>Click "Add Note" to get started!</p>

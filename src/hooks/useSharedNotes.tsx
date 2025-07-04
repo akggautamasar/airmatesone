@@ -1,8 +1,17 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useRoommates } from './useRoommates';
 import { useToast } from './use-toast';
+import * as z from 'zod';
+
+export const noteSchema = z.object({
+  title: z.string().optional(),
+  content: z.string().min(1, "Content is required"),
+  is_pinned: z.boolean().default(false),
+  color_hex: z.string().optional(),
+});
 
 interface SharedNote {
   id: string;
@@ -35,8 +44,15 @@ interface SharedNote {
   }>;
 }
 
+export interface SharedNoteWithDetails extends SharedNote {
+  user?: {
+    name: string | null;
+    email: string;
+  };
+}
+
 export const useSharedNotes = () => {
-  const [notes, setNotes] = useState<SharedNote[]>([]);
+  const [notes, setNotes] = useState<SharedNoteWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { roommates } = useRoommates();
@@ -106,6 +122,7 @@ export const useSharedNotes = () => {
         })
         .map(note => ({
           ...note,
+          user: profilesMap.get(note.user_id),
           user_profile: profilesMap.get(note.user_id),
           done_by_profile: note.done_by_user_id ? profilesMap.get(note.done_by_user_id) : undefined,
           reactions: note.note_reactions?.map((reaction: any) => ({
@@ -142,6 +159,7 @@ export const useSharedNotes = () => {
       setNotes(prevNotes => [
         {
           ...data,
+          user: { name: user.user_metadata?.name as string, email: user.email as string },
           user_profile: { name: user.user_metadata?.name as string, email: user.email as string },
           reactions: []
         },
@@ -157,19 +175,19 @@ export const useSharedNotes = () => {
     }
   };
 
-  const updateNote = async (noteId: string, updates: Partial<Omit<SharedNote, 'id' | 'created_at' | 'updated_at' | 'user_id' | 'user_profile' | 'done_by_profile' | 'reactions'>>) => {
+  const updateNote = async ({ id, updates }: { id: string; updates: Partial<Omit<SharedNote, 'id' | 'created_at' | 'updated_at' | 'user_id' | 'user_profile' | 'done_by_profile' | 'reactions'>> }) => {
     try {
       const { data, error } = await supabase
         .from('shared_notes')
         .update(updates)
-        .eq('id', noteId)
+        .eq('id', id)
         .select('*')
         .single();
 
       if (error) throw error;
 
       setNotes(prevNotes =>
-        prevNotes.map(note => (note.id === noteId ? { ...note, ...data } : note))
+        prevNotes.map(note => (note.id === id ? { ...note, ...data } : note))
       );
     } catch (error: any) {
       console.error('Error updating note:', error);
