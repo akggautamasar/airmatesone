@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -192,7 +193,7 @@ export const useSharedNotes = () => {
     }
   };
 
-  const updateNote = async ({ id, updates }: { id: string; updates: Partial<Omit<SharedNote, 'id' | 'created_at' | 'updated_at' | 'user_id' | 'user_profile' | 'done_by_profile' | 'reactions'>> }) => {
+  const updateNote = async (id: string, updates: Partial<Omit<SharedNote, 'id' | 'created_at' | 'updated_at' | 'user_id' | 'user_profile' | 'done_by_profile' | 'reactions'>>) => {
     try {
       const { data, error } = await supabase
         .from('shared_notes')
@@ -315,8 +316,11 @@ export const useSharedNotes = () => {
   useEffect(() => {
     if (!user) return;
 
+    // Create a unique channel name to avoid conflicts
+    const channelName = `shared_notes_changes_${user.id}`;
+    
     const channel = supabase
-      .channel('shared_notes_changes')
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'shared_notes' },
