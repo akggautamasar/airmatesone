@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SharedNoteWithDetails, useSharedNotes } from '@/hooks/useSharedNotes';
@@ -35,7 +34,7 @@ export const NoteCard = ({ note }: NoteCardProps) => {
   };
 
   const handleUpdate = (id: string, updates: any) => {
-    updateNote({ id, updates });
+    updateNote(id, updates);
   };
 
   return (
