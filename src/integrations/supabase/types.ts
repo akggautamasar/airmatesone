@@ -117,6 +117,39 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          name: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       expense_splits: {
         Row: {
           amount: number
@@ -152,6 +185,41 @@ export type Database = {
             columns: ["roommate_id"]
             isOneToOne: false
             referencedRelation: "roommates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expense_subcategories: {
+        Row: {
+          category_id: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_subcategories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
             referencedColumns: ["id"]
           },
         ]
@@ -254,6 +322,47 @@ export type Database = {
           user_name?: string
         }
         Relationships: []
+      }
+      monthly_budgets: {
+        Row: {
+          budget_amount: number
+          category_id: string
+          created_at: string
+          id: string
+          month: number
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          budget_amount: number
+          category_id: string
+          created_at?: string
+          id?: string
+          month: number
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          budget_amount?: number
+          category_id?: string
+          created_at?: string
+          id?: string
+          month?: number
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_budgets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       note_reactions: {
         Row: {
@@ -395,6 +504,109 @@ export type Database = {
             columns: ["settlement_id"]
             isOneToOne: false
             referencedRelation: "settlements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_modes: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      personal_transactions: {
+        Row: {
+          amount: number
+          category_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_recurring: boolean | null
+          notes: string | null
+          payment_mode_id: string
+          recurring_frequency: string | null
+          subcategory_id: string | null
+          transaction_date: string
+          type: string
+          updated_at: string
+          user_id: string
+          voice_note_url: string | null
+        }
+        Insert: {
+          amount: number
+          category_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          notes?: string | null
+          payment_mode_id: string
+          recurring_frequency?: string | null
+          subcategory_id?: string | null
+          transaction_date: string
+          type: string
+          updated_at?: string
+          user_id: string
+          voice_note_url?: string | null
+        }
+        Update: {
+          amount?: number
+          category_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          notes?: string | null
+          payment_mode_id?: string
+          recurring_frequency?: string | null
+          subcategory_id?: string | null
+          transaction_date?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+          voice_note_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personal_transactions_payment_mode_id_fkey"
+            columns: ["payment_mode_id"]
+            isOneToOne: false
+            referencedRelation: "payment_modes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personal_transactions_subcategory_id_fkey"
+            columns: ["subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "expense_subcategories"
             referencedColumns: ["id"]
           },
         ]

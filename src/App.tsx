@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -9,6 +10,7 @@ import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 import PinboardPage from "./pages/PinboardPage";
+import ExpenseTrackerPage from "./pages/ExpenseTrackerPage";
 
 // 👇 Import push notification function
 import { requestPushPermission } from "./firebase/firebase-messaging-init";
@@ -32,6 +34,7 @@ const App = () => {
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/pinboard" element={<PinboardPage />} />
+              <Route path="/expense-tracker" element={<ExpenseTrackerPage />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
