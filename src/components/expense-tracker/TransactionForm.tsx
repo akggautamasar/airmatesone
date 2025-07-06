@@ -30,7 +30,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
     description: transaction?.description || '',
     notes: transaction?.notes || '',
     is_recurring: transaction?.is_recurring || false,
-    recurring_frequency: transaction?.recurring_frequency || '',
+    recurring_frequency: transaction?.recurring_frequency || '' as 'daily' | 'weekly' | 'monthly' | 'yearly' | '',
   });
 
   const filteredCategories = categories.filter(c => c.type === formData.type);
@@ -44,10 +44,15 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
 
     setLoading(true);
     try {
+      const transactionData = {
+        ...formData,
+        recurring_frequency: formData.recurring_frequency || undefined,
+      };
+
       if (transaction) {
-        await updateTransaction(transaction.id, formData);
+        await updateTransaction(transaction.id, transactionData);
       } else {
-        await addTransaction(formData);
+        await addTransaction(transactionData);
       }
       onClose();
     } catch (error) {
@@ -206,7 +211,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
           {formData.is_recurring && (
             <div className="space-y-2">
               <Label htmlFor="frequency">Frequency</Label>
-              <Select value={formData.recurring_frequency} onValueChange={(value) => 
+              <Select value={formData.recurring_frequency} onValueChange={(value: 'daily' | 'weekly' | 'monthly' | 'yearly') => 
                 setFormData({ ...formData, recurring_frequency: value })
               }>
                 <SelectTrigger>

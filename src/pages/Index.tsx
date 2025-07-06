@@ -1,148 +1,89 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
-import { NavBar } from "@/components/NavBar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ExpenseOverview } from "@/components/ExpenseOverview";
-import { ExpensesPage } from "@/components/ExpensesPage";
-import { RoommateManagement } from "@/components/RoommateManagement";
-import { Profile } from "@/components/Profile";
-import { ShoppingPage } from "@/components/ShoppingPage";
-import { useExpenses } from "@/hooks/useExpenses";
-import { useRoommates } from "@/hooks/useRoommates";
-import { useProfile } from "@/hooks/useProfile";
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { getCurrentUserDisplayName } from "@/utils/userDisplay";
-import { ChoresPage } from "@/components/ChoresPage";
-import { ReportsPage } from "@/components/ReportsPage";
-import { EventsPage } from "@/components/EventsPage";
-import { UpcomingEvents } from "@/components/overview/UpcomingEvents";
-import { LayoutGrid, FileText, ShoppingCart, Users, User, ClipboardList, FilePieChart, CalendarDays, Pin } from "lucide-react";
-import { NoteList } from "@/components/pinboard/NoteList";
+import { Link } from 'react-router-dom';
+import NavBar from '@/components/NavBar';
 
-const Index = () => {
-  const { user, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
-  const { refetch: refetchExpenses } = useExpenses();
-  const { roommates } = useRoommates();
-  const { profile } = useProfile();
+export default function Index() {
+  const { user } = useAuth();
 
-  useEffect(() => {
-    console.log('Index page - user:', user?.email, 'authLoading:', authLoading);
-    if (!authLoading && !user) {
-      console.log('Redirecting to auth page');
-      navigate("/auth");
-    }
-  }, [user, authLoading, navigate]);
-
-  if (authLoading) {
+  if (user) {
+    
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50">
-        <div className="text-center space-y-6">
-          <div className="flex items-center justify-center space-x-4">
-            <img 
-              src="/lovable-uploads/cbe7537a-80de-4bb9-9f86-3b2464dec01f.png" 
-              alt="AirMates Logo" 
-              className="h-16 w-16"
-            />
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
-              Welcome to AirMates
-            </h1>
+      <div className="min-h-screen bg-background">
+        <NavBar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold mb-4">Welcome to AirMates</h1>
+            <p className="text-xl text-muted-foreground">
+              Your roommate management platform
+            </p>
           </div>
-          <p className="text-gray-600 max-w-md">
-            Your smart roommate expense manager. Track shared expenses, manage settlements, and keep everyone happy.
-          </p>
-          <Button asChild className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700">
-            <Link to="/auth">Get Started</Link>
-          </Button>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            <Link to="/pinboard">
+              <Button variant="outline" className="w-full h-24 text-lg">
+                📌 Pinboard
+              </Button>
+            </Link>
+            <Link to="/expense-tracker">
+              <Button variant="outline" className="w-full h-24 text-lg">
+                💰 Expense Tracker
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
-
-  const currentUserDisplayName = getCurrentUserDisplayName(profile, user);
-  
-  const handleExpenseUpdate = () => {
-    refetchExpenses();
-  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <NavBar />
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Welcome back, {currentUserDisplayName}!</h1>
-          <p className="text-gray-600">Manage your expenses, chores, settlements, and shopping lists.</p>
-        </div>
-        
-        <Tabs defaultValue="overview" className="space-y-8">
-          <TabsList className="grid w-full h-auto grid-cols-2 sm:grid-cols-5 lg:grid-cols-9 gap-2">
-            <TabsTrigger value="overview" className="flex items-center space-x-2"><LayoutGrid className="h-4 w-4" /><span>Overview</span></TabsTrigger>
-            <TabsTrigger value="expenses" className="flex items-center space-x-2"><FileText className="h-4 w-4" /><span>Expenses</span></TabsTrigger>
-            <TabsTrigger value="reports" className="flex items-center space-x-2"><FilePieChart className="h-4 w-4" /><span>Reports</span></TabsTrigger>
-            <TabsTrigger value="events" className="flex items-center space-x-2"><CalendarDays className="h-4 w-4" /><span>Events</span></TabsTrigger>
-            <TabsTrigger value="shopping" className="flex items-center space-x-2"><ShoppingCart className="h-4 w-4" /><span>Shopping</span></TabsTrigger>
-            <TabsTrigger value="chores" className="flex items-center space-x-2"><ClipboardList className="h-4 w-4" /><span>Chores</span></TabsTrigger>
-            <TabsTrigger value="roommates" className="flex items-center space-x-2"><Users className="h-4 w-4" /><span>Roommates</span></TabsTrigger>
-            <TabsTrigger value="profile" className="flex items-center space-x-2"><User className="h-4 w-4" /><span>Profile</span></TabsTrigger>
-            <TabsTrigger value="pinboard" className="flex items-center space-x-2"><Pin className="h-4 w-4" /><span>Pinboard</span></TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6">
-            <ExpenseOverview 
-              onExpenseUpdate={handleExpenseUpdate}
-              currentUserId={user.id}
-            />
-            <UpcomingEvents />
-          </TabsContent>
-
-          <TabsContent value="expenses" className="space-y-6">
-            <ExpensesPage onExpenseUpdate={handleExpenseUpdate} />
-          </TabsContent>
-
-          <TabsContent value="reports" className="space-y-6">
-            <ReportsPage />
-          </TabsContent>
+      <div className="container mx-auto px-4 py-16">
+        <div className="max-w-4xl mx-auto text-center">
+          <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            Welcome to AirMates
+          </h1>
+          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            The ultimate roommate management platform. Track expenses, manage chores, 
+            plan events, and stay organized with your roommates.
+          </p>
           
-          <TabsContent value="events" className="space-y-6">
-            <EventsPage />
-          </TabsContent>
+          <div className="space-y-4 mb-12">
+            <Link to="/auth">
+              <Button size="lg" className="px-8 py-3 text-lg">
+                Get Started
+              </Button>
+            </Link>
+          </div>
 
-          <TabsContent value="shopping" className="space-y-6">
-            <ShoppingPage />
-          </TabsContent>
-
-          <TabsContent value="chores" className="space-y-6">
-            <ChoresPage />
-          </TabsContent>
-
-          <TabsContent value="roommates" className="space-y-6">
-            <RoommateManagement />
-          </TabsContent>
-
-          <TabsContent value="profile" className="space-y-6">
-            <Profile />
-          </TabsContent>
-
-          <TabsContent value="pinboard" className="space-y-6">
-            <NoteList />
-          </TabsContent>
-        </Tabs>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
+            <div className="p-6 rounded-lg border bg-card">
+              <div className="text-4xl mb-4">💰</div>
+              <h3 className="text-xl font-semibold mb-2">Expense Tracking</h3>
+              <p className="text-muted-foreground">
+                Split bills, track expenses, and manage settlements with ease.
+              </p>
+            </div>
+            
+            <div className="p-6 rounded-lg border bg-card">
+              <div className="text-4xl mb-4">📝</div>
+              <h3 className="text-xl font-semibold mb-2">Shared Notes</h3>
+              <p className="text-muted-foreground">
+                Keep everyone in the loop with shared notes and reminders.
+              </p>
+            </div>
+            
+            <div className="p-6 rounded-lg border bg-card">
+              <div className="text-4xl mb-4">🛍️</div>
+              <h3 className="text-xl font-semibold mb-2">Shopping Lists</h3>
+              <p className="text-muted-foreground">
+                Collaborate on shopping lists and never forget items again.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
-};
-
-export default Index;
+}

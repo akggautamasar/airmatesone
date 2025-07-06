@@ -38,11 +38,10 @@ export const ChoreCard = ({ chore, onChoreDeleted }: ChoreCardProps) => {
         return 'No one for today';
       }
       
-      // The chore only stores the email, so we display the user part of it.
       return assignedEmail.split('@')[0];
     }
     
-    // Default to daily rotation
+    // Default to daily rotation with proper order
     const startDate = parseISO(chore.start_date);
     const today = new Date();
     today.setHours(0,0,0,0);
@@ -71,7 +70,7 @@ export const ChoreCard = ({ chore, onChoreDeleted }: ChoreCardProps) => {
   const assignedRoommate = getAssignedRoommate();
 
   return (
-    <Card className="flex flex-col">
+    <Card className="flex flex-col h-full">
       <CardHeader>
         <CardTitle>{chore.name}</CardTitle>
         <CardDescription>{chore.description}</CardDescription>
@@ -84,18 +83,43 @@ export const ChoreCard = ({ chore, onChoreDeleted }: ChoreCardProps) => {
         {chore.assignment_type === 'daily_rotation' && (
           <div className="flex items-center text-sm text-muted-foreground">
               <CalendarDays className="mr-2 h-4 w-4" />
-              <span>Starts on: {chore.start_date}</span>
+              <span>Rotation type: Daily (starts: {chore.start_date})</span>
+          </div>
+        )}
+        {chore.assignment_type === 'weekly_rotation' && (
+          <div className="flex items-center text-sm text-muted-foreground">
+              <CalendarDays className="mr-2 h-4 w-4" />
+              <span>Rotation type: Weekly Schedule</span>
           </div>
         )}
         <div className="flex items-start text-sm text-muted-foreground">
             <Users className="mr-2 h-4 w-4 mt-1" />
             <div>
-              <span>Participants:</span>
+              <span>Participants ({chore.participants?.length || 0}):</span>
               <div className="flex flex-wrap gap-1 mt-1">
-                {chore.participants?.map(p => <span key={p} className="text-xs bg-secondary text-secondary-foreground rounded-full px-2 py-0.5">{p.split('@')[0]}</span>)}
+                {chore.participants?.map(p => (
+                  <span key={p} className="text-xs bg-secondary text-secondary-foreground rounded-full px-2 py-0.5">
+                    {p.split('@')[0]}
+                  </span>
+                ))}
               </div>
             </div>
         </div>
+        
+        {/* Show rotation order for daily rotation */}
+        {chore.assignment_type === 'daily_rotation' && chore.participants && chore.participants.length > 1 && (
+          <div className="p-2 bg-muted rounded-lg">
+            <div className="text-xs font-medium mb-1">Rotation Order:</div>
+            <div className="text-xs text-muted-foreground">
+              {chore.participants.map((p, index) => (
+                <span key={p}>
+                  {index > 0 && ' → '}
+                  {p.split('@')[0]}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
       <CardFooter>
         {user?.id === chore.created_by && (
