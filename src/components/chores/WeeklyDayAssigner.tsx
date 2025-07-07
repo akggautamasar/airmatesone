@@ -1,65 +1,72 @@
 
 import React from 'react';
-import { useFormContext } from 'react-hook-form';
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { useRoommates } from '@/hooks/useRoommates';
 
 interface WeeklyDayAssignerProps {
-  roommates: { email: string; name: string | null }[];
+  weeklySchedule: { [key: string]: string };
+  onScheduleChange: (schedule: { [key: string]: string }) => void;
 }
 
-const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const daysOfWeek = [
+  { key: 'monday', label: 'Monday' },
+  { key: 'tuesday', label: 'Tuesday' },
+  { key: 'wednesday', label: 'Wednesday' },
+  { key: 'thursday', label: 'Thursday' },
+  { key: 'friday', label: 'Friday' },
+  { key: 'saturday', label: 'Saturday' },
+  { key: 'sunday', label: 'Sunday' },
+];
 
-export const WeeklyDayAssigner = ({ roommates }: WeeklyDayAssignerProps) => {
-  const { control, watch } = useFormContext();
-  const selectedParticipantEmails = watch('participants') || [];
-  
-  const availableRoommates = roommates.filter(p => selectedParticipantEmails.includes(p.email));
+export const WeeklyDayAssigner = ({ weeklySchedule, onScheduleChange }: WeeklyDayAssignerProps) => {
+  const { roommates } = useRoommates();
+
+  const handleDayChange = (day: string, email: string) => {
+    onScheduleChange({
+      ...weeklySchedule,
+      [day]: email
+    });
+  };
+
+  const getDisplayName = (email: string) => {
+    return email.split('@')[0];
+  };
 
   return (
-    <div className="space-y-4 rounded-lg border p-4">
-      <div className="space-y-2">
-        <h3 className="text-md font-medium">Assign Days to Roommates</h3>
-        <p className="text-sm text-muted-foreground">
-          For each day of the week, select a roommate from the participants list.
-        </p>
-      </div>
-      <div className="space-y-2">
+    <Card>
+      <CardHeader>
+        <CardTitle>Weekly Schedule Assignment</CardTitle>
+        <CardDescription>
+          Assign specific roommates to each day of the week for this chore.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
         {daysOfWeek.map((day) => (
-          <FormField
-            key={day}
-            control={control}
-            name={`weekly_schedule.${day}`}
-            render={({ field }) => (
-              <FormItem className="grid grid-cols-1 md:grid-cols-3 items-center gap-2 md:gap-4">
-                <FormLabel className="capitalize">{day}</FormLabel>
-                <div className="md:col-span-2">
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select roommate" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {availableRoommates.map(roommate => (
-                        <SelectItem key={roommate.email} value={roommate.email}>
-                          {roommate.name} ({roommate.email.split('@')[0]})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </FormItem>
-            )}
-          />
+          <div key={day.key} className="grid grid-cols-1 md:grid-cols-3 items-center gap-2 md:gap-4">
+            <Label className="capitalize font-medium">{day.label}</Label>
+            <div className="md:col-span-2">
+              <Select 
+                value={weeklySchedule[day.key] || 'unassigned'} 
+                onValueChange={(value) => handleDayChange(day.key, value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select roommate" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {roommates.map(roommate => (
+                    <SelectItem key={roommate.email} value={roommate.email}>
+                      {roommate.name} ({getDisplayName(roommate.email)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         ))}
-        <FormField
-            control={control}
-            name="weekly_schedule"
-            render={() => <FormMessage />}
-        />
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };

@@ -87,7 +87,11 @@ export const usePersonalExpenses = () => {
         .order('name');
       
       if (error) throw error;
-      setCategories(data || []);
+      // Type assertion to ensure proper typing
+      setCategories((data || []).map(item => ({
+        ...item,
+        type: item.type as 'income' | 'expense'
+      })));
     } catch (error: any) {
       console.error('Error fetching categories:', error);
       toast({
@@ -126,7 +130,11 @@ export const usePersonalExpenses = () => {
         .order('name');
       
       if (error) throw error;
-      setPaymentModes(data || []);
+      // Type assertion to ensure proper typing
+      setPaymentModes((data || []).map(item => ({
+        ...item,
+        type: item.type as 'cash' | 'bank' | 'wallet' | 'card' | 'upi'
+      })));
     } catch (error: any) {
       console.error('Error fetching payment modes:', error);
     }
@@ -156,7 +164,19 @@ export const usePersonalExpenses = () => {
       const { data, error } = await query;
       
       if (error) throw error;
-      setTransactions(data || []);
+      // Type assertion to ensure proper typing
+      setTransactions((data || []).map(item => ({
+        ...item,
+        type: item.type as 'income' | 'expense',
+        category: item.category ? {
+          ...item.category,
+          type: item.category.type as 'income' | 'expense'
+        } : undefined,
+        payment_mode: item.payment_mode ? {
+          ...item.payment_mode,
+          type: item.payment_mode.type as 'cash' | 'bank' | 'wallet' | 'card' | 'upi'
+        } : undefined
+      })));
     } catch (error: any) {
       console.error('Error fetching transactions:', error);
       toast({
@@ -186,7 +206,14 @@ export const usePersonalExpenses = () => {
       const { data, error } = await query;
       
       if (error) throw error;
-      setBudgets(data || []);
+      // Type assertion to ensure proper typing
+      setBudgets((data || []).map(item => ({
+        ...item,
+        category: item.category ? {
+          ...item.category,
+          type: item.category.type as 'income' | 'expense'
+        } : undefined
+      })));
     } catch (error: any) {
       console.error('Error fetching budgets:', error);
     }
