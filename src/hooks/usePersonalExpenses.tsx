@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -168,6 +167,7 @@ export const usePersonalExpenses = () => {
       setTransactions((data || []).map(item => ({
         ...item,
         type: item.type as 'income' | 'expense',
+        recurring_frequency: item.recurring_frequency as 'daily' | 'weekly' | 'monthly' | 'yearly' | undefined,
         category: item.category ? {
           ...item.category,
           type: item.category.type as 'income' | 'expense'
