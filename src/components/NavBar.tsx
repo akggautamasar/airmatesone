@@ -45,22 +45,36 @@ const NavBar = () => {
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center space-x-6">
             <Link to="/" className="flex items-center space-x-2">
-              <Home className="h-6 w-6 text-primary" />
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <Home className="h-5 w-5 text-white" />
+              </div>
               <span className="font-bold text-xl">AirMates</span>
             </Link>
             
             {user && (
               <div className="hidden md:flex items-center space-x-4">
-                <Link to="/pinboard">
-                  <Button variant="ghost" size="sm" className="flex items-center space-x-2">
-                    <StickyNote className="h-4 w-4" />
-                    <span>Pinboard</span>
-                  </Button>
-                </Link>
-                <Link to="/expense-tracker">
+                <Link to="/overview">
                   <Button variant="ghost" size="sm" className="flex items-center space-x-2">
                     <BarChart3 className="h-4 w-4" />
-                    <span>Expense Tracker</span>
+                    <span>Overview</span>
+                  </Button>
+                </Link>
+                <Link to="/expenses">
+                  <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+                    <DollarSign className="h-4 w-4" />
+                    <span>Expenses</span>
+                  </Button>
+                </Link>
+                <Link to="/roommates">
+                  <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+                    <Users className="h-4 w-4" />
+                    <span>Roommates</span>
+                  </Button>
+                </Link>
+                <Link to="/shopping">
+                  <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+                    <ShoppingCart className="h-4 w-4" />
+                    <span>Shopping</span>
                   </Button>
                 </Link>
                 <Link to="/chores">
@@ -97,18 +111,37 @@ const NavBar = () => {
                   </div>
                   <DropdownMenuSeparator />
                   
+                  <DropdownMenuItem asChild>
+                    <Link to="/pinboard" className="flex items-center">
+                      <StickyNote className="mr-2 h-4 w-4" />
+                      <span>Pinboard</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  
                   {/* Mobile menu items */}
                   <div className="md:hidden">
                     <DropdownMenuItem asChild>
-                      <Link to="/pinboard" className="flex items-center">
-                        <StickyNote className="mr-2 h-4 w-4" />
-                        <span>Pinboard</span>
+                      <Link to="/overview" className="flex items-center">
+                        <BarChart3 className="mr-2 h-4 w-4" />
+                        <span>Overview</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link to="/expense-tracker" className="flex items-center">
-                        <BarChart3 className="mr-2 h-4 w-4" />
-                        <span>Expense Tracker</span>
+                      <Link to="/expenses" className="flex items-center">
+                        <DollarSign className="mr-2 h-4 w-4" />
+                        <span>Expenses</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/roommates" className="flex items-center">
+                        <Users className="mr-2 h-4 w-4" />
+                        <span>Roommates</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/shopping" className="flex items-center">
+                        <ShoppingCart className="mr-2 h-4 w-4" />
+                        <span>Shopping</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
@@ -122,7 +155,7 @@ const NavBar = () => {
                   
                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Sign out</span>
+                    <span>Log out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

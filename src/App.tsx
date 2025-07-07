@@ -12,14 +12,18 @@ import NotFound from "./pages/NotFound";
 import PinboardPage from "./pages/PinboardPage";
 import ExpenseTrackerPage from "./pages/ExpenseTrackerPage";
 import ChoresPage from "./pages/ChoresPage";
-
-// 👇 Import push notification function
+import OverviewPage from "./pages/OverviewPage";
+import ExpensesPage from "./pages/ExpensesPage";
+import RoommatesPage from "./pages/RoommatesPage";
+import ShoppingPage from "./pages/ShoppingPage";
+import EventsPage from "./pages/EventsPage";
+import ReportsPage from "./pages/ReportsPage";
+import ProfilePage from "./pages/ProfilePage";
 import { requestPushPermission } from "./firebase/firebase-messaging-init";
 
 const queryClient = new QueryClient();
 
 const App = () => {
-  // 👇 Run push permission request when app loads
   useEffect(() => {
     requestPushPermission();
   }, []);
@@ -34,6 +38,13 @@ const App = () => {
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/overview" element={<OverviewPage />} />
+              <Route path="/expenses" element={<ExpensesPage />} />
+              <Route path="/roommates" element={<RoommatesPage />} />
+              <Route path="/shopping" element={<ShoppingPage />} />
+              <Route path="/events" element={<EventsPage />} />
+              <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
               <Route path="/pinboard" element={<PinboardPage />} />
               <Route path="/expense-tracker" element={<ExpenseTrackerPage />} />
               <Route path="/chores" element={<ChoresPage />} />
