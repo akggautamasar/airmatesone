@@ -22,7 +22,8 @@ import {
   DollarSign, 
   Settings,
   BarChart3,
-  StickyNote
+  StickyNote,
+  ClipboardList
 } from 'lucide-react';
 
 const NavBar = () => {
@@ -60,6 +61,12 @@ const NavBar = () => {
                   <Button variant="ghost" size="sm" className="flex items-center space-x-2">
                     <BarChart3 className="h-4 w-4" />
                     <span>Expense Tracker</span>
+                  </Button>
+                </Link>
+                <Link to="/chores">
+                  <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+                    <ClipboardList className="h-4 w-4" />
+                    <span>Chores</span>
                   </Button>
                 </Link>
               </div>
@@ -102,6 +109,12 @@ const NavBar = () => {
                       <Link to="/expense-tracker" className="flex items-center">
                         <BarChart3 className="mr-2 h-4 w-4" />
                         <span>Expense Tracker</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/chores" className="flex items-center">
+                        <ClipboardList className="mr-2 h-4 w-4" />
+                        <span>Chores</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />

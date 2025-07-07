@@ -11,6 +11,7 @@ import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 import PinboardPage from "./pages/PinboardPage";
 import ExpenseTrackerPage from "./pages/ExpenseTrackerPage";
+import ChoresPage from "./pages/ChoresPage";
 
 // 👇 Import push notification function
 import { requestPushPermission } from "./firebase/firebase-messaging-init";
@@ -35,6 +36,7 @@ const App = () => {
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/pinboard" element={<PinboardPage />} />
               <Route path="/expense-tracker" element={<ExpenseTrackerPage />} />
+              <Route path="/chores" element={<ChoresPage />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

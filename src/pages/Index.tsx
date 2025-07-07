@@ -7,7 +7,6 @@ export default function Index() {
   const { user } = useAuth();
 
   if (user) {
-    
     return (
       <div className="min-h-screen bg-background">
         <NavBar />
@@ -28,6 +27,11 @@ export default function Index() {
             <Link to="/expense-tracker">
               <Button variant="outline" className="w-full h-24 text-lg">
                 💰 Expense Tracker
+              </Button>
+            </Link>
+            <Link to="/chores">
+              <Button variant="outline" className="w-full h-24 text-lg">
+                🧹 Chores
               </Button>
             </Link>
           </div>
@@ -75,10 +79,10 @@ export default function Index() {
             </div>
             
             <div className="p-6 rounded-lg border bg-card">
-              <div className="text-4xl mb-4">🛍️</div>
-              <h3 className="text-xl font-semibold mb-2">Shopping Lists</h3>
+              <div className="text-4xl mb-4">🧹</div>
+              <h3 className="text-xl font-semibold mb-2">Chore Management</h3>
               <p className="text-muted-foreground">
-                Collaborate on shopping lists and never forget items again.
+                Organize household tasks and track completion with roommates.
               </p>
             </div>
           </div>
