@@ -44,9 +44,9 @@ const NavBar = () => {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center space-x-6">
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Home className="h-5 w-5 text-white" />
+            <Link to="/overview" className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Home className="h-5 w-5 text-primary-foreground" />
               </div>
               <span className="font-bold text-xl">AirMates</span>
             </Link>
@@ -110,6 +110,13 @@ const NavBar = () => {
                     </div>
                   </div>
                   <DropdownMenuSeparator />
+                  
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile" className="flex items-center">
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
                   
                   <DropdownMenuItem asChild>
                     <Link to="/pinboard" className="flex items-center">
