@@ -316,31 +316,23 @@ export const useSharedNotes = () => {
   useEffect(() => {
     if (!user) return;
 
-    let channel: any = null;
-
-    const setupRealtime = () => {
-      // Create a unique channel name to avoid conflicts
-      const channelName = `shared_notes_changes_${user.id}_${Date.now()}`;
-      
-      channel = supabase
-        .channel(channelName)
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'shared_notes' },
-          (payload) => {
-            console.log('Real-time update:', payload);
-            fetchNotes();
-          }
-        )
-        .subscribe();
-    };
-
-    setupRealtime();
+    // Create a unique channel name to avoid conflicts
+    const channelName = `shared_notes_changes_${user.id}_${Date.now()}`;
+    
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'shared_notes' },
+        (payload) => {
+          console.log('Real-time update:', payload);
+          fetchNotes();
+        }
+      )
+      .subscribe();
 
     return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
+      supabase.removeChannel(channel);
     };
   }, [user]);
 

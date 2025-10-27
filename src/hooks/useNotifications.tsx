@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
@@ -23,7 +23,6 @@ export const useNotifications = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { sendBrowserNotification, permission } = useBrowserNotifications();
-  const channelRef = useRef<any>(null);
 
   const fetchNotifications = async () => {
     if (!user) {
@@ -113,90 +112,72 @@ export const useNotifications = () => {
   };
 
   useEffect(() => {
-    if (user) {
-      fetchNotifications();
-
-      // Clean up existing channel before creating new one
-      if (channelRef.current) {
-        console.log('Removing existing notifications channel');
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-
-      // Create unique channel name to avoid conflicts
-      const channelName = `notifications-${user.id}-${Date.now()}`;
-      console.log('Creating notifications channel:', channelName);
-      
-      // Set up real-time subscription for new notifications
-      const channel = supabase
-        .channel(channelName)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'notifications',
-            filter: `user_id=eq.${user.id}`
-          },
-          (payload) => {
-            const newNotification = payload.new as Notification;
-            console.log('=== NEW NOTIFICATION RECEIVED ===');
-            console.log('Notification:', newNotification);
-            console.log('Current user:', user.email);
-            console.log('Notification type:', newNotification.type);
-            
-            setNotifications(prev => [newNotification, ...prev]);
-            setUnreadCount(prev => prev + 1);
-            
-            // Show in-app toast notification
-            toast({
-              title: newNotification.title,
-              description: newNotification.message,
-              duration: 5000,
-            });
-
-            // Send browser notification for all expense-related notifications
-            console.log('=== BROWSER NOTIFICATION CHECK ===');
-            console.log('Notification type:', newNotification.type);
-            console.log('Permission status:', permission);
-            console.log('sendBrowserNotification function exists:', !!sendBrowserNotification);
-            
-            if (newNotification.type === 'expense_created') {
-              console.log('🔔 Triggering browser notification for expense creation');
-              sendBrowserNotification(
-                newNotification.title,
-                newNotification.message
-              );
-            } else {
-              console.log('ℹ️ Not an expense_created notification, skipping browser notification');
-            }
-          }
-        )
-        .subscribe((status) => {
-          console.log('Notifications channel subscription status:', status);
-        });
-
-      channelRef.current = channel;
-
-      return () => {
-        if (channelRef.current) {
-          console.log('Cleaning up notifications channel');
-          supabase.removeChannel(channelRef.current);
-          channelRef.current = null;
-        }
-      };
-    } else {
+    if (!user) {
       setNotifications([]);
       setUnreadCount(0);
       setLoading(false);
-      
-      // Clean up channel when user logs out
-      if (channelRef.current) {
-        console.log('Removing notifications channel on user logout');
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
+      return;
     }
+
+    fetchNotifications();
+
+    // Create unique channel name to avoid conflicts
+    const channelName = `notifications-${user.id}-${Date.now()}`;
+    console.log('Creating notifications channel:', channelName);
+    
+    // Set up real-time subscription for new notifications
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          const newNotification = payload.new as Notification;
+          console.log('=== NEW NOTIFICATION RECEIVED ===');
+          console.log('Notification:', newNotification);
+          console.log('Current user:', user.email);
+          console.log('Notification type:', newNotification.type);
+          
+          setNotifications(prev => [newNotification, ...prev]);
+          setUnreadCount(prev => prev + 1);
+          
+          // Show in-app toast notification
+          toast({
+            title: newNotification.title,
+            description: newNotification.message,
+            duration: 5000,
+          });
+
+          // Send browser notification for all expense-related notifications
+          console.log('=== BROWSER NOTIFICATION CHECK ===');
+          console.log('Notification type:', newNotification.type);
+          console.log('Permission status:', permission);
+          console.log('sendBrowserNotification function exists:', !!sendBrowserNotification);
+          
+          if (newNotification.type === 'expense_created') {
+            console.log('🔔 Triggering browser notification for expense creation');
+            sendBrowserNotification(
+              newNotification.title,
+              newNotification.message
+            );
+          } else {
+            console.log('ℹ️ Not an expense_created notification, skipping browser notification');
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('Notifications channel subscription status:', status);
+      });
+
+    return () => {
+      console.log('Cleaning up notifications channel');
+      supabase.removeChannel(channel);
+    };
   }, [user?.id]); // Only depend on user ID to avoid unnecessary re-subscriptions
 
   return {

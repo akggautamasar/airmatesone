@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,7 +19,6 @@ export const useMarketTrips = () => {
   const [isGoingToMarket, setIsGoingToMarket] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
-  const channelRef = useRef<any>(null);
 
   const fetchMarketTrips = async () => {
     try {
@@ -120,56 +119,37 @@ export const useMarketTrips = () => {
   };
 
   useEffect(() => {
-    if (user) {
-      fetchMarketTrips();
+    if (!user) return;
 
-      // Clean up existing channel before creating new one
-      if (channelRef.current) {
-        console.log('Removing existing market trips channel');
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
+    fetchMarketTrips();
 
-      // Create unique channel name to avoid conflicts
-      const channelName = `market-trips-${user.id}-${Date.now()}`;
-      console.log('Creating market trips channel:', channelName);
+    // Create unique channel name to avoid conflicts
+    const channelName = `market-trips-${user.id}-${Date.now()}`;
+    console.log('Creating market trips channel:', channelName);
 
-      // Set up real-time subscription for market trips
-      const channel = supabase
-        .channel(channelName)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'market_trips'
-          },
-          () => {
-            console.log('Market trips data changed, refetching...');
-            fetchMarketTrips();
-          }
-        )
-        .subscribe((status) => {
-          console.log('Market trips channel subscription status:', status);
-        });
-
-      channelRef.current = channel;
-
-      return () => {
-        if (channelRef.current) {
-          console.log('Cleaning up market trips channel');
-          supabase.removeChannel(channelRef.current);
-          channelRef.current = null;
+    // Set up real-time subscription for market trips
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'market_trips'
+        },
+        () => {
+          console.log('Market trips data changed, refetching...');
+          fetchMarketTrips();
         }
-      };
-    } else {
-      // Clean up channel when user logs out
-      if (channelRef.current) {
-        console.log('Removing market trips channel on user logout');
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-    }
+      )
+      .subscribe((status) => {
+        console.log('Market trips channel subscription status:', status);
+      });
+
+    return () => {
+      console.log('Cleaning up market trips channel');
+      supabase.removeChannel(channel);
+    };
   }, [user?.id]); // Only depend on user ID to avoid unnecessary re-subscriptions
 
   return {
