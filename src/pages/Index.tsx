@@ -5,6 +5,8 @@ import { Link } from 'react-router-dom';
 import NavBar from '@/components/NavBar';
 import { ExpenseOverview } from '@/components/ExpenseOverview';
 import { UpcomingEvents } from '@/components/overview/UpcomingEvents';
+import { InstallPrompt } from '@/components/InstallPrompt';
+import { Wallet } from 'lucide-react';
 
 export default function Index() {
   const { user } = useAuth();
@@ -13,12 +15,23 @@ export default function Index() {
     return (
       <div className="min-h-screen bg-background">
         <NavBar />
+        <InstallPrompt />
         <div className="container mx-auto px-4 py-8">
           <div className="mb-8">
             <h1 className="text-4xl font-bold mb-2">Welcome back, {user.user_metadata?.name || user.email?.split('@')[0]}!</h1>
             <p className="text-muted-foreground text-lg">
               Your roommate dashboard - everything you need at a glance.
             </p>
+          </div>
+
+          {/* Quick Access */}
+          <div className="mb-6">
+            <Link to="/expenses">
+              <Button size="lg" className="w-full md:w-auto">
+                <Wallet className="mr-2 h-5 w-5" />
+                Manage Expenses
+              </Button>
+            </Link>
           </div>
 
           {/* Dashboard Overview */}
@@ -34,6 +47,7 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background">
       <NavBar />
+      <InstallPrompt />
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
