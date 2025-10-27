@@ -15,58 +15,10 @@ export default function Index() {
         <NavBar />
         <div className="container mx-auto px-4 py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Welcome back, {user.user_metadata?.name || user.email?.split('@')[0]}!</h1>
-            <p className="text-muted-foreground">
-              Manage your expenses, chores, settlements, and shopping lists.
+            <h1 className="text-4xl font-bold mb-2">Welcome back, {user.user_metadata?.name || user.email?.split('@')[0]}!</h1>
+            <p className="text-muted-foreground text-lg">
+              Your roommate dashboard - everything you need at a glance.
             </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            <Link to="/overview">
-              <Button variant="outline" className="w-full h-24 text-lg">
-                📊 Overview
-              </Button>
-            </Link>
-            <Link to="/expenses">
-              <Button variant="outline" className="w-full h-24 text-lg">
-                💰 Expenses
-              </Button>
-            </Link>
-            <Link to="/reports">
-              <Button variant="outline" className="w-full h-24 text-lg">
-                📋 Reports
-              </Button>
-            </Link>
-            <Link to="/events">
-              <Button variant="outline" className="w-full h-24 text-lg">
-                📅 Events
-              </Button>
-            </Link>
-            <Link to="/shopping">
-              <Button variant="outline" className="w-full h-24 text-lg">
-                🛒 Shopping
-              </Button>
-            </Link>
-            <Link to="/chores">
-              <Button variant="outline" className="w-full h-24 text-lg">
-                🧹 Chores
-              </Button>
-            </Link>
-            <Link to="/roommates">
-              <Button variant="outline" className="w-full h-24 text-lg">
-                👥 Roommates
-              </Button>
-            </Link>
-            <Link to="/profile">
-              <Button variant="outline" className="w-full h-24 text-lg">
-                👤 Profile
-              </Button>
-            </Link>
-            <Link to="/pinboard">
-              <Button variant="outline" className="w-full h-24 text-lg">
-                📌 Pinboard
-              </Button>
-            </Link>
           </div>
 
           {/* Dashboard Overview */}

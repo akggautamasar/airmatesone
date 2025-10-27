@@ -52,7 +52,7 @@ const NavBar = () => {
             </Link>
             
             {user && (
-              <div className="hidden md:flex items-center space-x-4">
+              <div className="hidden md:flex items-center space-x-2">
                 <Link to="/overview">
                   <Button variant="ghost" size="sm" className="flex items-center space-x-2">
                     <BarChart3 className="h-4 w-4" />
@@ -65,10 +65,16 @@ const NavBar = () => {
                     <span>Expenses</span>
                   </Button>
                 </Link>
-                <Link to="/roommates">
+                <Link to="/reports">
                   <Button variant="ghost" size="sm" className="flex items-center space-x-2">
-                    <Users className="h-4 w-4" />
-                    <span>Roommates</span>
+                    <FileText className="h-4 w-4" />
+                    <span>Reports</span>
+                  </Button>
+                </Link>
+                <Link to="/events">
+                  <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+                    <Calendar className="h-4 w-4" />
+                    <span>Events</span>
                   </Button>
                 </Link>
                 <Link to="/shopping">
@@ -81,6 +87,18 @@ const NavBar = () => {
                   <Button variant="ghost" size="sm" className="flex items-center space-x-2">
                     <ClipboardList className="h-4 w-4" />
                     <span>Chores</span>
+                  </Button>
+                </Link>
+                <Link to="/roommates">
+                  <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+                    <Users className="h-4 w-4" />
+                    <span>Roommates</span>
+                  </Button>
+                </Link>
+                <Link to="/pinboard">
+                  <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+                    <StickyNote className="h-4 w-4" />
+                    <span>Pinboard</span>
                   </Button>
                 </Link>
               </div>
@@ -140,9 +158,15 @@ const NavBar = () => {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link to="/roommates" className="flex items-center">
-                        <Users className="mr-2 h-4 w-4" />
-                        <span>Roommates</span>
+                      <Link to="/reports" className="flex items-center">
+                        <FileText className="mr-2 h-4 w-4" />
+                        <span>Reports</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/events" className="flex items-center">
+                        <Calendar className="mr-2 h-4 w-4" />
+                        <span>Events</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
@@ -155,6 +179,12 @@ const NavBar = () => {
                       <Link to="/chores" className="flex items-center">
                         <ClipboardList className="mr-2 h-4 w-4" />
                         <span>Chores</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/roommates" className="flex items-center">
+                        <Users className="mr-2 h-4 w-4" />
+                        <span>Roommates</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
