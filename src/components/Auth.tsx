@@ -14,7 +14,7 @@ export const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [signUpForm, setSignUpForm] = useState({
@@ -30,11 +30,23 @@ export const Auth = () => {
 
   // Redirect if user is already logged in
   useEffect(() => {
-    if (user) {
+    if (!authLoading && user) {
       console.log('User is logged in, redirecting to dashboard');
       navigate("/");
     }
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
+
+  // Show loading state while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   const ensureUserProfile = async (userId: string, email: string, fullName?: string) => {
     try {
