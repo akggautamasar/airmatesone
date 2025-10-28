@@ -61,15 +61,13 @@ export const useExpenses = () => {
   };
 
   useEffect(() => {
-    console.log('useExpenses useEffect: User object changed or component mounted. User:', user?.email, 'User ID:', user?.id);
-    if (user) {
+    if (user?.id) {
       fetchExpenses();
     } else {
-      console.log('useExpenses useEffect: No user, clearing expenses.');
       setExpenses([]);
       setLoading(false);
     }
-  }, [user?.id]); // Only re-run if user ID changes.
+  }, [user?.id]);
 
   return {
     expenses,
