@@ -2,7 +2,6 @@
 import React from 'react';
 import NavBar from '@/components/NavBar';
 import { ExpenseOverview } from '@/components/ExpenseOverview';
-import { BrowserNotificationManager } from '@/components/notifications/BrowserNotificationManager';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function OverviewPage() {
@@ -23,9 +22,6 @@ export default function OverviewPage() {
     <div className="min-h-screen bg-background">
       <NavBar />
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-4">
-          <BrowserNotificationManager />
-        </div>
         <ExpenseOverview onExpenseUpdate={() => {}} currentUserId={user?.id} />
       </div>
     </div>

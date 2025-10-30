@@ -1,42 +1,56 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
 
 export const useBrowserNotifications = () => {
   const [permission, setPermission] = useState<NotificationPermission>('default');
-  const [shouldShowPrompt, setShouldShowPrompt] = useState(false);
   const { user } = useAuth();
-
-  const requestPermission = useCallback(async () => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      const result = await Notification.requestPermission();
-      setPermission(result);
-      setShouldShowPrompt(false);
-      return result;
-    }
-    return Notification.permission;
-  }, []);
 
   useEffect(() => {
     if ('Notification' in window) {
       setPermission(Notification.permission);
-      
-      // Show prompt to request permission after short delay
-      if (Notification.permission === 'default' && user) {
-        const timer = setTimeout(() => {
-          setShouldShowPrompt(true);
-          requestPermission();
-        }, 1500); // Delay to avoid overwhelming user
-        
-        return () => clearTimeout(timer);
-      }
+      console.log('Browser notification permission on mount:', Notification.permission);
+    } else {
+      console.log('Browser notifications not supported');
     }
-  }, [user, requestPermission]);
+  }, []);
+
+  const requestPermission = async () => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      console.log('Requesting notification permission...');
+      const result = await Notification.requestPermission();
+      console.log('Permission result:', result);
+      setPermission(result);
+      return result;
+    }
+    return Notification.permission;
+  };
 
   const sendBrowserNotification = (title: string, message: string, icon?: string) => {
-    if (!('Notification' in window)) return;
+    console.log('=== Browser Notification Debug ===');
+    console.log('Attempting to send browser notification:', { 
+      title, 
+      message, 
+      permission: Notification.permission,
+      statePermission: permission,
+      isSupported: 'Notification' in window,
+      user: user?.email
+    });
     
-    if (Notification.permission !== 'granted') return;
+    if (!('Notification' in window)) {
+      console.log('❌ Browser notifications not supported');
+      return;
+    }
+
+    const currentPermission = Notification.permission;
+    console.log('Current permission status:', currentPermission);
+    
+    if (currentPermission !== 'granted') {
+      console.log('❌ Permission not granted. Current permission:', currentPermission);
+      return;
+    }
+
+    console.log('✅ Permission granted, creating notification...');
     
     try {
       const notification = new Notification(title, {
@@ -48,16 +62,31 @@ export const useBrowserNotifications = () => {
         silent: false
       });
       
+      console.log('✅ Browser notification created successfully:', notification);
+      
       // Auto-close notification after 5 seconds
-      setTimeout(() => notification.close(), 5000);
+      setTimeout(() => {
+        console.log('Auto-closing notification');
+        notification.close();
+      }, 5000);
       
       // Handle notification click
       notification.onclick = () => {
+        console.log('Notification clicked');
         window.focus();
         notification.close();
       };
+
+      notification.onerror = (error) => {
+        console.error('❌ Notification error:', error);
+      };
+
+      notification.onshow = () => {
+        console.log('✅ Notification shown successfully');
+      };
+
     } catch (error) {
-      console.error('Notification error:', error);
+      console.error('❌ Error creating notification:', error);
     }
   };
 
@@ -66,6 +95,5 @@ export const useBrowserNotifications = () => {
     requestPermission,
     sendBrowserNotification,
     isSupported: 'Notification' in window,
-    shouldShowPrompt,
   };
 };

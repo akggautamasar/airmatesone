@@ -123,6 +123,7 @@ export const useNotifications = () => {
 
     // Create unique channel name to avoid conflicts
     const channelName = `notifications-${user.id}-${Date.now()}`;
+    console.log('Creating notifications channel:', channelName);
     
     // Set up real-time subscription for new notifications
     const channel = supabase
@@ -137,6 +138,10 @@ export const useNotifications = () => {
         },
         (payload) => {
           const newNotification = payload.new as Notification;
+          console.log('=== NEW NOTIFICATION RECEIVED ===');
+          console.log('Notification:', newNotification);
+          console.log('Current user:', user.email);
+          console.log('Notification type:', newNotification.type);
           
           setNotifications(prev => [newNotification, ...prev]);
           setUnreadCount(prev => prev + 1);
@@ -148,17 +153,29 @@ export const useNotifications = () => {
             duration: 5000,
           });
 
-          // Send browser notification for all notifications
-          sendBrowserNotification(
-            newNotification.title,
-            newNotification.message,
-            '/favicon.ico'
-          );
+          // Send browser notification for all expense-related notifications
+          console.log('=== BROWSER NOTIFICATION CHECK ===');
+          console.log('Notification type:', newNotification.type);
+          console.log('Permission status:', permission);
+          console.log('sendBrowserNotification function exists:', !!sendBrowserNotification);
+          
+          if (newNotification.type === 'expense_created') {
+            console.log('🔔 Triggering browser notification for expense creation');
+            sendBrowserNotification(
+              newNotification.title,
+              newNotification.message
+            );
+          } else {
+            console.log('ℹ️ Not an expense_created notification, skipping browser notification');
+          }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Notifications channel subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up notifications channel');
       supabase.removeChannel(channel);
     };
   }, [user?.id]); // Only depend on user ID to avoid unnecessary re-subscriptions

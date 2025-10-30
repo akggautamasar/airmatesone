@@ -47,6 +47,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     const handleAuthChange = async (session: Session | null) => {
+      console.log("[useAuth] handleAuthChange called. session:", session);
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -62,8 +63,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         // Try to get existing session
         const { data: { session } } = await supabase.auth.getSession();
+        console.log('[useAuth] Initial session:', session?.user?.email);
         await handleAuthChange(session);
       } catch (error) {
+        console.error("[useAuth] Error in getSession:", error);
         if (!didUnmount) setLoading(false);
       }
     };
@@ -72,6 +75,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Listen for subsequent auth state changes (do not make async)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
+        console.log('[useAuth] Auth state changed:', _event, session?.user?.email);
         handleAuthChange(session);
       }
     );
@@ -79,6 +83,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // If the request hangs too long, forcibly disable loading after X seconds
     const forceDoneTimeout = setTimeout(() => {
       if (loading) {
+        console.error("[useAuth] Timeout: Still loading after 7 seconds - forcing loading=false");
         setLoading(false);
       }
     }, 7000);

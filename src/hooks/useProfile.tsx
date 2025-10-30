@@ -18,18 +18,13 @@ interface Profile {
 export const useProfile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isFetching, setIsFetching] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
   const fetchProfile = async () => {
-    if (!user || isFetching) {
-      if (!user) setLoading(false);
-      return;
-    }
+    if (!user) return;
 
     try {
-      setIsFetching(true);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -47,7 +42,6 @@ export const useProfile = () => {
       });
     } finally {
       setLoading(false);
-      setIsFetching(false);
     }
   };
 
@@ -80,9 +74,7 @@ export const useProfile = () => {
   };
 
   useEffect(() => {
-    if (user?.id && !isFetching) {
-      fetchProfile();
-    }
+    fetchProfile();
   }, [user?.id]); // Only re-run if user ID changes.
 
   return {

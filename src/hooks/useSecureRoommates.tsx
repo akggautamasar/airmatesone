@@ -29,16 +29,22 @@ export const useSecureRoommates = () => {
 
     try {
       setLoading(true);
+      console.log('Fetching roommates for user:', user.email);
       
       const { data, error } = await supabase
         .from('roommates')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error fetching roommates:', error);
+        throw error;
+      }
       
+      console.log('Fetched roommates:', data);
       setRoommates(data || []);
     } catch (error: any) {
+      console.error('Error fetching roommates:', error);
       toast({
         title: "Error",
         description: `Failed to fetch roommates: ${error.message}`,
