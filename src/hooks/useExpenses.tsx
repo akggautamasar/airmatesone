@@ -22,33 +22,26 @@ export const useExpenses = () => {
 
   const fetchExpenses = async () => {
     if (!user) {
-      console.log('fetchExpenses: No user, setting loading to false and returning.');
-      setExpenses([]); // Clear expenses if no user
+      setExpenses([]);
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
-      console.log('fetchExpenses: Attempting to fetch for user ID:', user.id, 'Email:', user.email);
       
-      const { data, error, status, count } = await supabase
+      const { data, error } = await supabase
         .from('expenses')
-        .select('*', { count: 'exact' }) // Request count
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('fetchExpenses: Supabase error fetching expenses. Message:', error.message, 'Details:', error.details, 'Hint:', error.hint, 'Code:', error.code, 'Full Error:', error, 'Status:', status);
         setExpenses([]); 
       } else {
-        console.log('fetchExpenses: Successfully fetched expenses. Raw data:', data);
-        console.log('fetchExpenses: Total expenses count from Supabase (respecting RLS):', count);
-        console.log('fetchExpenses: Setting expenses state with:', data?.length || 0, 'expenses');
         setExpenses(data || []);
       }
     } catch (error: any) {
-      console.error('fetchExpenses: Catch block error fetching expenses:', error);
-      setExpenses([]); // Clear expenses on catch
+      setExpenses([]);
       toast({
         title: "Error",
         description: "Failed to fetch expenses due to an unexpected error.",
@@ -56,7 +49,6 @@ export const useExpenses = () => {
       });
     } finally {
       setLoading(false);
-      console.log('fetchExpenses: Finished. Loading set to false.');
     }
   };
 
