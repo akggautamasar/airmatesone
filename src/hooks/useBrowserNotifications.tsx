@@ -1,10 +1,19 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
 
 export const useBrowserNotifications = () => {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const { user } = useAuth();
+
+  const requestPermission = useCallback(async () => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      const result = await Notification.requestPermission();
+      setPermission(result);
+      return result;
+    }
+    return Notification.permission;
+  }, []);
 
   useEffect(() => {
     if ('Notification' in window) {
@@ -15,16 +24,7 @@ export const useBrowserNotifications = () => {
         requestPermission();
       }
     }
-  }, [user]);
-
-  const requestPermission = async () => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      const result = await Notification.requestPermission();
-      setPermission(result);
-      return result;
-    }
-    return Notification.permission;
-  };
+  }, [user, requestPermission]);
 
   const sendBrowserNotification = (title: string, message: string, icon?: string) => {
     if (!('Notification' in window)) return;
