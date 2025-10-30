@@ -153,21 +153,13 @@ export const useNotifications = () => {
             duration: 5000,
           });
 
-          // Send browser notification for all expense-related notifications
-          console.log('=== BROWSER NOTIFICATION CHECK ===');
-          console.log('Notification type:', newNotification.type);
-          console.log('Permission status:', permission);
-          console.log('sendBrowserNotification function exists:', !!sendBrowserNotification);
-          
-          if (newNotification.type === 'expense_created') {
-            console.log('🔔 Triggering browser notification for expense creation');
-            sendBrowserNotification(
-              newNotification.title,
-              newNotification.message
-            );
-          } else {
-            console.log('ℹ️ Not an expense_created notification, skipping browser notification');
-          }
+          // Send browser notification for all notifications
+          console.log('🔔 Triggering browser notification');
+          sendBrowserNotification(
+            newNotification.title,
+            newNotification.message,
+            '/favicon.ico'
+          );
         }
       )
       .subscribe((status) => {
