@@ -4,12 +4,14 @@ import { useAuth } from './useAuth';
 
 export const useBrowserNotifications = () => {
   const [permission, setPermission] = useState<NotificationPermission>('default');
+  const [shouldShowPrompt, setShouldShowPrompt] = useState(false);
   const { user } = useAuth();
 
   const requestPermission = useCallback(async () => {
     if ('Notification' in window && Notification.permission === 'default') {
       const result = await Notification.requestPermission();
       setPermission(result);
+      setShouldShowPrompt(false);
       return result;
     }
     return Notification.permission;
@@ -19,9 +21,14 @@ export const useBrowserNotifications = () => {
     if ('Notification' in window) {
       setPermission(Notification.permission);
       
-      // Auto-request permission if not set (like other websites)
+      // Show prompt to request permission after short delay
       if (Notification.permission === 'default' && user) {
-        requestPermission();
+        const timer = setTimeout(() => {
+          setShouldShowPrompt(true);
+          requestPermission();
+        }, 1500); // Delay to avoid overwhelming user
+        
+        return () => clearTimeout(timer);
       }
     }
   }, [user, requestPermission]);
@@ -59,5 +66,6 @@ export const useBrowserNotifications = () => {
     requestPermission,
     sendBrowserNotification,
     isSupported: 'Notification' in window,
+    shouldShowPrompt,
   };
 };

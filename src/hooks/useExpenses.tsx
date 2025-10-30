@@ -17,17 +17,21 @@ interface Expense {
 export const useExpenses = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
   const fetchExpenses = async () => {
-    if (!user) {
-      setExpenses([]);
-      setLoading(false);
+    if (!user || isFetching) {
+      if (!user) {
+        setExpenses([]);
+        setLoading(false);
+      }
       return;
     }
 
     try {
+      setIsFetching(true);
       setLoading(true);
       
       const { data, error } = await supabase
@@ -49,13 +53,14 @@ export const useExpenses = () => {
       });
     } finally {
       setLoading(false);
+      setIsFetching(false);
     }
   };
 
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && !isFetching) {
       fetchExpenses();
-    } else {
+    } else if (!user) {
       setExpenses([]);
       setLoading(false);
     }
