@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
 
 export const useBrowserNotifications = () => {
@@ -12,16 +11,16 @@ export const useBrowserNotifications = () => {
     }
   }, []);
 
-  const requestPermission = async () => {
+  const requestPermission = useCallback(async () => {
     if ('Notification' in window && Notification.permission === 'default') {
       const result = await Notification.requestPermission();
       setPermission(result);
       return result;
     }
     return Notification.permission;
-  };
+  }, []);
 
-  const sendBrowserNotification = (title: string, message: string, icon?: string) => {
+  const sendBrowserNotification = useCallback((title: string, message: string, icon?: string) => {
     if (!('Notification' in window)) {
       return;
     }
@@ -55,7 +54,7 @@ export const useBrowserNotifications = () => {
     } catch (error) {
       console.error('Error creating notification:', error);
     }
-  };
+  }, []);
 
   return {
     permission,

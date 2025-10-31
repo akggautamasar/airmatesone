@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
@@ -22,7 +21,7 @@ export const useNotifications = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
-  const { sendBrowserNotification, permission } = useBrowserNotifications();
+  const { sendBrowserNotification } = useBrowserNotifications();
 
   const fetchNotifications = async () => {
     if (!user) {
@@ -42,7 +41,6 @@ export const useNotifications = () => {
       setNotifications(data || []);
       setUnreadCount(data?.filter(n => !n.is_read).length || 0);
     } catch (error: any) {
-      console.error('Error fetching notifications:', error);
       toast({
         title: "Error",
         description: "Failed to fetch notifications",
@@ -111,6 +109,29 @@ export const useNotifications = () => {
     }
   };
 
+  // Memoize the notification handler to prevent recreating on every render
+  const handleNewNotification = useCallback((payload: any) => {
+    const newNotification = payload.new as Notification;
+    
+    setNotifications(prev => [newNotification, ...prev]);
+    setUnreadCount(prev => prev + 1);
+    
+    // Show in-app toast notification
+    toast({
+      title: newNotification.title,
+      description: newNotification.message,
+      duration: 5000,
+    });
+
+    // Send browser notification for expense-related notifications
+    if (newNotification.type === 'expense_created' || newNotification.type === 'settlement_reminder') {
+      sendBrowserNotification(
+        newNotification.title,
+        newNotification.message
+      );
+    }
+  }, [toast, sendBrowserNotification]);
+
   useEffect(() => {
     if (!user) {
       setNotifications([]);
@@ -136,27 +157,7 @@ export const useNotifications = () => {
           table: 'notifications',
           filter: `user_id=eq.${user.id}`
         },
-        (payload) => {
-          const newNotification = payload.new as Notification;
-          
-          setNotifications(prev => [newNotification, ...prev]);
-          setUnreadCount(prev => prev + 1);
-          
-          // Show in-app toast notification
-          toast({
-            title: newNotification.title,
-            description: newNotification.message,
-            duration: 5000,
-          });
-
-          // Send browser notification for expense-related notifications
-          if (newNotification.type === 'expense_created' || newNotification.type === 'settlement_reminder') {
-            sendBrowserNotification(
-              newNotification.title,
-              newNotification.message
-            );
-          }
-        }
+        handleNewNotification
       )
       .subscribe();
 
@@ -165,7 +166,7 @@ export const useNotifications = () => {
       channel.unsubscribe();
       supabase.removeChannel(channel);
     };
-  }, [user?.id]); // Only depend on user ID to avoid unnecessary re-subscriptions
+  }, [user?.id, handleNewNotification]);
 
   return {
     notifications,

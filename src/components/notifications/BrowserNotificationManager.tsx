@@ -1,5 +1,4 @@
-
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Bell, BellOff } from "lucide-react";
 import { useBrowserNotifications } from '@/hooks/useBrowserNotifications';
@@ -30,29 +29,39 @@ export const BrowserNotificationManager = () => {
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center">
       {permission === 'default' && (
         <Button
           variant="ghost"
-          size="sm"
+          size="icon"
           onClick={handleEnableNotifications}
-          className="text-xs"
+          title="Enable browser notifications"
+          className="h-9 w-9"
         >
-          <Bell className="h-4 w-4 mr-1" />
-          Enable Browser Notifications
+          <Bell className="h-5 w-5" />
         </Button>
       )}
       {permission === 'denied' && (
-        <div className="flex items-center text-xs text-gray-500">
-          <BellOff className="h-4 w-4 mr-1" />
-          Browser notifications disabled
-        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          disabled
+          title="Browser notifications are blocked. Please enable them in your browser settings."
+          className="h-9 w-9 opacity-50"
+        >
+          <BellOff className="h-5 w-5" />
+        </Button>
       )}
       {permission === 'granted' && (
-        <div className="flex items-center text-xs text-green-600">
-          <Bell className="h-4 w-4 mr-1" />
-          Browser notifications enabled
-        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          disabled
+          title="Browser notifications are enabled"
+          className="h-9 w-9 text-green-600"
+        >
+          <Bell className="h-5 w-5" />
+        </Button>
       )}
     </div>
   );

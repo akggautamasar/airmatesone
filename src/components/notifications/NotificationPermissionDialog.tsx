@@ -12,11 +12,13 @@ import {
 import { Bell } from "lucide-react";
 import { useBrowserNotifications } from '@/hooks/useBrowserNotifications';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 export const NotificationPermissionDialog = () => {
   const [showDialog, setShowDialog] = useState(false);
   const { permission, requestPermission, isSupported } = useBrowserNotifications();
   const { user } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
     // Show dialog after 2 seconds if user is logged in and permission is default
@@ -30,8 +32,21 @@ export const NotificationPermissionDialog = () => {
   }, [user, permission, isSupported]);
 
   const handleAllow = async () => {
-    await requestPermission();
+    const result = await requestPermission();
     setShowDialog(false);
+    
+    if (result === 'granted') {
+      toast({
+        title: "Notifications Enabled",
+        description: "You'll now receive expense notifications from your browser.",
+      });
+    } else if (result === 'denied') {
+      toast({
+        title: "Notifications Blocked",
+        description: "Please enable notifications in your browser settings to receive alerts.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleNotNow = () => {

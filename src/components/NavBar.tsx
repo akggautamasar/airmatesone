@@ -1,8 +1,8 @@
-
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { BrowserNotificationManager } from '@/components/notifications/BrowserNotificationManager';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,17 +93,19 @@ const NavBar = () => {
 
           <div className="flex items-center space-x-2 flex-shrink-0">
             {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={user.user_metadata?.avatar_url} />
-                      <AvatarFallback className="text-sm">
-                        {getInitials(user.user_metadata?.name || user.email || 'U')}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
+              <>
+                <BrowserNotificationManager />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
+                      <Avatar className="h-9 w-9">
+                        <AvatarImage src={user.user_metadata?.avatar_url} />
+                        <AvatarFallback className="text-sm">
+                          {getInitials(user.user_metadata?.name || user.email || 'U')}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end">
                   <div className="flex items-center justify-start gap-2 p-2">
                     <Avatar className="h-8 w-8">
@@ -191,6 +193,7 @@ const NavBar = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </>
             ) : (
               <Link to="/auth">
                 <Button size="sm">Sign In</Button>
