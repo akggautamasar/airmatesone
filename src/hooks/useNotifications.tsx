@@ -125,8 +125,9 @@ export const useNotifications = () => {
     const channelName = `notifications-${user.id}-${Date.now()}`;
     
     // Set up real-time subscription for new notifications
-    const channel = supabase
-      .channel(channelName)
+    const channel = supabase.channel(channelName);
+
+    channel
       .on(
         'postgres_changes',
         {
@@ -160,6 +161,8 @@ export const useNotifications = () => {
       .subscribe();
 
     return () => {
+      // Properly unsubscribe and remove channel
+      channel.unsubscribe();
       supabase.removeChannel(channel);
     };
   }, [user?.id]); // Only depend on user ID to avoid unnecessary re-subscriptions
