@@ -34,22 +34,16 @@ export const useRoommates = () => {
 
     try {
       setLoading(true);
-      console.log('🔍 Fetching roommates for user:', user.email);
       
       const { data, error } = await supabase
         .from('roommates')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('❌ Supabase error fetching roommates:', error);
-        throw error;
-      }
+      if (error) throw error;
       
-      console.log('✅ Fetched roommates:', data);
       setRoommates(data || []);
     } catch (error: any) {
-      console.error('💥 Error fetching roommates:', error);
       toast({
         title: "Error",
         description: `Failed to fetch roommates: ${error.message}`,
@@ -71,10 +65,6 @@ export const useRoommates = () => {
     }
 
     try {
-      console.log('🚀 Adding roommate with email:', email);
-      console.log('👤 Current user:', user.id, user.email);
-      console.log('📋 Provided data:', providedData);
-
       // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
@@ -105,12 +95,10 @@ export const useRoommates = () => {
         .maybeSingle();
 
       if (checkError) {
-        console.error('❌ Error checking existing roommate:', checkError);
         throw checkError;
       }
 
       if (existingRoommate) {
-        console.log('⚠️ Duplicate found');
         toast({
           title: "Already Added",
           description: "This roommate has already been added to your list.",
@@ -126,8 +114,6 @@ export const useRoommates = () => {
         .eq('email', email.toLowerCase())
         .maybeSingle();
 
-      console.log('📊 Target user profile query result:', { targetUserProfile, profileError });
-
       // Create roommate entry for current user with target user's details or provided data
       let roommateData;
       if (providedData) {
@@ -140,7 +126,6 @@ export const useRoommates = () => {
           user_id: user.id,
           balance: 0 
         };
-        console.log('✅ Using provided data with profile updates');
       } else if (targetUserProfile) {
         // Use target user's profile data
         roommateData = { 
@@ -151,7 +136,6 @@ export const useRoommates = () => {
           user_id: user.id,
           balance: 0 
         };
-        console.log('✅ Using target user profile data for roommate');
       } else {
         // Fallback: use email prefix as name
         roommateData = { 
@@ -162,21 +146,15 @@ export const useRoommates = () => {
           user_id: user.id,
           balance: 0 
         };
-        console.log('⚠️ Target user profile not found, using fallback data');
       }
-
-      console.log('📝 Creating roommate with data:', roommateData);
 
       const { error: currentUserRoommateError } = await supabase
         .from('roommates')
         .insert([roommateData]);
 
       if (currentUserRoommateError) {
-        console.error('❌ Failed to create roommate:', currentUserRoommateError);
         throw currentUserRoommateError;
       }
-
-      console.log('✅ Roommate created successfully!');
 
       // Create reciprocal entry only if target user exists
       if (targetUserProfile) {
@@ -197,20 +175,14 @@ export const useRoommates = () => {
             balance: 0 
           };
 
-          console.log('📝 Creating reciprocal roommate with data:', reciprocalData);
-
           const { error: targetUserRoommateError } = await supabase
             .from('roommates')
             .insert([reciprocalData]);
 
           if (targetUserRoommateError) {
-            console.error('❌ Failed to create reciprocal roommate entry:', targetUserRoommateError);
-          } else {
-            console.log('✅ Reciprocal roommate created successfully!');
+            console.error('Failed to create reciprocal roommate entry:', targetUserRoommateError);
           }
         }
-      } else {
-        console.log('ℹ️ Skipping reciprocal entry - target user profile not found');
       }
 
       await fetchRoommates();
@@ -223,7 +195,6 @@ export const useRoommates = () => {
       });
       
     } catch (error: any) {
-      console.error('💥 CRITICAL ERROR in addRoommate:', error);
       toast({
         title: "Addition Failed",
         description: `Could not add roommate: ${error.message || 'Unknown error occurred'}`,
@@ -234,17 +205,12 @@ export const useRoommates = () => {
 
   const deleteRoommate = async (roommateId: string) => {
     try {
-      console.log('🗑️ Deleting roommate:', roommateId);
-      
       const { error } = await supabase
         .from('roommates')
         .delete()
         .eq('id', roommateId);
 
-      if (error) {
-        console.error('❌ Supabase delete error:', error);
-        throw error;
-      }
+      if (error) throw error;
       
       await fetchRoommates();
       
@@ -253,7 +219,6 @@ export const useRoommates = () => {
         description: "Roommate has been removed from your group",
       });
     } catch (error: any) {
-      console.error('💥 Error deleting roommate:', error);
       toast({
         title: "Error",
         description: `Failed to delete roommate: ${error.message}`,
@@ -265,7 +230,6 @@ export const useRoommates = () => {
   const deleteAllMyRoommates = async () => {
     if (!user) return;
     try {
-      console.log('🗑️ Deleting all roommates for user:', user.id);
       const { error } = await supabase
         .from('roommates')
         .delete()
@@ -280,7 +244,6 @@ export const useRoommates = () => {
         description: "All roommates you added have been removed.",
       });
     } catch (error: any) {
-      console.error('💥 Error deleting all roommates:', error);
       toast({
         title: "Error",
         description: `Failed to remove all roommates: ${error.message}`,
@@ -319,7 +282,6 @@ export const useRoommates = () => {
         description: `Payment request email sent to ${roommate.name}`,
       });
     } catch (error: any) {
-      console.error('💥 Error sending email:', error);
       toast({
         title: "Failed to Send Request",
         description: `Failed to send email to ${roommate.name}`,

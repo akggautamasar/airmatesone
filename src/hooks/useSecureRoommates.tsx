@@ -29,22 +29,16 @@ export const useSecureRoommates = () => {
 
     try {
       setLoading(true);
-      console.log('Fetching roommates for user:', user.email);
       
       const { data, error } = await supabase
         .from('roommates')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Supabase error fetching roommates:', error);
-        throw error;
-      }
+      if (error) throw error;
       
-      console.log('Fetched roommates:', data);
       setRoommates(data || []);
     } catch (error: any) {
-      console.error('Error fetching roommates:', error);
       toast({
         title: "Error",
         description: `Failed to fetch roommates: ${error.message}`,
@@ -84,8 +78,6 @@ export const useSecureRoommates = () => {
         phone: roommate.phone ? sanitizeInput(roommate.phone, 20) : undefined,
       });
 
-      console.log('Adding roommate with validated data:', validatedData);
-
       // Check if trying to add themselves
       if (validatedData.email === user.email) {
         toast({
@@ -104,7 +96,6 @@ export const useSecureRoommates = () => {
         .maybeSingle();
 
       if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Database error:', profileError);
         toast({
           title: "Database Error",
           description: "Failed to verify user. Please try again.",
@@ -131,7 +122,6 @@ export const useSecureRoommates = () => {
         .maybeSingle();
 
       if (checkError) {
-        console.error('Error checking existing roommate:', checkError);
         throw checkError;
       }
 
@@ -159,7 +149,6 @@ export const useSecureRoommates = () => {
         .single();
 
       if (error) {
-        console.error('Database insert failed:', error);
         throw error;
       }
 
@@ -171,7 +160,6 @@ export const useSecureRoommates = () => {
       });
       
     } catch (error: any) {
-      console.error('Error in addRoommate:', error);
       
       if (error.name === 'ZodError') {
         toast({
@@ -210,18 +198,13 @@ export const useSecureRoommates = () => {
     }
 
     try {
-      console.log('Deleting roommate:', roommateId);
-      
       const { error } = await supabase
         .from('roommates')
         .delete()
         .eq('id', roommateId)
         .eq('user_id', user.id); // Ensure user can only delete their own roommates
 
-      if (error) {
-        console.error('Supabase delete error:', error);
-        throw error;
-      }
+      if (error) throw error;
       
       await fetchRoommates();
       
@@ -230,7 +213,6 @@ export const useSecureRoommates = () => {
         description: "Roommate has been removed from your group",
       });
     } catch (error: any) {
-      console.error('Error deleting roommate:', error);
       toast({
         title: "Error",
         description: `Failed to delete roommate: ${error.message}`,
@@ -302,7 +284,6 @@ export const useSecureRoommates = () => {
         description: `Payment request email sent to ${roommate.name}`,
       });
     } catch (error: any) {
-      console.error('Error sending email:', error);
       toast({
         title: "Failed to Send Request",
         description: `Failed to send email to ${roommate.name}`,

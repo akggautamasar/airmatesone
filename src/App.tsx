@@ -1,11 +1,11 @@
 
-import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { NotificationPermissionDialog } from "@/components/notifications/NotificationPermissionDialog";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
@@ -19,21 +19,17 @@ import ShoppingPage from "./pages/ShoppingPage";
 import EventsPage from "./pages/EventsPage";
 import ReportsPage from "./pages/ReportsPage";
 import ProfilePage from "./pages/ProfilePage";
-import { requestPushPermission } from "./firebase/firebase-messaging-init";
 
 const queryClient = new QueryClient();
 
 const App = () => {
-  useEffect(() => {
-    requestPushPermission();
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <NotificationPermissionDialog />
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />

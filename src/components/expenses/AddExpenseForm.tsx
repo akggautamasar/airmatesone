@@ -75,11 +75,6 @@ export const AddExpenseForm = ({ onExpenseAdded }: AddExpenseFormProps) => {
       index === self.findIndex(u => u.email === user.email)
     );
 
-    console.log('AddExpenseForm: Current user:', currentUser);
-    console.log('AddExpenseForm: Roommates:', roommates);
-    console.log('AddExpenseForm: All users before deduplication:', combined);
-    console.log('AddExpenseForm: All users after deduplication:', uniqueUsers);
-
     return uniqueUsers;
   }, [user, roommates, profile]);
 
