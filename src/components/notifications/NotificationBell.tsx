@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bell, Check, Trash2, ExternalLink } from "lucide-react";
-import { useNotifications } from '@/hooks/useNotifications';
+import { useNotificationsContext } from '@/contexts/NotificationsContext';
 import { BrowserNotificationManager } from './BrowserNotificationManager';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -17,7 +17,7 @@ export const NotificationBell = () => {
     markAsRead,
     markAllAsRead,
     deleteNotification
-  } = useNotifications();
+  } = useNotificationsContext();
 
   const recentNotifications = notifications.slice(0, 5); // Show only 5 most recent
 

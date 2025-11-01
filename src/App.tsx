@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import { NotificationPermissionDialog } from "@/components/notifications/NotificationPermissionDialog";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
@@ -26,29 +27,31 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <NotificationPermissionDialog />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<AuthPage />} />
-              <Route path="/overview" element={<OverviewPage />} />
-              <Route path="/expenses" element={<ExpensesPage />} />
-              <Route path="/roommates" element={<RoommatesPage />} />
-              <Route path="/shopping" element={<ShoppingPage />} />
-              <Route path="/events" element={<EventsPage />} />
-              <Route path="/reports" element={<ReportsPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/pinboard" element={<PinboardPage />} />
-              <Route path="/expense-tracker" element={<ExpenseTrackerPage />} />
-              <Route path="/chores" element={<ChoresPage />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+        <NotificationsProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <NotificationPermissionDialog />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<AuthPage />} />
+                <Route path="/overview" element={<OverviewPage />} />
+                <Route path="/expenses" element={<ExpensesPage />} />
+                <Route path="/roommates" element={<RoommatesPage />} />
+                <Route path="/shopping" element={<ShoppingPage />} />
+                <Route path="/events" element={<EventsPage />} />
+                <Route path="/reports" element={<ReportsPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/pinboard" element={<PinboardPage />} />
+                <Route path="/expense-tracker" element={<ExpenseTrackerPage />} />
+                <Route path="/chores" element={<ChoresPage />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </NotificationsProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

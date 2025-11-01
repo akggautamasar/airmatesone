@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bell, Check, Trash2, ExternalLink, Clock } from "lucide-react";
-import { useNotifications } from '@/hooks/useNotifications';
+import { useNotificationsContext } from '@/contexts/NotificationsContext';
 import { formatDistanceToNow } from 'date-fns';
 
 interface NotificationItemProps {
@@ -106,7 +106,7 @@ export const NotificationPanel = () => {
     markAsRead,
     markAllAsRead,
     deleteNotification
-  } = useNotifications();
+  } = useNotificationsContext();
 
   if (loading) {
     return (
