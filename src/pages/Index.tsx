@@ -6,6 +6,7 @@ import NavBar from '@/components/NavBar';
 import { ExpenseOverview } from '@/components/ExpenseOverview';
 import { UpcomingEvents } from '@/components/overview/UpcomingEvents';
 import { InstallPrompt } from '@/components/InstallPrompt';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { Wallet } from 'lucide-react';
 
 export default function Index() {
@@ -29,11 +30,14 @@ export default function Index() {
         <NavBar />
         <InstallPrompt />
         <div className="container mx-auto px-4 py-8">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2">Welcome back, {user.user_metadata?.name || user.email?.split('@')[0]}!</h1>
-            <p className="text-muted-foreground text-lg">
-              Your roommate dashboard - everything you need at a glance.
-            </p>
+          <div className="mb-8 flex justify-between items-start">
+            <div>
+              <h1 className="text-4xl font-bold mb-2">Welcome back, {user.user_metadata?.name || user.email?.split('@')[0]}!</h1>
+              <p className="text-muted-foreground text-lg">
+                Your roommate dashboard - everything you need at a glance.
+              </p>
+            </div>
+            <NotificationBell />
           </div>
 
           {/* Quick Access */}

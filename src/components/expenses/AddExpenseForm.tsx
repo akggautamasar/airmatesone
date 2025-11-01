@@ -96,6 +96,23 @@ export const AddExpenseForm = ({ onExpenseAdded }: AddExpenseFormProps) => {
 
       if (error) throw error;
 
+      // Send OneSignal notification to all users
+      try {
+        const paidByUser = allUsers.find(u => u.email === data.paidBy);
+        await supabase.functions.invoke('send-onesignal-notification', {
+          body: {
+            title: 'New Expense Added',
+            message: `${paidByUser?.name || 'Someone'} added an expense: ${data.description} - ₹${data.amount}`,
+            data: {
+              type: 'expense',
+              category: data.category,
+            },
+          },
+        });
+      } catch (notifError) {
+        console.error('Error sending OneSignal notification:', notifError);
+      }
+
       toast({
         title: "Success",
         description: "Expense added successfully!",
