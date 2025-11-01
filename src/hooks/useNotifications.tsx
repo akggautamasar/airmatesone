@@ -109,29 +109,6 @@ export const useNotifications = () => {
     }
   };
 
-  // Memoize the notification handler to prevent recreating on every render
-  const handleNewNotification = useCallback((payload: any) => {
-    const newNotification = payload.new as Notification;
-    
-    setNotifications(prev => [newNotification, ...prev]);
-    setUnreadCount(prev => prev + 1);
-    
-    // Show in-app toast notification
-    toast({
-      title: newNotification.title,
-      description: newNotification.message,
-      duration: 5000,
-    });
-
-    // Send browser notification for expense-related notifications
-    if (newNotification.type === 'expense_created' || newNotification.type === 'settlement_reminder') {
-      sendBrowserNotification(
-        newNotification.title,
-        newNotification.message
-      );
-    }
-  }, [toast, sendBrowserNotification]);
-
   useEffect(() => {
     if (!user) {
       setNotifications([]);
@@ -147,6 +124,29 @@ export const useNotifications = () => {
     
     // Set up real-time subscription for new notifications
     const channel = supabase.channel(channelName);
+
+    // Define handler inline to avoid dependency issues
+    const handleNewNotification = (payload: any) => {
+      const newNotification = payload.new as Notification;
+      
+      setNotifications(prev => [newNotification, ...prev]);
+      setUnreadCount(prev => prev + 1);
+      
+      // Show in-app toast notification
+      toast({
+        title: newNotification.title,
+        description: newNotification.message,
+        duration: 5000,
+      });
+
+      // Send browser notification for expense-related notifications
+      if (newNotification.type === 'expense_created' || newNotification.type === 'settlement_reminder') {
+        sendBrowserNotification(
+          newNotification.title,
+          newNotification.message
+        );
+      }
+    };
 
     channel
       .on(
@@ -166,7 +166,7 @@ export const useNotifications = () => {
       channel.unsubscribe();
       supabase.removeChannel(channel);
     };
-  }, [user?.id, handleNewNotification]);
+  }, [user?.id, toast, sendBrowserNotification]);
 
   return {
     notifications,
