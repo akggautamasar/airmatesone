@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { OneSignalPrompt } from '@/components/notifications/OneSignalPrompt';
 import { Receipt } from 'lucide-react';
 
 export default function OverviewPage() {
@@ -25,6 +26,7 @@ export default function OverviewPage() {
   return (
     <div className="min-h-screen bg-background">
       <NavBar />
+      <OneSignalPrompt />
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Overview</h1>

@@ -7,6 +7,7 @@ import { ExpenseOverview } from '@/components/ExpenseOverview';
 import { UpcomingEvents } from '@/components/overview/UpcomingEvents';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { OneSignalPrompt } from '@/components/notifications/OneSignalPrompt';
 import { Wallet } from 'lucide-react';
 
 export default function Index() {
@@ -29,6 +30,7 @@ export default function Index() {
       <div className="min-h-screen bg-background">
         <NavBar />
         <InstallPrompt />
+        <OneSignalPrompt />
         <div className="container mx-auto px-4 py-8">
           <div className="mb-8 flex justify-between items-start">
             <div>
