@@ -97,18 +97,28 @@ export const AddExpenseForm = ({ onExpenseAdded }: AddExpenseFormProps) => {
       if (error) throw error;
 
       // Send OneSignal notification to all users
+      console.log('Attempting to send OneSignal notification...');
       try {
         const paidByUser = allUsers.find(u => u.email === data.paidBy);
-        await supabase.functions.invoke('send-onesignal-notification', {
-          body: {
-            title: 'New Expense Added',
-            message: `${paidByUser?.name || 'Someone'} added an expense: ${data.description} - ₹${data.amount}`,
-            data: {
-              type: 'expense',
-              category: data.category,
-            },
+        const notificationData = {
+          title: 'New Expense Added',
+          message: `${paidByUser?.name || 'Someone'} added an expense: ${data.description} - ₹${data.amount}`,
+          data: {
+            type: 'expense',
+            category: data.category,
           },
+        };
+        console.log('Notification data:', notificationData);
+        
+        const { data: notifResult, error: notifError } = await supabase.functions.invoke('send-onesignal-notification', {
+          body: notificationData,
         });
+        
+        if (notifError) {
+          console.error('OneSignal notification error:', notifError);
+        } else {
+          console.log('OneSignal notification sent successfully:', notifResult);
+        }
       } catch (notifError) {
         console.error('Error sending OneSignal notification:', notifError);
       }

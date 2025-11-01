@@ -8,6 +8,7 @@ import { UpcomingEvents } from '@/components/overview/UpcomingEvents';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { OneSignalPrompt } from '@/components/notifications/OneSignalPrompt';
+import { OneSignalTestButton } from '@/components/notifications/OneSignalTestButton';
 import { Wallet } from 'lucide-react';
 
 export default function Index() {
@@ -39,7 +40,10 @@ export default function Index() {
                 Your roommate dashboard - everything you need at a glance.
               </p>
             </div>
-            <NotificationBell />
+            <div className="flex items-center gap-2">
+              <OneSignalTestButton />
+              <NotificationBell />
+            </div>
           </div>
 
           {/* Quick Access */}
