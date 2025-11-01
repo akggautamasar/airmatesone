@@ -18,11 +18,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { PlusCircle } from 'lucide-react';
-import { useSharedNotes, noteSchema, type NoteFormData } from '@/hooks/useSharedNotes';
+import { useSharedNotesContext, noteSchema, type NoteFormData } from '@/contexts/SharedNotesContext';
 
 export const AddNoteForm = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { addNote } = useSharedNotes();
+  const { addNote } = useSharedNotesContext();
   
   const form = useForm<NoteFormData>({
     resolver: zodResolver(noteSchema),

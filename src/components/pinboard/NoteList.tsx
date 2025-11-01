@@ -1,11 +1,11 @@
 
-import { useSharedNotes } from '@/hooks/useSharedNotes';
+import { useSharedNotesContext } from '@/contexts/SharedNotesContext';
 import { NoteCard } from './NoteCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddNoteForm } from './AddNoteForm';
 
 export const NoteList = () => {
-  const { notes, loading } = useSharedNotes();
+  const { notes, loading } = useSharedNotesContext();
 
   return (
     <div className="space-y-4">

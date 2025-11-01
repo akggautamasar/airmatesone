@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { SharedNoteWithDetails, useSharedNotes } from '@/hooks/useSharedNotes';
+import { SharedNoteWithDetails } from '@/hooks/useSharedNotes';
+import { useSharedNotesContext } from '@/contexts/SharedNotesContext';
 import { formatDistanceToNow } from 'date-fns';
 import { Pin, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +25,7 @@ interface NoteCardProps {
 
 export const NoteCard = ({ note }: NoteCardProps) => {
   const { user } = useAuth();
-  const { updateNote, deleteNote } = useSharedNotes();
+  const { updateNote, deleteNote } = useSharedNotesContext();
   const authorName = note.user?.name || note.user?.email || 'Anonymous';
   const timeAgo = formatDistanceToNow(new Date(note.created_at), { addSuffix: true });
   const isOwner = user?.id === note.user_id;

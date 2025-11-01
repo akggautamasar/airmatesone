@@ -335,7 +335,7 @@ export const useSharedNotes = () => {
       channel.unsubscribe();
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user?.id]);
 
   return {
     notes,
