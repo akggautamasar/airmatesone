@@ -69,25 +69,29 @@ export const EventsPage = () => {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
                     <div className="space-y-1">
-                        <CardTitle>Events Calendar</CardTitle>
-                        <p className="text-muted-foreground">{format(currentMonth, 'MMMM yyyy')}</p>
+                        <CardTitle className="text-xl sm:text-2xl">Events Calendar</CardTitle>
+                        <p className="text-sm sm:text-base text-muted-foreground">{format(currentMonth, 'MMMM yyyy')}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button onClick={() => setIsTypeManagerOpen(true)} variant="outline" size="icon">
-                            <Settings className="h-4 w-4" />
+                        <Button onClick={() => setIsTypeManagerOpen(true)} variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10">
+                            <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
                             <span className="sr-only">Manage Event Types</span>
                         </Button>
-                        <Button onClick={handleAddEventClick}><PlusCircle className="mr-2 h-4 w-4" /> Add Event</Button>
+                        <Button onClick={handleAddEventClick} className="text-xs sm:text-sm">
+                            <PlusCircle className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                            <span className="hidden sm:inline">Add Event</span>
+                            <span className="sm:hidden">Add</span>
+                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
-                        <div className="flex justify-center items-center h-96">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        <div className="flex justify-center items-center h-64 sm:h-96">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                         </div>
                     ) : (
                         <EventCalendar 

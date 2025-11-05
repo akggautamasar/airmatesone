@@ -21,7 +21,7 @@ export default function ChoresPage() {
   return (
     <div className="min-h-screen bg-background">
       <NavBar />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-6 md:py-8">
         <ChoresComponent />
       </div>
     </div>

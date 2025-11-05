@@ -17,12 +17,12 @@ export const ChoresPage = () => {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center space-x-3">
-        <ClipboardList className="h-8 w-8 text-green-600" />
+    <div className="space-y-6 md:space-y-8">
+      <div className="flex items-start sm:items-center space-x-3">
+        <ClipboardList className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 flex-shrink-0 mt-1 sm:mt-0" />
         <div>
-            <h1 className="text-3xl font-bold">Chore Management</h1>
-            <p className="text-gray-600">Assign and track daily rotating chores among roommates.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold">Chore Management</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">Assign and track daily rotating chores among roommates.</p>
         </div>
       </div>
       

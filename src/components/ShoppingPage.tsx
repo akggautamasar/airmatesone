@@ -7,23 +7,24 @@ import { Package, Users, Share } from "lucide-react";
 
 export const ShoppingPage = () => {
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center space-x-2">
-          <Users className="h-8 w-8 text-blue-600" />
+    <div className="container mx-auto px-4 py-6 md:py-8">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center space-x-2">
+          <Users className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
           <span>Shopping Management</span>
         </h1>
-        <p className="text-gray-600">Manage your shared shopping list and products.</p>
+        <p className="text-sm sm:text-base text-muted-foreground">Manage your shared shopping list and products.</p>
       </div>
       
-      <Tabs defaultValue="shared-shopping" className="space-y-8">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="shared-shopping" className="flex items-center space-x-2">
-            <Share className="h-4 w-4" />
-            <span>Shared Shopping List</span>
+      <Tabs defaultValue="shared-shopping" className="space-y-4 sm:space-y-8">
+        <TabsList className="grid w-full grid-cols-2 h-auto">
+          <TabsTrigger value="shared-shopping" className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm py-2">
+            <Share className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Shared Shopping List</span>
+            <span className="sm:hidden">Shopping</span>
           </TabsTrigger>
-          <TabsTrigger value="products" className="flex items-center space-x-2">
-            <Package className="h-4 w-4" />
+          <TabsTrigger value="products" className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm py-2">
+            <Package className="h-3 w-3 sm:h-4 sm:w-4" />
             <span>Products</span>
           </TabsTrigger>
         </TabsList>

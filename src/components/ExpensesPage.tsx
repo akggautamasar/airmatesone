@@ -91,32 +91,41 @@ export const ExpensesPage = ({ onExpenseUpdate }: ExpensesPageProps) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Expenses & Settlements</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Expenses & Settlements</h1>
       </div>
 
       <Tabs defaultValue="expenses" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="expenses">📦 Expenses</TabsTrigger>
-          <TabsTrigger value="settlements">💸 Settlements</TabsTrigger>
-          <TabsTrigger value="notifications">🔔 Notifications</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 h-auto">
+          <TabsTrigger value="expenses" className="text-xs sm:text-sm py-2">
+            <span className="hidden sm:inline">📦 Expenses</span>
+            <span className="sm:hidden">📦</span>
+          </TabsTrigger>
+          <TabsTrigger value="settlements" className="text-xs sm:text-sm py-2">
+            <span className="hidden sm:inline">💸 Settlements</span>
+            <span className="sm:hidden">💸</span>
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="text-xs sm:text-sm py-2">
+            <span className="hidden sm:inline">🔔 Notifications</span>
+            <span className="sm:hidden">🔔</span>
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="expenses" className="space-y-6">
+        <TabsContent value="expenses" className="space-y-4 sm:space-y-6">
           <AddExpenseForm onExpenseAdded={handleExpenseAdded} />
           <ExpenseFilters filters={filters} onFilterChange={setFilters} />
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Your Expenses</h2>
+            <h2 className="text-lg sm:text-xl font-semibold">Your Expenses</h2>
             <ExpenseList expenses={filteredExpenses} onExpenseDeleted={handleExpenseDeleted} />
           </div>
         </TabsContent>
 
-        <TabsContent value="settlements" className="space-y-6">
+        <TabsContent value="settlements" className="space-y-4 sm:space-y-6">
           <SettlementTabs />
         </TabsContent>
 
-        <TabsContent value="notifications" className="space-y-6">
+        <TabsContent value="notifications" className="space-y-4 sm:space-y-6">
           <NotificationPanel />
         </TabsContent>
       </Tabs>

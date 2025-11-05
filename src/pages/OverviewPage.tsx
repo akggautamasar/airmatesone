@@ -27,15 +27,16 @@ export default function OverviewPage() {
     <div className="min-h-screen bg-background">
       <NavBar />
       <OneSignalPrompt />
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Overview</h1>
+      <div className="container mx-auto px-4 py-6 md:py-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">Overview</h1>
           <div className="flex items-center gap-2">
             <NotificationBell />
-            <Link to="/expenses">
-              <Button>
+            <Link to="/expenses" className="flex-1 sm:flex-initial">
+              <Button className="w-full sm:w-auto">
                 <Receipt className="mr-2 h-4 w-4" />
-                Manage Expenses
+                <span className="hidden sm:inline">Manage Expenses</span>
+                <span className="sm:hidden">Expenses</span>
               </Button>
             </Link>
           </div>

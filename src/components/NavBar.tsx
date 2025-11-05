@@ -41,13 +41,13 @@ const NavBar = () => {
 
   return (
     <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4">
-        <div className="flex h-14 items-center justify-between">
+      <div className="container mx-auto px-3 sm:px-4">
+        <div className="flex h-14 sm:h-16 items-center justify-between">
           <Link to="/overview" className="flex items-center space-x-2 flex-shrink-0">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Home className="h-5 w-5 text-primary-foreground" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary rounded-lg flex items-center justify-center">
+              <Home className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
             </div>
-            <span className="font-bold text-lg sm:text-xl">AirMates</span>
+            <span className="font-bold text-base sm:text-lg lg:text-xl">AirMates</span>
           </Link>
           
           {user && (
@@ -91,16 +91,16 @@ const NavBar = () => {
             </div>
           )}
 
-          <div className="flex items-center space-x-2 flex-shrink-0">
+          <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
             {user ? (
               <>
                 <BrowserNotificationManager />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
-                      <Avatar className="h-9 w-9">
+                    <Button variant="ghost" className="relative h-8 w-8 sm:h-9 sm:w-9 rounded-full p-0">
+                      <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
                         <AvatarImage src={user.user_metadata?.avatar_url} />
-                        <AvatarFallback className="text-sm">
+                        <AvatarFallback className="text-xs sm:text-sm">
                           {getInitials(user.user_metadata?.name || user.email || 'U')}
                         </AvatarFallback>
                       </Avatar>

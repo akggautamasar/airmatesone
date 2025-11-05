@@ -64,18 +64,18 @@ export const RoommateManagement = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Add Roommate Form */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center space-x-2">
-              <Users className="h-5 w-5" />
+          <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+            <span className="flex items-center space-x-2 text-lg sm:text-xl">
+              <Users className="h-4 w-4 sm:h-5 sm:w-5" />
               <span>Add New Roommate</span>
             </span>
             <RoommateForm onAdd={handleAddRoommate} isAdding={isAdding} />
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             Add roommates to your group by filling in their details. If they're already registered, we'll sync their profile information.
           </CardDescription>
         </CardHeader>
@@ -84,17 +84,17 @@ export const RoommateManagement = () => {
       {/* Roommates List */}  
       <Card>  
         <CardHeader>  
-          <div className="flex justify-between items-center">  
-            <CardTitle className="flex items-center space-x-2">  
-              <Users className="h-5 w-5" />  
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">  
+            <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">  
+              <Users className="h-4 w-4 sm:h-5 sm:w-5" />  
               <span>Group Members ({allMembers.length})</span>  
             </CardTitle>  
             {/* Only show "Remove All" if there are roommates added by the current user */}  
             {roommates.filter(r => r.user_id === user?.id).length > 0 && (  
                <AlertDialog>  
                 <AlertDialogTrigger asChild>  
-                  <Button variant="destructive" size="sm">  
-                    <Trash2 className="h-4 w-4 mr-2" />  
+                  <Button variant="destructive" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">  
+                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />  
                     Remove All My Roommates  
                   </Button>  
                 </AlertDialogTrigger>  
@@ -121,11 +121,11 @@ export const RoommateManagement = () => {
               </AlertDialog>  
             )}  
           </div>  
-          <CardDescription>  
+          <CardDescription className="text-sm">  
             Manage your roommate group and settle expenses. Roommates you add are specific to your list.  
           </CardDescription>  
         </CardHeader>  
-        <CardContent className="space-y-4">  
+        <CardContent className="space-y-3 sm:space-y-4">  
           {allMembers.length === 1 ? (  
             <div className="text-center py-8 text-muted-foreground">  
               <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />  
@@ -134,42 +134,42 @@ export const RoommateManagement = () => {
             </div>  
           ) : (  
             allMembers.map((member) => (  
-              <div key={member.id} className={`flex items-center justify-between p-4 rounded-lg ${member.isCurrentUser ? 'bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200' : 'bg-gray-50'}`}>  
-                <div className="flex items-center space-x-4">  
-                  <div className={`rounded-full p-3 ${member.isCurrentUser ? 'bg-gradient-to-r from-blue-600 to-green-600' : 'bg-gradient-to-r from-blue-600 to-green-600'}`}>  
+              <div key={member.id} className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 rounded-lg space-y-3 sm:space-y-0 ${member.isCurrentUser ? 'bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200' : 'bg-muted/50'}`}>  
+                <div className="flex items-center space-x-3 sm:space-x-4">  
+                  <div className={`rounded-full p-2 sm:p-3 flex-shrink-0 ${member.isCurrentUser ? 'bg-gradient-to-r from-blue-600 to-green-600' : 'bg-gradient-to-r from-blue-600 to-green-600'}`}>  
                     {member.isCurrentUser ? (  
-                      <Crown className="h-5 w-5 text-white" />  
+                      <Crown className="h-4 w-4 sm:h-5 sm:w-5 text-white" />  
                     ) : (  
-                      <Users className="h-5 w-5 text-white" />  
+                      <Users className="h-4 w-4 sm:h-5 sm:w-5 text-white" />  
                     )}  
                   </div>  
-                  <div>  
+                  <div className="min-w-0 flex-1">  
                     <div className="flex items-center space-x-2">  
-                      <h3 className="font-semibold">{member.name}</h3>  
+                      <h3 className="font-semibold text-sm sm:text-base truncate">{member.name}</h3>  
                       {member.isCurrentUser && (  
-                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">You</span>  
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full flex-shrink-0">You</span>  
                       )}  
                     </div>  
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">  
-                      <IndianRupee className="h-3 w-3" />  
-                      <span>{member.upi_id}</span>  
+                    <div className="flex items-center space-x-2 text-xs sm:text-sm text-muted-foreground">  
+                      <IndianRupee className="h-3 w-3 flex-shrink-0" />  
+                      <span className="truncate">{member.upi_id}</span>  
                     </div>  
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">  
-                      <Mail className="h-3 w-3" />  
-                      <span>{member.email}</span>  
+                    <div className="flex items-center space-x-2 text-xs sm:text-sm text-muted-foreground">  
+                      <Mail className="h-3 w-3 flex-shrink-0" />  
+                      <span className="truncate">{member.email}</span>  
                     </div>  
                     {member.phone && (  
-                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">  
-                        <Phone className="h-3 w-3" />  
+                      <div className="flex items-center space-x-2 text-xs sm:text-sm text-muted-foreground">  
+                        <Phone className="h-3 w-3 flex-shrink-0" />  
                         <span>{member.phone}</span>  
                       </div>  
                     )}  
                   </div>  
                 </div>  
                   
-                <div className="flex items-center space-x-3">  
-                  <div className="text-right">  
-                    <p className={`font-semibold ${member.balance < 0 ? 'text-orange-600' : member.balance > 0 ? 'text-green-600' : 'text-gray-600'}`}>  
+                <div className="flex items-center justify-between sm:justify-end space-x-3 sm:ml-4">  
+                  <div className="text-left sm:text-right">  
+                    <p className={`font-semibold text-sm sm:text-base ${member.balance < 0 ? 'text-orange-600' : member.balance > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>  
                       {member.balance === 0 ? '₹0' : (member.balance < 0 ? '-' : '+') + '₹' + Math.abs(member.balance)}  
                     </p>  
                     <p className="text-xs text-muted-foreground">  
@@ -183,7 +183,7 @@ export const RoommateManagement = () => {
                         <Button  
                           size="sm"  
                           onClick={() => handleUPIPayment(member.upi_id, member.balance)}  
-                          className="bg-blue-600 hover:bg-blue-700"  
+                          className="bg-primary hover:bg-primary/90 text-xs sm:text-sm"  
                         >  
                           Pay  
                         </Button>  
@@ -192,6 +192,7 @@ export const RoommateManagement = () => {
                             size="sm"  
                             variant="outline"  
                             onClick={() => sendEmailRequest(member)}  
+                            className="text-xs sm:text-sm"  
                           >  
                             Request  
                           </Button>  
@@ -203,8 +204,8 @@ export const RoommateManagement = () => {
                     {!member.isCurrentUser && member.user_id === user?.id && (  
                       <AlertDialog>  
                         <AlertDialogTrigger asChild>  
-                          <Button variant="outline" size="sm">  
-                            <Trash2 className="h-4 w-4" />  
+                          <Button variant="outline" size="sm" className="h-8 w-8 sm:h-9 sm:w-9 p-0">  
+                            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />  
                           </Button>  
                         </AlertDialogTrigger>  
                         <AlertDialogContent>  
