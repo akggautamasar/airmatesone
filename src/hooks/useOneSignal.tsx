@@ -14,13 +14,27 @@ export const useOneSignal = () => {
   useEffect(() => {
     if (typeof window !== 'undefined' && window.OneSignalDeferred) {
       window.OneSignalDeferred.push(async (OneSignal: any) => {
-        setIsInitialized(true);
-        
-        // Check subscription status
-        const isPushSupported = await OneSignal.Notifications.isPushSupported();
-        if (isPushSupported) {
-          const permission = await OneSignal.Notifications.permissionNative;
-          setIsSubscribed(permission === 'granted');
+        try {
+          console.log('🔔 OneSignal hook initializing...');
+          setIsInitialized(true);
+          
+          // Check subscription status
+          const isPushSupported = await OneSignal.Notifications.isPushSupported();
+          console.log('Push supported:', isPushSupported);
+          
+          if (isPushSupported) {
+            const permission = await OneSignal.Notifications.permissionNative;
+            console.log('Current permission:', permission);
+            setIsSubscribed(permission === 'granted');
+            
+            // Listen for permission changes
+            OneSignal.Notifications.addEventListener('permissionChange', (isGranted: boolean) => {
+              console.log('Permission changed:', isGranted);
+              setIsSubscribed(isGranted);
+            });
+          }
+        } catch (error) {
+          console.error('❌ Error in OneSignal hook:', error);
         }
       });
     }
@@ -29,15 +43,33 @@ export const useOneSignal = () => {
   const requestPermission = async () => {
     if (typeof window !== 'undefined' && window.OneSignal) {
       try {
+        console.log('🔔 Requesting OneSignal permission...');
+        
+        // Request notification permission
         await window.OneSignal.Slidedown.promptPush();
+        
+        // Wait a bit for permission to be granted
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         const permission = await window.OneSignal.Notifications.permissionNative;
-        setIsSubscribed(permission === 'granted');
-        return permission === 'granted';
+        console.log('Permission after request:', permission);
+        
+        const granted = permission === 'granted';
+        setIsSubscribed(granted);
+        
+        if (granted) {
+          console.log('✅ OneSignal permission granted!');
+        } else {
+          console.log('⚠️ OneSignal permission denied');
+        }
+        
+        return granted;
       } catch (error) {
-        console.error('Error requesting OneSignal permission:', error);
+        console.error('❌ Error requesting OneSignal permission:', error);
         return false;
       }
     }
+    console.log('⚠️ OneSignal not available');
     return false;
   };
 

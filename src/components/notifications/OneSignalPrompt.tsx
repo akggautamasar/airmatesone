@@ -21,42 +21,67 @@ export const OneSignalPrompt = () => {
     const checkSubscription = async () => {
       if (typeof window !== 'undefined' && window.OneSignal) {
         try {
+          console.log('🔔 Checking OneSignal subscription status...');
           const isPushSupported = await window.OneSignal.Notifications.isPushSupported();
-          if (!isPushSupported) return;
+          
+          if (!isPushSupported) {
+            console.log('⚠️ Push notifications not supported on this browser');
+            return;
+          }
 
           const permission = await window.OneSignal.Notifications.permissionNative;
+          console.log('Current notification permission:', permission);
+          
           const subscribed = permission === 'granted';
           setIsSubscribed(subscribed);
 
           // Show prompt after 3 seconds if not subscribed
           if (!subscribed) {
+            console.log('User not subscribed, will show prompt in 3 seconds');
             const timer = setTimeout(() => {
               setShowPrompt(true);
             }, 3000);
             return () => clearTimeout(timer);
+          } else {
+            console.log('✅ User is already subscribed to notifications');
           }
         } catch (error) {
-          console.error('Error checking OneSignal subscription:', error);
+          console.error('❌ Error checking OneSignal subscription:', error);
         }
+      } else {
+        console.log('⚠️ OneSignal not available yet');
       }
     };
 
     // Wait for OneSignal to initialize
-    const timer = setTimeout(checkSubscription, 1000);
+    const timer = setTimeout(checkSubscription, 2000);
     return () => clearTimeout(timer);
   }, [user]);
 
   const handleEnable = async () => {
     if (typeof window !== 'undefined' && window.OneSignal) {
       try {
+        console.log('🔔 Requesting notification permission...');
         await window.OneSignal.Slidedown.promptPush();
+        
+        // Wait for permission to be processed
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
         const permission = await window.OneSignal.Notifications.permissionNative;
+        console.log('Permission after prompt:', permission);
+        
         if (permission === 'granted') {
+          // Try to ensure we're subscribed
+          await window.OneSignal.User.PushSubscription.optIn();
+          
+          console.log('✅ Notifications enabled successfully!');
           setIsSubscribed(true);
           setShowPrompt(false);
+        } else {
+          console.log('⚠️ Permission not granted');
         }
       } catch (error) {
-        console.error('Error enabling OneSignal notifications:', error);
+        console.error('❌ Error enabling OneSignal notifications:', error);
       }
     }
   };

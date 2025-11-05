@@ -26,9 +26,17 @@
     <script>
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.init({
-          appId: "1cec4d4c-380c-454b-b679-2f0e9900c45a",
-        });
+        try {
+          await OneSignal.init({
+            appId: "1cec4d4c-380c-454b-b679-2f0e9900c45a",
+            serviceWorkerParam: { scope: "/" },
+            serviceWorkerPath: "OneSignalSDKWorker.js",
+            allowLocalhostAsSecureOrigin: true,
+          });
+          console.log("✅ OneSignal initialized successfully");
+        } catch (error) {
+          console.error("❌ OneSignal initialization error:", error);
+        }
       });
     </script>
   </head>
